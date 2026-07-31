@@ -1,0 +1,299 @@
+diff --git a/__tests__/components/CheckinStatistics.test.tsx b/__tests__/components/CheckinStatistics.test.tsx
+new file mode 100644
+index 00000000..b353e7b5
+--- /dev/null
++++ b/__tests__/components/CheckinStatistics.test.tsx
+@@ -0,0 +1,146 @@
++// ############################################################################
++// AI_HEADER: MODULE_TESTS_CHECKIN_STATISTICS
++// ROLE: Verify the Profile check-in statistics UI semantic contract and methodology disclosure.
++// ############################################################################
++
++// START_MODULE_CONTRACT: M-TESTS-CHECKIN-STATISTICS
++// purpose: Verify loading, error, ready, empty, and methodology disclosure behavior of CheckinStatistics.
++// owns:
++//   - __tests__/components/CheckinStatistics.test.tsx
++// inputs: Mocked check-in metrics API responses.
++// outputs: Vitest DOM contract assertions.
++// dependencies: @testing-library/react, vitest, components/profile/checkin-statistics.
++// side_effects: none.
++// emitted_logs: none.
++// invariants:
++//   - Root state attributes and required accessibility semantics are asserted through public DOM selectors.
++//   - Methodology facts are static Russian copy and the disclosure is closed initially.
++// failure_policy: Test failures are surfaced by Vitest.
++// END_MODULE_CONTRACT: M-TESTS-CHECKIN-STATISTICS
++
++// START_MODULE_MAP: M-TESTS-CHECKIN-STATISTICS
++// public_entrypoints:
++//   - CheckinStatistics component test suite
++// semantic_blocks:
++//   - ROOT_STATES: loading, error, ready, and empty rendering contract
++//   - METHODOLOGY_DISCLOSURE: toggle, region linkage, visibility, and static facts
++// owned_tests:
++//   - components/profile/checkin-statistics.tsx
++// END_MODULE_MAP: M-TESTS-CHECKIN-STATISTICS
++
++import { fireEvent, render, screen, waitFor } from "@testing-library/react"
++import { beforeEach, describe, expect, it, vi } from "vitest"
++
++vi.mock("@/lib/api/checkin", () => ({
++  formatDateInTimeZone: vi.fn(() => "2026-07-31"),
++  getCheckinMetrics: vi.fn(),
++}))
++
++import { CheckinStatistics } from "@/components/profile/checkin-statistics"
++import { getCheckinMetrics } from "@/lib/api/checkin"
++
++const metrics = {
++  totalCheckins: 12,
++  currentStreak: 3,
++  longestStreak: 7,
++  averageMood: 3.8,
++  averageEnergy: 3.4,
++  averageAccuracy: 2.9,
++  moodDistribution: { "1": 1, "2": 2, "3": 3, "4": 4, "5": 2 },
++  accuracyDistribution: {},
++  tagFrequency: { спокойствие: 4 },
++}
++
++describe("CheckinStatistics", () => {
++  beforeEach(() => {
++    vi.clearAllMocks()
++  })
++
++  it("exposes the loading root state with the existing status semantics", () => {
++    vi.mocked(getCheckinMetrics).mockImplementation(
++      () => new Promise(() => {}),
++    )
++
++    render(<CheckinStatistics />)
++
++    const root = screen.getByTestId("profile-checkin-statistics")
++    expect(root.getAttribute("data-state")).toBe("loading")
++    expect(root.getAttribute("role")).toBe("status")
++    expect(root.getAttribute("aria-busy")).toBe("true")
++  })
++
++  it("exposes the error root state while preserving the alert message", async () => {
++    vi.mocked(getCheckinMetrics).mockRejectedValue(new Error("Metrics unavailable"))
++
++    render(<CheckinStatistics />)
++
++    const alert = await screen.findByRole("alert")
++    const root = screen.getByTestId("profile-checkin-statistics")
++    expect(root.getAttribute("data-state")).toBe("error")
++    expect(alert.textContent).toContain("Metrics unavailable")
++  })
++
++  it("exposes the ready root state and renders the collapsed methodology disclosure", async () => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue(metrics)
++
++    render(<CheckinStatistics />)
++
++    const toggle = await screen.findByRole("button", {
++      name: "Как считается статистика",
++    })
++    const root = screen.getByTestId("profile-checkin-statistics")
++    const region = screen.getByTestId("checkin-stats-methodology")
++
++    expect(root.getAttribute("data-state")).toBe("ready")
++    expect(toggle.getAttribute("data-testid")).toBe(
++      "checkin-stats-methodology-toggle",
++    )
++    expect(toggle.getAttribute("aria-expanded")).toBe("false")
++    expect(toggle.getAttribute("aria-controls")).toBe(
++      "checkin-stats-methodology",
++    )
++    expect(document.getElementById(toggle.getAttribute("aria-controls") ?? "")).toBe(
++      region,
++    )
++    expect(region.getAttribute("id")).toBe("checkin-stats-methodology")
++    expect(region.hidden).toBe(true)
++  })
++
++  it("toggles the methodology region and exposes all static methodology facts", async () => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue(metrics)
++
++    render(<CheckinStatistics />)
++
++    const toggle = await screen.findByRole("button", {
++      name: "Как считается статистика",
++    })
++    const region = screen.getByTestId("checkin-stats-methodology")
++
++    fireEvent.click(toggle)
++
++    await waitFor(() => {
++      expect(toggle.getAttribute("aria-expanded")).toBe("true")
++      expect(region.hidden).toBe(false)
++    })
++    expect(region.textContent).toContain("30 дней")
++    expect(region.textContent).toContain("шкале 1–5")
++    expect(region.textContent).toContain("последовательные дни")
++
++    fireEvent.click(toggle)
++    expect(toggle.getAttribute("aria-expanded")).toBe("false")
++    expect(region.hidden).toBe(true)
++  })
++
++  it("keeps the empty metrics state unrendered", async () => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue({
++      ...metrics,
++      totalCheckins: 0,
++    })
++
++    render(<CheckinStatistics />)
++
++    await waitFor(() => {
++      expect(screen.queryByTestId("profile-checkin-statistics")).toBeNull()
++    })
++  })
++})
+diff --git a/components/profile/checkin-statistics.tsx b/components/profile/checkin-statistics.tsx
+index 14465b95..5e8f46c6 100644
+--- a/components/profile/checkin-statistics.tsx
++++ b/components/profile/checkin-statistics.tsx
+@@ -7,15 +7,19 @@
+ // ############################################################################
+ 
+ // START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-STATISTICS
+-// purpose: Render checkin statistics section with streak count, mood distribution, and tag analytics.
++// purpose: Render checkin statistics section with streak count, mood distribution, tag analytics, and a static methodology disclosure.
+ // owns:
+ //   - components/profile/checkin-statistics.tsx
+ // inputs: timeZone (string | null)
+ // outputs: CheckinStatistics React component
+ // dependencies: getCheckinMetrics, packages/contracts
+-// side_effects: fetches checkin metrics from API
++// side_effects: fetches checkin metrics from API; stores local methodology disclosure state.
+ // emitted_logs: none
+-// failure_policy: none
++// invariants:
++//   - loading, error, and ready metric states expose the profile-checkin-statistics test contract.
++//   - zero check-ins intentionally render no section.
++//   - methodology content is static and collapsed by default.
++// failure_policy: API failures render the error state; zero check-ins render nothing.
+ // END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-STATISTICS
+ 
+ // START_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+@@ -23,7 +27,9 @@
+ //   - CheckinStatistics
+ // semantic_blocks:
+ //   - CHECKIN_STATISTICS_COMPONENT: checkin statistics component
++//   - METHODOLOGY_DISCLOSURE: static accessible explanation of metric calculation
+ // owned_tests:
++//   - __tests__/components/CheckinStatistics.test.tsx
+ //   - __tests__/components/ProfileScreen.test.tsx
+ // END_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+ 
+@@ -66,9 +72,18 @@ function shiftDateKey(dateKey: string, days: number): string {
+ 
+ // START_BLOCK: CHECKIN_STATISTICS_COMPONENT
+ export function CheckinStatistics({ timeZone }: Props) {
++  // START_FUNCTION_CONTRACT: F-M-COMPONENTS-CHECKIN-STATISTICS.CheckinStatistics
++  // purpose: Fetch and render profile check-in statistics with stable state semantics and an optional methodology disclosure.
++  // inputs: timeZone - optional IANA timezone used to derive the 30-day metrics window.
++  // returns: Loading, error, ready statistics section, or null when metrics contain no check-ins.
++  // side_effects: Calls getCheckinMetrics on mount/timeZone changes; stores local UI state.
++  // emitted_logs: none
++  // error_behavior: Renders the API error message with the error root state; ignores stale requests after unmount.
++  // END_FUNCTION_CONTRACT: F-M-COMPONENTS-CHECKIN-STATISTICS.CheckinStatistics
+   const [metrics, setMetrics] = useState<CheckinMetrics | null>(null)
+   const [loading, setLoading] = useState(true)
+   const [error, setError] = useState<string | null>(null)
++  const [methodologyOpen, setMethodologyOpen] = useState(false)
+ 
+   useEffect(() => {
+     let active = true
+@@ -102,7 +117,13 @@ export function CheckinStatistics({ timeZone }: Props) {
+ 
+   if (loading) {
+     return (
+-      <section className="px-5 pt-5" role="status" aria-busy="true">
++      <section
++        className="px-5 pt-5"
++        role="status"
++        aria-busy="true"
++        data-testid="profile-checkin-statistics"
++        data-state="loading"
++      >
+         <div className="rounded-2xl border border-border/60 bg-card p-4">
+           <div className="mb-4 h-3 w-36 animate-pulse rounded bg-muted" />
+           <div className="grid grid-cols-2 gap-3">
+@@ -116,7 +137,11 @@ export function CheckinStatistics({ timeZone }: Props) {
+ 
+   if (error) {
+     return (
+-      <section className="px-5 pt-5">
++      <section
++        className="px-5 pt-5"
++        data-testid="profile-checkin-statistics"
++        data-state="error"
++      >
+         <p className="px-1 text-[12px] text-muted-foreground" role="alert">
+           Статистика оценок недоступна: {error}
+         </p>
+@@ -169,7 +194,11 @@ export function CheckinStatistics({ timeZone }: Props) {
+   ]
+ 
+   return (
+-    <section className="px-5 pt-5" data-testid="profile-checkin-statistics">
++    <section
++      className="px-5 pt-5"
++      data-testid="profile-checkin-statistics"
++      data-state="ready"
++    >
+       <div className="rounded-2xl border border-border/60 bg-card p-4">
+         <div className="mb-3 flex items-center gap-2">
+           <BarChart3
+@@ -281,6 +310,32 @@ export function CheckinStatistics({ timeZone }: Props) {
+             ))}
+           </div>
+         ) : null}
++
++        <div className="mt-4 border-t border-border/40 pt-3">
++          <button
++            type="button"
++            id="checkin-stats-methodology-toggle"
++            data-testid="checkin-stats-methodology-toggle"
++            aria-expanded={methodologyOpen}
++            aria-controls="checkin-stats-methodology"
++            onClick={() => setMethodologyOpen((open) => !open)}
++            className="text-left text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
++          >
++            Как считается статистика
++          </button>
++          <div
++            id="checkin-stats-methodology"
++            role="region"
++            aria-labelledby="checkin-stats-methodology-toggle"
++            data-testid="checkin-stats-methodology"
++            hidden={!methodologyOpen}
++            className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground"
++          >
++            <p>Метрики учитывают последние 30 дней.</p>
++            <p>Настроение оценивается по шкале 1–5.</p>
++            <p>Серия считает последовательные дни, в которые была сделана отметка.</p>
++          </div>
++        </div>
+       </div>
+     </section>
+   )
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..812bf29f 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -53,6 +53,12 @@ These gates apply before broad autonomous business-feature work.
+ |---|---|---|
+ | M-WEB-PROFILE-ONBOARDING → M-WEB-API → M-BACKEND-SERVICES → M-DB | Birth edits invalidate natal/downstream caches; current location edits invalidate period/daily/semantic/today where relevant. | S1: edit birth_time → downstream invalidation evidence. S2: edit current location → downstream rows cleared, natal retained where valid. |
+ 
++## UC-PROFILE-CHECKIN-STATISTICS · Check-in statistics and methodology disclosure
++
++| Modules | Gates | Scenarios |
++|---|---|---|
++| M-COMPONENTS-CHECKIN-STATISTICS | Loading, error, and ready metric states expose `profile-checkin-statistics` with the matching `data-state`; zero check-ins remain intentionally unrendered; methodology disclosure is a static, collapsed-by-default accessible region. | S1: `__tests__/components/CheckinStatistics.test.tsx` proves all root states, `role`/`aria-busy` and `role=alert` semantics, disclosure linkage/toggling, and the 30-day, 1–5 mood, and consecutive check-in-day facts. S2: `__tests__/components/ProfileScreen.test.tsx` remains green. |
++
+ ---
+ 
+ ## UC-DAY-VIEW · Today screen

@@ -1,0 +1,69 @@
+{
+  "title": "Luna max vs Gemini 3.6 high vs DeepSeek V4 Flash",
+  "subtitle": "Чистая детерминированная алгоритмика: momentum поддержки с порогами ±5.0, границами и анти-округлением. Математику решили все три — разница в типизации контракта и дисциплине scope.",
+  "dateLabel": "31 июля 2026",
+  "taskId": "day-momentum-v1",
+  "baseSha": "ae8dba4f",
+  "verdict": {
+    "winnerModelKey": "luna-max",
+    "headline": "Luna max — самая чистая типизация, Gemini нарушил scope ради строгого контракта",
+    "text": "Все три реализовали алгоритм верно (8/8 кейсов у каждого). Luna — точный enum без null, параметризованные тесты, проверка wire-алиасов. DeepSeek — то же поведение за $0.023. Gemini написал самый строгий контракт (required-поля), но он потребовал правки фикстуры вне разрешённого scope — критический провал."
+  },
+  "candidates": [
+    {
+      "modelKey": "luna-max",
+      "label": "Luna max",
+      "runnerLabel": "Codex · max effort",
+      "completion": 100,
+      "accuracy": 100,
+      "blind": 100,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Exact-enum схема, лучшие тесты (mode-consistency + wire alias)."
+    },
+    {
+      "modelKey": "deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "runnerLabel": "OpenCode · flash",
+      "completion": 95,
+      "accuracy": 100,
+      "blind": 95,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Поведение идеально; momentum допускает null, чего по спецификации не бывает."
+    },
+    {
+      "modelKey": "gemini-3.6-high",
+      "label": "Gemini 3.6 high",
+      "runnerLabel": "OpenCode · high",
+      "completion": 85,
+      "accuracy": 100,
+      "blind": 85,
+      "status": "Scope violation · critical",
+      "statusOk": false,
+      "note": "Спецификационно-точный контракт, но правка фикстуры вне allowed_paths. Escape hatch (stop-and-report) проигнорирован."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Алгоритм не различил, процесс различил",
+      "text": "8/8 кейсов у всех трёх: окна, пороги ±5.0, классификация по сырой разнице, оба режима. На чистой математике модели равны — сигнал дают типизация контракта и дисциплина.",
+      "modelKey": null
+    },
+    {
+      "title": "Ирония строгости",
+      "text": "Gemini выбрал самый правильный по спецификации контракт (required без дефолтов) — именно он сломал существующую фикстуру и вывел патч за scope. «Ослабленные» optional-варианты Luna и DeepSeek остались в рамках.",
+      "modelKey": "gemini-3.6-high"
+    },
+    {
+      "title": "DeepSeek считает дольше, стоит меньше",
+      "text": "25k reasoning-токенов (в 2.5 раза больше Luna) и 430с — но $0.023 против $0.084 у Luna и $0.90 у Gemini. Для алгоритмических задач — самый дешёвый путь к верному ответу.",
+      "modelKey": "deepseek-v4-flash"
+    }
+  ],
+  "footerNotes": [
+    "**Метод:** одинаковая задача и SHA, изолированные worktree, слепое ревью A/B (C — после диагностики инфра-сбоя, не полностью слепое), контроллерные проверки.",
+    "**Стоимость:** официальные price snapshot'ы на 30–31.07.2026.",
+    "**Инфра:** первая попытка Gemini оборвалась раннером на 48с с пустым патчем; оценивается solo-перезапуск."
+  ]
+}

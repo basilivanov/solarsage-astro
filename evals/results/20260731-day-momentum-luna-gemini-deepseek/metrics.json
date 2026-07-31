@@ -1,0 +1,454 @@
+{
+ "baseline": [
+  {
+   "name": "backend-relative-status",
+   "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_day_relative_status.py -q",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 6.029,
+   "passed": true,
+   "stdout": "verification-backend-relative-status.stdout.log",
+   "stderr": "verification-backend-relative-status.stderr.log"
+  },
+  {
+   "name": "typescript",
+   "command": "npx tsc --noEmit",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 21.82,
+   "passed": true,
+   "stdout": "verification-typescript.stdout.log",
+   "stderr": "verification-typescript.stderr.log"
+  },
+  {
+   "name": "grace-backend",
+   "command": "python3 scripts/grace_lint.py apps/api/app",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.617,
+   "passed": true,
+   "stdout": "verification-grace-backend.stdout.log",
+   "stderr": "verification-grace-backend.stderr.log"
+  },
+  {
+   "name": "diff-check",
+   "command": "git diff --check",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.466,
+   "passed": true,
+   "stdout": "verification-diff-check.stdout.log",
+   "stderr": "verification-diff-check.stderr.log"
+  }
+ ],
+ "candidates": [
+  {
+   "candidate": "B",
+   "runner": "codex",
+   "modelKey": "luna-max",
+   "model": "gpt-5.6-luna",
+   "cliVersion": "codex-cli 0.146.0",
+   "pricingKey": "gpt-5.6-luna-2026-07-30",
+   "dependencyWarnings": [],
+   "agent": {
+    "command": [
+     "codex",
+     "exec",
+     "--json",
+     "--ephemeral",
+     "-s",
+     "danger-full-access",
+     "-m",
+     "gpt-5.6-luna",
+     "-C",
+     "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-day-momentum-v1/worktrees/candidate-b",
+     "-c",
+     "model_reasoning_effort=\"max\"",
+     "-c",
+     "approval_policy=\"never\"",
+     "-c",
+     "features.multi_agent=false",
+     "-"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 505.844
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "a1b05765d6d1a47a7159f9a11d07ad4b54d1e45590bc9458417c83a72976f7ff",
+   "patchBytes": 15924,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "backend-relative-status",
+     "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_day_relative_status.py -q",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.685,
+     "passed": true,
+     "stdout": "verification-backend-relative-status.stdout.log",
+     "stderr": "verification-backend-relative-status.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.815,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.517,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "usage": {
+    "input_tokens": 2191102,
+    "cached_input_tokens": 2093056,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 18896,
+    "reasoning_tokens": 9933,
+    "reported_cost_usd": null
+   },
+   "cost": {
+    "pricingKey": "gpt-5.6-luna-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+    "componentsUsd": {
+     "uncachedInput": 0.0196092,
+     "cachedInput": 0.04186112,
+     "cacheWrite": 0.0,
+     "output": 0.0226752
+    },
+    "normalizedCostUsd": 0.08414552,
+    "reportedCostUsd": null,
+    "warnings": [
+     "aggregate input exceeds long-context threshold; exact per-request surcharge is unknown"
+    ]
+   },
+   "usageError": null
+  },
+  {
+   "candidate": "C",
+   "runner": "opencode",
+   "modelKey": "gemini-3.6-high",
+   "model": "cliproxy/gemini-3.6-flash-high",
+   "cliVersion": "1.18.9",
+   "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "91fdd37e4bb87689940caee98861bb50f1260175f6fc062de6721e7bf8bd4bf9"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t18131785510790z-day-momentum-v1/worktrees/candidate-a",
+     "--model",
+     "cliproxy/gemini-3.6-flash-high",
+     "--format",
+     "json",
+     "--title",
+     "eval:day-momentum-v1:A",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 189.784
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "__tests__/today/day-summary-card.test.tsx",
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "scopeViolations": [
+    "__tests__/today/day-summary-card.test.tsx"
+   ],
+   "patchSha256": "59b28af24f449f45588fc09969ebec04a608c2436b6075257f39a2ae59c8bb68",
+   "patchBytes": 13788,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "backend-relative-status",
+     "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_day_relative_status.py -q",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.883,
+     "passed": true,
+     "stdout": "verification-backend-relative-status.stdout.log",
+     "stderr": "verification-backend-relative-status.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 4.26,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.578,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "__tests__/today/day-summary-card.test.tsx",
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "controllerValidity": {
+    "passed": false,
+    "violations": [
+     "out-of-scope paths: __tests__/today/day-summary-card.test.tsx"
+    ]
+   },
+   "openCodeSessionId": "ses_0469e238cffeecTTLMgKNMtEoJ",
+   "usage": {
+    "input_tokens": 393571,
+    "cached_input_tokens": 1149383,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 6706,
+    "reasoning_tokens": 11165,
+    "reported_cost_usd": 0.0
+   },
+   "cost": {
+    "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://ai.google.dev/gemini-api/docs/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.5903565,
+     "cachedInput": 0.17240745,
+     "cacheWrite": 0.0,
+     "output": 0.1340325
+    },
+    "normalizedCostUsd": 0.89679645,
+    "reportedCostUsd": 0.0,
+    "warnings": []
+   },
+   "usageError": null,
+   "rerunNote": "Second attempt: first run terminated by the runner after 48s with an empty patch (rc=0, no error). Re-run solo; metrics from the re-run."
+  },
+  {
+   "candidate": "A",
+   "runner": "opencode",
+   "modelKey": "deepseek-v4-flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "cliVersion": "1.18.9",
+   "pricingKey": "deepseek-v4-flash-2026-07-31",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "93e2d607f5195667f1f8bd795e63f19f47f14b2b7c62b66fcb48102e98f0e810"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-day-momentum-v1/worktrees/candidate-a",
+     "--model",
+     "deepseek/deepseek-v4-flash",
+     "--format",
+     "json",
+     "--title",
+     "eval:day-momentum-v1:A",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 430.241
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "3fa0dbc9c7240d312e62bd31845986549ad719197f12382587019eddff02a149",
+   "patchBytes": 16791,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "backend-relative-status",
+     "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_day_relative_status.py -q",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.828,
+     "passed": true,
+     "stdout": "verification-backend-relative-status.stdout.log",
+     "stderr": "verification-backend-relative-status.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.653,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.516,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.016,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "apps/api/app/schemas/day.py",
+    "apps/api/app/services/day_relative_status.py",
+    "apps/api/tests/test_day_relative_status.py",
+    "grace/verification-matrix.md",
+    "packages/contracts/_generated.ts",
+    "packages/contracts/_generated.zod.ts",
+    "packages/contracts/openapi.json"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "openCodeSessionId": "ses_046a690f4ffe2gl327Q9u51XTz",
+   "usage": {
+    "input_tokens": 72403,
+    "cached_input_tokens": 3330944,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 13717,
+    "reasoning_tokens": 25161,
+    "reported_cost_usd": 0.0303489032
+   },
+   "cost": {
+    "pricingKey": "deepseek-v4-flash-2026-07-31",
+    "pricingAsOf": "2026-07-31",
+    "pricingSource": "https://api-docs.deepseek.com/quick_start/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.01013642,
+     "cachedInput": 0.00932664,
+     "cacheWrite": 0.0,
+     "output": 0.00384076
+    },
+    "normalizedCostUsd": 0.02330382,
+    "reportedCostUsd": 0.0303489032,
+    "warnings": []
+   },
+   "usageError": null
+  }
+ ]
+}

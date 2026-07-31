@@ -1,0 +1,68 @@
+{
+  "title": "Luna max vs Gemini 3.6 high vs DeepSeek V4 Flash",
+  "subtitle": "UI Semantic/Test Contract на Profile-статистике: data-state на всех состояниях и disclosure по канону. Поведение сделали все три — разница в дисциплине и в том, чей тест вообще компилируется.",
+  "dateLabel": "31 июля 2026",
+  "taskId": "ui-contract-disclosure-v1",
+  "baseSha": "ae8dba4f",
+  "verdict": {
+    "winnerModelKey": "luna-max",
+    "headline": "Luna max снова эталон, Gemini сломал tsc своей же фикстурой",
+    "text": "Все три корректно реализовали DOM-контракт (7/7 кейсов у каждого). Luna — самый гигиеничный патч с единственным настоящим тестом пустого состояния. DeepSeek — тот же контракт за $0.01. Gemini написал верный компонент, но его собственный тестовый файл не проходит tsc — критический провал по рубрике, тот же класс ошибки, что в пилоте."
+  },
+  "candidates": [
+    {
+      "modelKey": "luna-max",
+      "label": "Luna max",
+      "runnerLabel": "Codex · max effort",
+      "completion": 100,
+      "accuracy": 100,
+      "blind": 100,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "FUNCTION_CONTRACT, aria-labelledby, единственный реальный empty-state тест."
+    },
+    {
+      "modelKey": "deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "runnerLabel": "OpenCode · flash",
+      "completion": 95,
+      "accuracy": 100,
+      "blind": 95,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Поведение идентично, минус FUNCTION_CONTRACT и empty-кейс в тестах."
+    },
+    {
+      "modelKey": "gemini-3.6-high",
+      "label": "Gemini 3.6 high",
+      "runnerLabel": "OpenCode · high",
+      "completion": 85,
+      "accuracy": 100,
+      "blind": 85,
+      "status": "tsc fail · critical",
+      "statusOk": false,
+      "note": "Верный компонент, но тест не компилируется (лишнее поле в фикстуре); вакуумный empty-тест; матрица не обновлена."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Контракт поняли все, сдали не все",
+      "text": "data-state на трёх состояниях, aria-expanded/controls, статический текст — реализовано верно у всех трёх. UI-контракт репозитория читаем и воспроизводим всеми моделями.",
+      "modelKey": null
+    },
+    {
+      "title": "Gemini: фикстура убила патч",
+      "text": "Лишнее поле lastCheckinDate в моке метрик — TS2353, гейт 3/4. Это уже второй раз: в пилоте checkin-mood-trend был тот же класс ошибки. Быстро (46с) и дёшево, но непоставляемо.",
+      "modelKey": "gemini-3.6-high"
+    },
+    {
+      "title": "DeepSeek — самый дешёвый поставляемый патч",
+      "text": "4/4 гейта, $0.0105. Потери только в тщательности: нет FUNCTION_CONTRACT и empty-теста. Для рутинных UI-задач — рабочая лошадка.",
+      "modelKey": "deepseek-v4-flash"
+    }
+  ],
+  "footerNotes": [
+    "**Метод:** одинаковая задача и SHA, изолированные worktree, слепое ревью до раскрытия identity, затем контроллерные проверки.",
+    "**Стоимость:** официальные price snapshot'ы на 30–31.07.2026."
+  ]
+}

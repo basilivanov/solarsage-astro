@@ -1,0 +1,236 @@
+diff --git a/__tests__/components/CheckinStatistics.test.tsx b/__tests__/components/CheckinStatistics.test.tsx
+new file mode 100644
+index 00000000..772dead3
+--- /dev/null
++++ b/__tests__/components/CheckinStatistics.test.tsx
+@@ -0,0 +1,103 @@
++import { describe, expect, it, vi } from "vitest"
++import { fireEvent, render, screen } from "@testing-library/react"
++import { getCheckinMetrics } from "@/lib/api/checkin"
++import { CheckinStatistics } from "@/components/profile/checkin-statistics"
++import type { CheckinMetrics } from "@/packages/contracts"
++
++vi.mock("@/lib/api/checkin", () => ({
++  formatDateInTimeZone: vi.fn(() => "2026-07-31"),
++  getCheckinMetrics: vi.fn(),
++}))
++
++const mockMetrics: CheckinMetrics = {
++  totalCheckins: 10,
++  currentStreak: 3,
++  longestStreak: 5,
++  averageMood: 4.2,
++  moodDistribution: {
++    "1": 0,
++    "2": 1,
++    "3": 2,
++    "4": 4,
++    "5": 3,
++  },
++  tagFrequency: {
++    "спорт": 5,
++    "работа": 3,
++  },
++  lastCheckinDate: "2026-07-31",
++}
++
++describe("CheckinStatistics contract", () => {
++  it("renders root element with data-state='loading' during initial fetch", () => {
++    vi.mocked(getCheckinMetrics).mockReturnValue(new Promise(() => {}))
++
++    render(<CheckinStatistics />)
++
++    const section = screen.getByTestId("profile-checkin-statistics")
++    expect(section).toBeTruthy()
++    expect(section.getAttribute("data-state")).toBe("loading")
++    expect(section.getAttribute("role")).toBe("status")
++    expect(section.getAttribute("aria-busy")).toBe("true")
++  })
++
++  it("renders root element with data-state='error' on fetch failure", async () => {
++    vi.mocked(getCheckinMetrics).mockRejectedValue(new Error("API failure"))
++
++    render(<CheckinStatistics />)
++
++    const section = await screen.findByTestId("profile-checkin-statistics")
++    expect(section.getAttribute("data-state")).toBe("error")
++    expect(screen.getByRole("alert")).toBeTruthy()
++    expect(screen.getByRole("alert").textContent).toContain("API failure")
++  })
++
++  it("renders root element with data-state='ready' and methodology disclosure behavior", async () => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue(mockMetrics)
++
++    render(<CheckinStatistics />)
++
++    const section = await screen.findByTestId("profile-checkin-statistics")
++    expect(section.getAttribute("data-state")).toBe("ready")
++
++    const toggle = screen.getByTestId("checkin-stats-methodology-toggle")
++    expect(toggle).toBeTruthy()
++    expect(toggle.getAttribute("type")).toBe("button")
++    expect(toggle.textContent).toContain("Как считается статистика")
++    expect(toggle.getAttribute("aria-expanded")).toBe("false")
++    expect(toggle.getAttribute("aria-controls")).toBe("checkin-stats-methodology")
++
++    // Region hidden by default
++    expect(screen.queryByTestId("checkin-stats-methodology")).toBeNull()
++
++    // Toggle opens disclosure
++    fireEvent.click(toggle)
++
++    expect(toggle.getAttribute("aria-expanded")).toBe("true")
++    const region = screen.getByTestId("checkin-stats-methodology")
++    expect(region).toBeTruthy()
++    expect(region.id).toBe("checkin-stats-methodology")
++
++    // 3 static methodology facts
++    expect(region.textContent).toContain("30-дневный")
++    expect(region.textContent).toContain("от 1 до 5")
++    expect(region.textContent).toContain("подряд")
++
++    // Toggle closes disclosure
++    fireEvent.click(toggle)
++    expect(toggle.getAttribute("aria-expanded")).toBe("false")
++    expect(screen.queryByTestId("checkin-stats-methodology")).toBeNull()
++  })
++
++  it("renders nothing when totalCheckins === 0", async () => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue({
++      ...mockMetrics,
++      totalCheckins: 0,
++    })
++
++    render(<CheckinStatistics />)
++
++    // After resolution, loading finishes and empty metrics returns null
++    await screen.findByTestId("profile-checkin-statistics") // Wait for fetch resolution to finish, but section should disappear
++  })
++})
+diff --git a/components/profile/checkin-statistics.tsx b/components/profile/checkin-statistics.tsx
+index 14465b95..da7c7461 100644
+--- a/components/profile/checkin-statistics.tsx
++++ b/components/profile/checkin-statistics.tsx
+@@ -24,13 +24,14 @@
+ // semantic_blocks:
+ //   - CHECKIN_STATISTICS_COMPONENT: checkin statistics component
+ // owned_tests:
++//   - __tests__/components/CheckinStatistics.test.tsx
+ //   - __tests__/components/ProfileScreen.test.tsx
+ // END_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+ 
+ "use client"
+ 
+ import { useEffect, useState } from "react"
+-import { Award, BarChart3, Calendar, Flame, TrendingUp } from "lucide-react"
++import { Award, BarChart3, Calendar, ChevronDown, Flame, HelpCircle, TrendingUp } from "lucide-react"
+ 
+ import { formatDateInTimeZone, getCheckinMetrics } from "@/lib/api/checkin"
+ import type { CheckinMetrics } from "@/packages/contracts"
+@@ -69,6 +70,7 @@ export function CheckinStatistics({ timeZone }: Props) {
+   const [metrics, setMetrics] = useState<CheckinMetrics | null>(null)
+   const [loading, setLoading] = useState(true)
+   const [error, setError] = useState<string | null>(null)
++  const [methodologyOpen, setMethodologyOpen] = useState(false)
+ 
+   useEffect(() => {
+     let active = true
+@@ -102,7 +104,13 @@ export function CheckinStatistics({ timeZone }: Props) {
+ 
+   if (loading) {
+     return (
+-      <section className="px-5 pt-5" role="status" aria-busy="true">
++      <section
++        className="px-5 pt-5"
++        role="status"
++        aria-busy="true"
++        data-testid="profile-checkin-statistics"
++        data-state="loading"
++      >
+         <div className="rounded-2xl border border-border/60 bg-card p-4">
+           <div className="mb-4 h-3 w-36 animate-pulse rounded bg-muted" />
+           <div className="grid grid-cols-2 gap-3">
+@@ -116,7 +124,11 @@ export function CheckinStatistics({ timeZone }: Props) {
+ 
+   if (error) {
+     return (
+-      <section className="px-5 pt-5">
++      <section
++        className="px-5 pt-5"
++        data-testid="profile-checkin-statistics"
++        data-state="error"
++      >
+         <p className="px-1 text-[12px] text-muted-foreground" role="alert">
+           Статистика оценок недоступна: {error}
+         </p>
+@@ -169,18 +181,61 @@ export function CheckinStatistics({ timeZone }: Props) {
+   ]
+ 
+   return (
+-    <section className="px-5 pt-5" data-testid="profile-checkin-statistics">
++    <section
++      className="px-5 pt-5"
++      data-testid="profile-checkin-statistics"
++      data-state="ready"
++    >
+       <div className="rounded-2xl border border-border/60 bg-card p-4">
+-        <div className="mb-3 flex items-center gap-2">
+-          <BarChart3
+-            className="h-3.5 w-3.5 text-muted-foreground"
+-            strokeWidth={1.75}
+-          />
+-          <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+-            Статистика оценок
+-          </h2>
++        <div className="mb-3 flex items-center justify-between">
++          <div className="flex items-center gap-2">
++            <BarChart3
++              className="h-3.5 w-3.5 text-muted-foreground"
++              strokeWidth={1.75}
++            />
++            <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
++              Статистика оценок
++            </h2>
++          </div>
++          <button
++            type="button"
++            data-testid="checkin-stats-methodology-toggle"
++            aria-expanded={methodologyOpen}
++            aria-controls="checkin-stats-methodology"
++            onClick={() => setMethodologyOpen((prev) => !prev)}
++            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
++          >
++            <HelpCircle className="h-3 w-3" strokeWidth={1.75} />
++            <span>Как считается статистика</span>
++            <ChevronDown
++              className={`h-3 w-3 transition-transform duration-200 ${
++                methodologyOpen ? "rotate-180" : ""
++              }`}
++              strokeWidth={1.75}
++            />
++          </button>
+         </div>
+ 
++        {methodologyOpen ? (
++          <div
++            id="checkin-stats-methodology"
++            data-testid="checkin-stats-methodology"
++            role="region"
++            aria-label="Методология расчёта статистики"
++            className="mb-4 rounded-xl border border-border/40 bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground space-y-1.5"
++          >
++            <p>
++              Метрики рассчитываются за скользящий 30-дневный период.
++            </p>
++            <p>
++              Оценка настроения выставляется по шкале от 1 до 5.
++            </p>
++            <p>
++              Серия учитывает количество дней подряд с отмеченными чек-инами.
++            </p>
++          </div>
++        ) : null}
++
+         <div className="grid grid-cols-2 gap-2.5">
+           {stats.map((stat) => (
+             <div

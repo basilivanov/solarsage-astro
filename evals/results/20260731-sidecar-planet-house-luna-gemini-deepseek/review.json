@@ -1,0 +1,74 @@
+{
+  "title": "Luna max vs Gemini 3.6 high vs DeepSeek V4 Flash",
+  "subtitle": "Самая тяжёлая задача набора: два кодбейса (sidecar + API) и обратная совместимость со старым sidecar и старыми кэшами. Именно здесь расстановка перевернулась.",
+  "dateLabel": "31 июля 2026",
+  "taskId": "sidecar-planet-house-v1",
+  "baseSha": "ae8dba4f",
+  "verdict": {
+    "winnerModelKey": "deepseek-v4-flash",
+    "headline": "DeepSeek выигрывает кросс-кодбейс задачу вчистую",
+    "text": "Оба реальных патча верны по всем 8 кейсам совместимости. DeepSeek — чище (ни одного лишнего изменения API-поверхности, транзиты явно нетронуты), шире тесты (реальные эфемериды, высокоширотный fallback, границы 1/12) и в 4 раза дешевле. Luna чуть оборонительнее на границе контекста, но заплатила за это лишним полем в схеме запроса. Gemini не смог начать: три подряд инфра-смерти раннера."
+  },
+  "candidates": [
+    {
+      "modelKey": "deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "runnerLabel": "OpenCode · flash",
+      "completion": 100,
+      "accuracy": 100,
+      "blind": 100,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Самое широкое покрытие набора: интеграционные endpoint-тесты + юниты wraparound + edge-кейсы нормализации."
+    },
+    {
+      "modelKey": "luna-max",
+      "label": "Luna max",
+      "runnerLabel": "Codex · max effort",
+      "completion": 95,
+      "accuracy": 100,
+      "blind": 95,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Валидация house на границе контекста и диапазон в схеме; лишнее поле house_system в запросе — единственный минус."
+    },
+    {
+      "modelKey": "gemini-3.6-high",
+      "label": "Gemini 3.6 high",
+      "runnerLabel": "OpenCode · high",
+      "completion": 0,
+      "accuracy": 0,
+      "blind": 0,
+      "status": "Нет результата · раннер ×3",
+      "statusOk": false,
+      "note": "Три подряд пустых патча (20с/15с/10с, rc=0). Это отказ инфраструктуры, не оценка модели."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Совместимость решили оба",
+      "text": "Preference валидного house, fallback на find_house при отсутствии поля и при мусорных значениях (0, 13, строки, float, bool), старые кэши читаются — обе реализации проходят всю матрицу 8/8.",
+      "modelKey": null
+    },
+    {
+      "title": "DeepSeek пишет тесты как аудитор",
+      "text": "Интеграционные тесты эндпоинта на реальных эфемеридах (Москва + Мурманск с высокоширотным fallback), юниты на 12/1 wraparound, пустые houses, null, границы 1 и 12, путь normalize_day. 27 тестовых исходов против 12 у Luna.",
+      "modelKey": "deepseek-v4-flash"
+    },
+    {
+      "title": "Гейт сам был сломан — и починен",
+      "text": "Первичный прогон валил обоих кандидатов: venv с editable install тянул solarsage из основного дерева. Гейт исправлен (PYTHONPATH), оба патча перепроверены в чистых worktree — зелёные. Оговорка зафиксирована в scorecard.",
+      "modelKey": null
+    },
+    {
+      "title": "Gemini: 4 пустые смерти из 8 попыток",
+      "text": "По набору: grace ×1, day-momentum ×1, sidecar ×3 (плюс одна успешная и одна частичная). На этой задаче патч так и не появился. Стабильность cliproxy/OpenCode-пути — отдельный инфра-вопрос.",
+      "modelKey": "gemini-3.6-high"
+    }
+  ],
+  "footerNotes": [
+    "**Метод:** одинаковая задача и SHA, изолированные worktree, слепое ревью, контроллерные проверки; гейт sidecar-natal перепроверен вручную после исправления PYTHONPATH (см. scorecard).",
+    "**Стоимость:** официальные price snapshot'ы на 30–31.07.2026; у Gemini просуммированы три пустые попытки.",
+    "**Осторожность:** гейты пустого патча проходят вакуумно — строка Gemini не является оценкой модели."
+  ]
+}

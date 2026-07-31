@@ -87,6 +87,7 @@ planets) stays exactly as-is — do not change transit semantics.
 Run at least:
 
 ```bash
+export PYTHONPATH=apps/solarsage  # worktree code must shadow the venv's editable install
 apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q
 apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q
 apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q

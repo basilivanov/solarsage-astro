@@ -1,0 +1,421 @@
+{
+  "baseline": [
+    {
+      "name": "frontend-checkin-statistics",
+      "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx __tests__/components/ProfileScreen.test.tsx",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 3.016,
+      "passed": true,
+      "stdout": "verification-frontend-checkin-statistics.stdout.log",
+      "stderr": "verification-frontend-checkin-statistics.stderr.log"
+    },
+    {
+      "name": "typescript",
+      "command": "npx tsc --noEmit",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 22.459,
+      "passed": true,
+      "stdout": "verification-typescript.stdout.log",
+      "stderr": "verification-typescript.stderr.log"
+    },
+    {
+      "name": "grace-frontend",
+      "command": "python3 scripts/grace_front_lint.py components/profile/checkin-statistics.tsx",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 0.117,
+      "passed": true,
+      "stdout": "verification-grace-frontend.stdout.log",
+      "stderr": "verification-grace-frontend.stderr.log"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 0.522,
+      "passed": true,
+      "stdout": "verification-diff-check.stdout.log",
+      "stderr": "verification-diff-check.stderr.log"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate": "B",
+      "runner": "codex",
+      "modelKey": "luna-max",
+      "model": "gpt-5.6-luna",
+      "cliVersion": "codex-cli 0.146.0",
+      "pricingKey": "gpt-5.6-luna-2026-07-30",
+      "dependencyWarnings": [],
+      "agent": {
+        "command": [
+          "codex",
+          "exec",
+          "--json",
+          "--ephemeral",
+          "-s",
+          "danger-full-access",
+          "-m",
+          "gpt-5.6-luna",
+          "-C",
+          "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-ui-contract-disclosure-v1/worktrees/candidate-b",
+          "-c",
+          "model_reasoning_effort=\"max\"",
+          "-c",
+          "approval_policy=\"never\"",
+          "-c",
+          "features.multi_agent=false",
+          "-"
+        ],
+        "returncode": 0,
+        "timedOut": false,
+        "wallSeconds": 329.042
+      },
+      "headIntegrity": {
+        "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "passed": true,
+        "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+      },
+      "changedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx",
+        "grace/verification-matrix.md"
+      ],
+      "scopeViolations": [],
+      "patchSha256": "d15d22dec414f6701ef4d07d2ca8a5bf4cee708b64be75eb123f391b19007f57",
+      "patchBytes": 13181,
+      "verificationDependencyWarnings": [],
+      "verification": [
+        {
+          "name": "frontend-checkin-statistics",
+          "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx __tests__/components/ProfileScreen.test.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 2.495,
+          "passed": true,
+          "stdout": "verification-frontend-checkin-statistics.stdout.log",
+          "stderr": "verification-frontend-checkin-statistics.stderr.log"
+        },
+        {
+          "name": "typescript",
+          "command": "npx tsc --noEmit",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 4.587,
+          "passed": true,
+          "stdout": "verification-typescript.stdout.log",
+          "stderr": "verification-typescript.stderr.log"
+        },
+        {
+          "name": "grace-frontend",
+          "command": "python3 scripts/grace_front_lint.py components/profile/checkin-statistics.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.116,
+          "passed": true,
+          "stdout": "verification-grace-frontend.stdout.log",
+          "stderr": "verification-grace-frontend.stderr.log"
+        },
+        {
+          "name": "diff-check",
+          "command": "git diff --check",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.018,
+          "passed": true,
+          "stdout": "verification-diff-check.stdout.log",
+          "stderr": "verification-diff-check.stderr.log"
+        }
+      ],
+      "verificationMutatedPatch": false,
+      "postVerificationChangedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx",
+        "grace/verification-matrix.md"
+      ],
+      "controllerValidity": {
+        "passed": true,
+        "violations": []
+      },
+      "usage": {
+        "input_tokens": 752974,
+        "cached_input_tokens": 671744,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 15972,
+        "reasoning_tokens": 8135,
+        "reported_cost_usd": null
+      },
+      "cost": {
+        "pricingKey": "gpt-5.6-luna-2026-07-30",
+        "pricingAsOf": "2026-07-30",
+        "pricingSource": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+        "componentsUsd": {
+          "uncachedInput": 0.016246,
+          "cachedInput": 0.01343488,
+          "cacheWrite": 0.0,
+          "output": 0.0191664
+        },
+        "normalizedCostUsd": 0.04884728,
+        "reportedCostUsd": null,
+        "warnings": [
+          "aggregate input exceeds long-context threshold; exact per-request surcharge is unknown"
+        ]
+      },
+      "usageError": null
+    },
+    {
+      "candidate": "A",
+      "runner": "opencode",
+      "modelKey": "gemini-3.6-high",
+      "model": "cliproxy/gemini-3.6-flash-high",
+      "cliVersion": "1.18.9",
+      "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+      "dependencyWarnings": [],
+      "openCodePolicy": {
+        "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+        "agent": "repo-eval",
+        "resolvedSha256": "8788183c180fc858f3e47bdc674ffd0e909f361fdacc987a462077c6c0761f44"
+      },
+      "agent": {
+        "command": [
+          "opencode",
+          "run",
+          "--pure",
+          "--dir",
+          "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-ui-contract-disclosure-v1/worktrees/candidate-a",
+          "--model",
+          "cliproxy/gemini-3.6-flash-high",
+          "--format",
+          "json",
+          "--title",
+          "eval:ui-contract-disclosure-v1:A",
+          "--agent",
+          "repo-eval",
+          "<EVAL_PROMPT>"
+        ],
+        "returncode": 0,
+        "timedOut": false,
+        "wallSeconds": 45.609
+      },
+      "headIntegrity": {
+        "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "passed": true,
+        "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+      },
+      "changedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx"
+      ],
+      "scopeViolations": [],
+      "patchSha256": "56d460d784d4e7104abb08c00e7bdf9b8891dd97b4b351821070fbe708ab63b7",
+      "patchBytes": 9294,
+      "verificationDependencyWarnings": [],
+      "verification": [
+        {
+          "name": "frontend-checkin-statistics",
+          "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx __tests__/components/ProfileScreen.test.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 6.04,
+          "passed": true,
+          "stdout": "verification-frontend-checkin-statistics.stdout.log",
+          "stderr": "verification-frontend-checkin-statistics.stderr.log"
+        },
+        {
+          "name": "typescript",
+          "command": "npx tsc --noEmit",
+          "returncode": 2,
+          "timedOut": false,
+          "wallSeconds": 33.084,
+          "passed": false,
+          "stdout": "verification-typescript.stdout.log",
+          "stderr": "verification-typescript.stderr.log"
+        },
+        {
+          "name": "grace-frontend",
+          "command": "python3 scripts/grace_front_lint.py components/profile/checkin-statistics.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.177,
+          "passed": true,
+          "stdout": "verification-grace-frontend.stdout.log",
+          "stderr": "verification-grace-frontend.stderr.log"
+        },
+        {
+          "name": "diff-check",
+          "command": "git diff --check",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.039,
+          "passed": true,
+          "stdout": "verification-diff-check.stdout.log",
+          "stderr": "verification-diff-check.stderr.log"
+        }
+      ],
+      "verificationMutatedPatch": false,
+      "postVerificationChangedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx"
+      ],
+      "controllerValidity": {
+        "passed": true,
+        "violations": []
+      },
+      "openCodeSessionId": "ses_046aa3ea2ffeeIVbezoWC1XsgV",
+      "usage": {
+        "input_tokens": 72244,
+        "cached_input_tokens": 326630,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4522,
+        "reasoning_tokens": 1844,
+        "reported_cost_usd": 0.0
+      },
+      "cost": {
+        "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+        "pricingAsOf": "2026-07-30",
+        "pricingSource": "https://ai.google.dev/gemini-api/docs/pricing",
+        "componentsUsd": {
+          "uncachedInput": 0.108366,
+          "cachedInput": 0.0489945,
+          "cacheWrite": 0.0,
+          "output": 0.047745
+        },
+        "normalizedCostUsd": 0.2051055,
+        "reportedCostUsd": 0.0,
+        "warnings": []
+      },
+      "usageError": null
+    },
+    {
+      "candidate": "C",
+      "runner": "opencode",
+      "modelKey": "deepseek-v4-flash",
+      "model": "deepseek/deepseek-v4-flash",
+      "cliVersion": "1.18.9",
+      "pricingKey": "deepseek-v4-flash-2026-07-31",
+      "dependencyWarnings": [],
+      "openCodePolicy": {
+        "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+        "agent": "repo-eval",
+        "resolvedSha256": "097c9c71761f6b789228042e367936b70f3f8874234fd10ad2d0bbc1fdff92b5"
+      },
+      "agent": {
+        "command": [
+          "opencode",
+          "run",
+          "--pure",
+          "--dir",
+          "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-ui-contract-disclosure-v1/worktrees/candidate-c",
+          "--model",
+          "deepseek/deepseek-v4-flash",
+          "--format",
+          "json",
+          "--title",
+          "eval:ui-contract-disclosure-v1:C",
+          "--agent",
+          "repo-eval",
+          "<EVAL_PROMPT>"
+        ],
+        "returncode": 0,
+        "timedOut": false,
+        "wallSeconds": 166.009
+      },
+      "headIntegrity": {
+        "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+        "passed": true,
+        "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+      },
+      "changedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx",
+        "grace/verification-matrix.md"
+      ],
+      "scopeViolations": [],
+      "patchSha256": "c147d14b16ea1f1a9388e139774ef241679fc35fd03649f713d93d30fd7e931b",
+      "patchBytes": 11243,
+      "verificationDependencyWarnings": [],
+      "verification": [
+        {
+          "name": "frontend-checkin-statistics",
+          "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx __tests__/components/ProfileScreen.test.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 2.539,
+          "passed": true,
+          "stdout": "verification-frontend-checkin-statistics.stdout.log",
+          "stderr": "verification-frontend-checkin-statistics.stderr.log"
+        },
+        {
+          "name": "typescript",
+          "command": "npx tsc --noEmit",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 3.6,
+          "passed": true,
+          "stdout": "verification-typescript.stdout.log",
+          "stderr": "verification-typescript.stderr.log"
+        },
+        {
+          "name": "grace-frontend",
+          "command": "python3 scripts/grace_front_lint.py components/profile/checkin-statistics.tsx",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.065,
+          "passed": true,
+          "stdout": "verification-grace-frontend.stdout.log",
+          "stderr": "verification-grace-frontend.stderr.log"
+        },
+        {
+          "name": "diff-check",
+          "command": "git diff --check",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.009,
+          "passed": true,
+          "stdout": "verification-diff-check.stdout.log",
+          "stderr": "verification-diff-check.stderr.log"
+        }
+      ],
+      "verificationMutatedPatch": false,
+      "postVerificationChangedPaths": [
+        "__tests__/components/CheckinStatistics.test.tsx",
+        "components/profile/checkin-statistics.tsx",
+        "grace/verification-matrix.md"
+      ],
+      "controllerValidity": {
+        "passed": true,
+        "violations": []
+      },
+      "openCodeSessionId": "ses_046a8dc76ffe1sjNaJRF94t7d1",
+      "usage": {
+        "input_tokens": 37793,
+        "cached_input_tokens": 1058176,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7974,
+        "reasoning_tokens": 7509,
+        "reported_cost_usd": 0.0125891528
+      },
+      "cost": {
+        "pricingKey": "deepseek-v4-flash-2026-07-31",
+        "pricingAsOf": "2026-07-31",
+        "pricingSource": "https://api-docs.deepseek.com/quick_start/pricing",
+        "componentsUsd": {
+          "uncachedInput": 0.00529102,
+          "cachedInput": 0.00296289,
+          "cacheWrite": 0.0,
+          "output": 0.00223272
+        },
+        "normalizedCostUsd": 0.01048663,
+        "reportedCostUsd": 0.0125891528,
+        "warnings": []
+      },
+      "usageError": null
+    }
+  ]
+}

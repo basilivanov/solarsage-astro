@@ -1,0 +1,343 @@
+diff --git a/apps/api/app/schemas/day.py b/apps/api/app/schemas/day.py
+index f33128a6..815665c1 100644
+--- a/apps/api/app/schemas/day.py
++++ b/apps/api/app/schemas/day.py
+@@ -1,15 +1,15 @@
+ # ############################################################################
+ # AI_HEADER: MODULE_SCHEMAS_DAY
+-# ROLE: Pydantic schemas for relative day status models and zone indicator metadata.
++# ROLE: Pydantic schemas for relative day status, support momentum, and zone indicator metadata.
+ # DEPENDENCIES: pydantic, app.schemas._base.CamelModel
+ # ############################################################################
+ 
+ # START_MODULE_CONTRACT: M-SCHEMAS-DAY
+-# purpose: Relative day status schema definitions (baseline statistics, status enum, zone band and marker).
++# purpose: Relative day status schema definitions (baseline statistics, status and momentum enums, zone bands, and markers).
+ # owns:
+ #   - apps/api/app/schemas/day.py
+ # inputs: none
+-# outputs: RelativeStatusBaseline, RelativeDayStatusRead
++# outputs: RelativeStatusBaseline, RelativeDayStatusRead with camelCase momentum fields on the wire
+ # dependencies: app.schemas._base.CamelModel
+ # side_effects: none (pure schema)
+ # emitted_logs: none
+@@ -21,7 +21,8 @@
+ #   - RelativeStatusBaseline
+ #   - RelativeDayStatusRead
+ # semantic_blocks: none
+-# owned_tests: none
++# owned_tests:
++#   - apps/api/tests/test_day_relative_status.py
+ # END_MODULE_MAP: M-SCHEMAS-DAY
+ 
+ from __future__ import annotations
+@@ -44,6 +45,8 @@ class RelativeDayStatusRead(CamelModel):
+     mode: Literal["absolute", "relative"] = Field(..., description="Calculation mode: fallback absolute or z-score relative")
+     status: Literal["usual", "softer", "tenser", "hard", "strong"] = Field(..., description="Relative day status code")
+     label: str = Field(..., description="Localized human label e.g. Обычный день, Легче, чем обычно, Напряжённее обычного, Тяжёлый день, Сильный день")
++    momentum: Literal["rising", "flat", "falling", "insufficient"] = Field(default_factory=lambda: "insufficient", description="Recent support momentum direction")
++    momentum_delta: float | None = Field(default=None, description="Recent minus previous support-window mean, rounded to two decimals; null when history is insufficient")
+     z_support: float = Field(..., description="Z-score for today's support score")
+     z_tension: float = Field(..., description="Z-score for today's tension score")
+     support_band: list[float] = Field(default_factory=list, description="Support normal range [mean-std, mean+std]")
+diff --git a/apps/api/app/services/day_relative_status.py b/apps/api/app/services/day_relative_status.py
+index 34240c10..e1acf75f 100644
+--- a/apps/api/app/services/day_relative_status.py
++++ b/apps/api/app/services/day_relative_status.py
+@@ -1,12 +1,12 @@
+ # ############################################################################
+ # AI_HEADER: MODULE_DAY_RELATIVE_STATUS
+-# ROLE: Pure service module calculating user-relative day status against 14-day baseline.
++# ROLE: Pure service module calculating user-relative day status and support momentum against a 14-day baseline.
+ # DEPENDENCIES: math, typing, app.schemas.day
+ # GRACE_ANCHORS: [RELATIVE_STATUS_CALCULATOR]
+ # ############################################################################
+ 
+ # START_MODULE_CONTRACT: M-DAY-RELATIVE-STATUS
+-# purpose: Compute relative day status (z-score against 14-day personal baseline, hysteresis, absolute overrides, cold start fallback).
++# purpose: Compute relative day status and deterministic support momentum (z-score against 14-day personal baseline, hysteresis, absolute overrides, cold start fallback).
+ # owns:
+ #   - apps/api/app/services/day_relative_status.py
+ # inputs:
+@@ -21,6 +21,8 @@
+ #   - History >= 5 days -> mode="relative", z-scores computed with std floor 0.5
+ #   - Absolute extremes (hard/strong) override relative status
+ #   - Hysteresis requires z >= 0.75 two days in a row (today + yesterday in history)
++#   - Momentum uses today plus history[0] versus history[1] and history[2]; fewer than 3 history entries yield insufficient momentum
++#   - Momentum classification uses the unrounded support delta and returns that delta rounded to two decimals
+ #   - Fully deterministic math, zero external or LLM calls
+ # END_MODULE_CONTRACT: M-DAY-RELATIVE-STATUS
+ 
+@@ -57,7 +59,7 @@ def compute_relative_status(
+     history: list[dict[str, float]],
+ ) -> RelativeDayStatusRead:
+     # START_FUNCTION_CONTRACT: F-M-DAY-RELATIVE-STATUS.compute_relative_status
+-    # purpose: Calculate user-relative day status with z-scores, hysteresis, and absolute boundary overrides.
++    # purpose: Calculate user-relative day status with z-scores, hysteresis, absolute boundary overrides, and support momentum.
+     # inputs: today_support (float), today_tension (float), absolute_v2_status (str), history (list[dict])
+     # returns: RelativeDayStatusRead
+     # side_effects: none (pure calculation)
+@@ -66,6 +68,24 @@ def compute_relative_status(
+     # END_FUNCTION_CONTRACT: F-M-DAY-RELATIVE-STATUS.compute_relative_status
+     n = len(history)
+ 
++    momentum: Literal["rising", "flat", "falling", "insufficient"]
++    momentum_delta: float | None
++    if n < 3:
++        momentum = "insufficient"
++        momentum_delta = None
++    else:
++        recent_support = (today_support + history[0]["support"]) / 2.0
++        previous_support = (history[1]["support"] + history[2]["support"]) / 2.0
++        raw_momentum_delta = recent_support - previous_support
++        momentum = (
++            "rising"
++            if raw_momentum_delta >= 5.0
++            else "falling"
++            if raw_momentum_delta <= -5.0
++            else "flat"
++        )
++        momentum_delta = round(raw_momentum_delta, 2)
++
+     # 1. Cold start fallback (< 5 historical days)
+     if n < 5:
+         mode: Literal["absolute", "relative"] = "absolute"
+@@ -85,6 +105,8 @@ def compute_relative_status(
+             mode=mode,
+             status=status_code,
+             label=label,
++            momentum=momentum,
++            momentum_delta=momentum_delta,
+             z_support=0.0,
+             z_tension=0.0,
+             support_band=[0.0, 100.0],
+@@ -149,6 +171,8 @@ def compute_relative_status(
+         mode=mode,
+         status=status_code,
+         label=label,
++        momentum=momentum,
++        momentum_delta=momentum_delta,
+         z_support=round(z_support, 2),
+         z_tension=round(z_tension, 2),
+         support_band=[round(supp_band[0], 2), round(supp_band[1], 2)],
+diff --git a/apps/api/tests/test_day_relative_status.py b/apps/api/tests/test_day_relative_status.py
+index e30c762c..2d227c94 100644
+--- a/apps/api/tests/test_day_relative_status.py
++++ b/apps/api/tests/test_day_relative_status.py
+@@ -6,7 +6,7 @@
+ # ############################################################################
+ 
+ # START_MODULE_CONTRACT: M-TEST-DAY-RELATIVE-STATUS
+-# purpose: Verify cold-start fallback, z-score computation, std floor, hysteresis, and absolute overrides.
++# purpose: Verify cold-start fallback, z-score computation, std floor, hysteresis, absolute overrides, and support momentum.
+ # owns:
+ #   - apps/api/tests/test_day_relative_status.py
+ # inputs: test cases
+@@ -24,6 +24,10 @@
+ #   - test_std_floor
+ #   - test_hysteresis_two_day_requirement
+ #   - test_absolute_override_tense_and_supportive
++#   - test_momentum_insufficient_for_short_history
++#   - test_momentum_direction_and_scale
++#   - test_momentum_thresholds_and_unrounded_classification
++#   - test_momentum_is_consistent_in_absolute_and_relative_modes
+ # semantic_blocks:
+ #   - RELATIVE_STATUS_TESTS: unit tests for day_relative_status
+ # owned_tests:
+@@ -122,4 +126,114 @@ def test_zone_markers_clipped():
+     res_high = compute_relative_status(200.0, 200.0, "steady", history)
+     assert res_high.support_marker == 1.0
+     assert res_high.tension_marker == 1.0
++
++
++def test_momentum_insufficient_for_short_history():
++    """Fewer than 3 historical days cannot form both support windows."""
++    history = [
++        {"support": 50.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++    ]
++
++    res = compute_relative_status(60.0, 20.0, "steady", history)
++
++    assert res.momentum == "insufficient"
++    assert res.momentum_delta is None
++
++
++@pytest.mark.parametrize(
++    ("today_support", "history", "expected_momentum", "expected_delta"),
++    [
++        (
++            70.0,
++            [
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++            ],
++            "rising",
++            10.0,
++        ),
++        (
++            30.0,
++            [
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++            ],
++            "falling",
++            -10.0,
++        ),
++        (
++            50.0,
++            [
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++                {"support": 50.0, "tension": 20.0},
++            ],
++            "flat",
++            0.0,
++        ),
++    ],
++)
++def test_momentum_direction_and_scale(
++    today_support, history, expected_momentum, expected_delta
++):
++    """Support momentum uses the two required two-day means on the 0..100 scale."""
++    res = compute_relative_status(today_support, 20.0, "steady", history)
++
++    assert res.momentum == expected_momentum
++    assert res.momentum_delta == expected_delta
++    assert res.model_dump(by_alias=True)["momentumDelta"] == expected_delta
++
++
++@pytest.mark.parametrize(
++    ("today_support", "expected_momentum", "expected_delta"),
++    [
++        (60.0, "rising", 5.0),
++        (40.0, "falling", -5.0),
++        (59.98, "flat", 4.99),
++    ],
++)
++def test_momentum_thresholds_and_unrounded_classification(
++    today_support, expected_momentum, expected_delta
++):
++    """Thresholds include exactly +/-5, while a +5.004 raw delta stays rising after rounding."""
++    history = [
++        {"support": 50.0, "tension": 20.0},
++        {"support": 50.0, "tension": 20.0},
++        {"support": 50.0, "tension": 20.0},
++    ]
++
++    res = compute_relative_status(today_support, 20.0, "steady", history)
++
++    assert res.momentum == expected_momentum
++    assert res.momentum_delta == expected_delta
++
++    unrounded = compute_relative_status(60.008, 20.0, "steady", history)
++    assert unrounded.momentum == "rising"
++    assert unrounded.momentum_delta == 5.0
++
++
++def test_momentum_is_consistent_in_absolute_and_relative_modes():
++    """The same first three history entries produce the same momentum in both modes."""
++    absolute_history = [
++        {"support": 50.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++    ]
++    relative_history = absolute_history + [
++        {"support": 40.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++        {"support": 40.0, "tension": 20.0},
++    ]
++
++    absolute = compute_relative_status(60.0, 20.0, "steady", absolute_history)
++    relative = compute_relative_status(60.0, 20.0, "steady", relative_history)
++
++    assert absolute.mode == "absolute"
++    assert relative.mode == "relative"
++    assert absolute.momentum == relative.momentum == "rising"
++    assert absolute.momentum_delta == relative.momentum_delta == 15.0
+ # END_BLOCK: RELATIVE_STATUS_TESTS
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..54c0e256 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -59,7 +59,7 @@ These gates apply before broad autonomous business-feature work.
+ 
+ | Modules | Gates | Scenarios |
+ |---|---|---|
+-| M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-CONTRACTS | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → contract error. S3: no access → preview/locked payload. S4: invalid date → error. S5: cache hit where cache layer enabled. |
++| M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-DAY-RELATIVE-STATUS → M-SCHEMAS-DAY → M-CONTRACTS | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology; relative day status exposes deterministic support momentum without changing existing status/mode behavior. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → contract error. S3: no access → preview/locked payload. S4: invalid date → error. S5: cache hit where cache layer enabled. S6: `apps/api/tests/test_day_relative_status.py` covers rising/falling/flat/insufficient momentum, exact ±5 boundaries, unrounded classification, and absolute/relative modes; generated contract exposes `momentum` and `momentumDelta`. |
+ 
+ ## UC-TODAY-CONVERGENCE-W1 · W1 deterministic convergence canon
+ 
+diff --git a/packages/contracts/_generated.ts b/packages/contracts/_generated.ts
+index 3692d7c4..dacc2386 100644
+--- a/packages/contracts/_generated.ts
++++ b/packages/contracts/_generated.ts
+@@ -2204,6 +2204,17 @@ export interface components {
+              * @enum {string}
+              */
+             mode: "absolute" | "relative";
++            /**
++             * Momentum
++             * @description Recent support momentum direction
++             * @enum {string}
++             */
++            momentum?: "rising" | "flat" | "falling" | "insufficient";
++            /**
++             * Momentumdelta
++             * @description Recent minus previous support-window mean, rounded to two decimals; null when history is insufficient
++             */
++            momentumDelta?: number | null;
+             /**
+              * Status
+              * @description Relative day status code
+diff --git a/packages/contracts/_generated.zod.ts b/packages/contracts/_generated.zod.ts
+index ecc179c4..848f01fc 100644
+--- a/packages/contracts/_generated.zod.ts
++++ b/packages/contracts/_generated.zod.ts
+@@ -1005,6 +1005,8 @@ export const RelativeDayStatusRead = z.object({
+   baseline: RelativeStatusBaseline,
+   label: z.string(),
+   mode: z.enum(["absolute", "relative"]),
++  momentum: z.enum(["rising", "flat", "falling", "insufficient"]).optional(),
++  momentumDelta: z.union([z.number(), z.null()]).optional(),
+   status: z.enum(["usual", "softer", "tenser", "hard", "strong"]),
+   supportBand: z.array(z.number()).optional(),
+   supportMarker: z.number().optional().default(0.5),
+diff --git a/packages/contracts/openapi.json b/packages/contracts/openapi.json
+index d1455e2c..fc55c05c 100644
+--- a/packages/contracts/openapi.json
++++ b/packages/contracts/openapi.json
+@@ -4052,6 +4052,29 @@
+             "title": "Mode",
+             "type": "string"
+           },
++          "momentum": {
++            "description": "Recent support momentum direction",
++            "enum": [
++              "rising",
++              "flat",
++              "falling",
++              "insufficient"
++            ],
++            "title": "Momentum",
++            "type": "string"
++          },
++          "momentumDelta": {
++            "anyOf": [
++              {
++                "type": "number"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "description": "Recent minus previous support-window mean, rounded to two decimals; null when history is insufficient",
++            "title": "Momentumdelta"
++          },
+           "status": {
+             "description": "Relative day status code",
+             "enum": [

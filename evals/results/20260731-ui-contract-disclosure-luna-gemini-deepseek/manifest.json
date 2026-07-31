@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "runnerVersion": "agent-eval-1",
+  "createdAt": "2026-07-31T17:54:24.942109+00:00",
+  "task": {
+    "id": "ui-contract-disclosure-v1",
+    "title": "Profile statistics — UI semantic contract + disclosure",
+    "contractSha256": "4135b106070c94aeb6ae04d4f5120f62bb79029c24c8502be08f43c3ded6e86f",
+    "promptSha256": "789f2ce58fd1ee6936c381f38ea78840a1d170bd6f4fb91e835cb6e293a0ffd7",
+    "rubricSha256": "d30432db16bcca50b2a9e3d7dcec5fe8e71226352991634a17ab6520e7e629c2",
+    "timeoutSeconds": 1800,
+    "allowedPaths": [
+      "components/profile/checkin-statistics.tsx",
+      "__tests__/components/CheckinStatistics.test.tsx",
+      "__tests__/components/ProfileScreen.test.tsx",
+      "grace/verification-matrix.md"
+    ]
+  },
+  "base": {
+    "baseSha": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "baseTree": "598ee39b17f2f12cb0b7dda7a673cebded285cd9",
+    "remoteReachable": true,
+    "containingRemoteBranches": [
+      "origin/main"
+    ],
+    "containingTags": [],
+    "agentsSha256": "41c7ed03a5014396700b460d409707e4a4305571debb060790f6b2bbe89d046b",
+    "pnpmLockSha256": "4210f5e05e3fa163a7a610a245f392dc5f2a525a71b70ac28c15396a8ea248ab",
+    "packageLockSha256": "9cd723e7a411bcccbb62182a9245b37e7f50d198f5d9ed795eb4c33acc33de64",
+    "poetryLockSha256": "e705d0760b873404d85d16beb3eb134c85a7a8eac00b10a70db9977782c16c94",
+    "pyprojectSha256": "9af9b12220711fa7237c09656f826ca88ba3ff618549c526d4452d959e6f9d68"
+  },
+  "controller": {
+    "head": "2a26d7760634d257742e7d2e4fa63f615a249e3f",
+    "dirty": true,
+    "runnerSha256": "dc0f5eb37cd308c32cf02e094833451704e9303a58f44fa44b46f20d05db647c",
+    "modelsSha256": "e65cb6c774e88bff223b9632f18ab0768befa6128ead213016b606cf1e30f6fd",
+    "pricingSha256": "5810bdcad6ad0eb13604dd801299dfb5cceeecff8a65958f43e9fc386dd489ec"
+  },
+  "requestedModels": [
+    {
+      "key": "luna-max",
+      "runner": "codex",
+      "executable": "codex",
+      "model": "gpt-5.6-luna",
+      "usage_parser": "codex_jsonl",
+      "pricing_key": "gpt-5.6-luna-2026-07-30",
+      "effort": "max",
+      "agent": null,
+      "variant": null,
+      "pass_env": []
+    },
+    {
+      "key": "gemini-3.6-high",
+      "runner": "opencode",
+      "executable": "opencode",
+      "model": "cliproxy/gemini-3.6-flash-high",
+      "usage_parser": "opencode_jsonl",
+      "pricing_key": "gemini-3.6-flash-standard-2026-07-30",
+      "effort": null,
+      "agent": "repo-eval",
+      "variant": null,
+      "pass_env": []
+    },
+    {
+      "key": "deepseek-v4-flash",
+      "runner": "opencode",
+      "executable": "opencode",
+      "model": "deepseek/deepseek-v4-flash",
+      "usage_parser": "opencode_jsonl",
+      "pricing_key": "deepseek-v4-flash-2026-07-31",
+      "effort": null,
+      "agent": "repo-eval",
+      "variant": null,
+      "pass_env": []
+    }
+  ],
+  "pricingSnapshots": {
+    "gpt-5.6-luna-2026-07-30": {
+      "key": "gpt-5.6-luna-2026-07-30",
+      "provider": "OpenAI",
+      "as_of": "2026-07-30",
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      "input_per_million": 0.2,
+      "cached_input_per_million": 0.02,
+      "cache_write_per_million": 0.25,
+      "output_per_million": 1.2,
+      "input_includes_cached": true,
+      "output_includes_reasoning": true,
+      "long_context_threshold": 272000,
+      "long_context_input_multiplier": 2.0,
+      "long_context_output_multiplier": 1.5
+    },
+    "gemini-3.6-flash-standard-2026-07-30": {
+      "key": "gemini-3.6-flash-standard-2026-07-30",
+      "provider": "Google",
+      "as_of": "2026-07-30",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "input_per_million": 1.5,
+      "cached_input_per_million": 0.15,
+      "cache_write_per_million": 1.5,
+      "output_per_million": 7.5,
+      "input_includes_cached": false,
+      "output_includes_reasoning": false,
+      "long_context_threshold": null,
+      "long_context_input_multiplier": 1.0,
+      "long_context_output_multiplier": 1.0
+    },
+    "deepseek-v4-flash-2026-07-31": {
+      "key": "deepseek-v4-flash-2026-07-31",
+      "provider": "DeepSeek",
+      "as_of": "2026-07-31",
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "input_per_million": 0.14,
+      "cached_input_per_million": 0.0028,
+      "cache_write_per_million": 0.0,
+      "output_per_million": 0.28,
+      "input_includes_cached": false,
+      "output_includes_reasoning": true,
+      "long_context_threshold": null,
+      "long_context_input_multiplier": 1.0,
+      "long_context_output_multiplier": 1.0
+    }
+  },
+  "dependencyRuntime": [
+    {
+      "path": "node_modules",
+      "exists": true,
+      "resolvedPath": "/opt/solarsage-astro/node_modules",
+      "markers": {
+        ".pnpm/lock.yaml": "4210f5e05e3fa163a7a610a245f392dc5f2a525a71b70ac28c15396a8ea248ab",
+        ".modules.yaml": "b1bed3301e999146f6d9cf7f7d9411b9d505178a83e53069505656992b3b3d2d"
+      }
+    }
+  ]
+}

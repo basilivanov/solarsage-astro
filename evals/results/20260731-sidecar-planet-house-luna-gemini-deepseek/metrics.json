@@ -1,0 +1,446 @@
+{
+ "baseline": [
+  {
+   "name": "sidecar-natal",
+   "command": "bash -c 'set -e; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 1.92,
+   "passed": true,
+   "stdout": "verification-sidecar-natal.stdout.log",
+   "stderr": "verification-sidecar-natal.stderr.log"
+  },
+  {
+   "name": "api-normalization",
+   "command": "bash -c '[ ! -f apps/api/tests/test_normalization_planet_house.py ] || apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q'",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.01,
+   "passed": true,
+   "stdout": "verification-api-normalization.stdout.log",
+   "stderr": "verification-api-normalization.stderr.log"
+  },
+  {
+   "name": "grace-backend",
+   "command": "python3 scripts/grace_lint.py apps/api/app",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.823,
+   "passed": true,
+   "stdout": "verification-grace-backend.stdout.log",
+   "stderr": "verification-grace-backend.stderr.log"
+  },
+  {
+   "name": "diff-check",
+   "command": "git diff --check",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.218,
+   "passed": true,
+   "stdout": "verification-diff-check.stdout.log",
+   "stderr": "verification-diff-check.stderr.log"
+  }
+ ],
+ "candidates": [
+  {
+   "candidate": "A",
+   "runner": "codex",
+   "modelKey": "luna-max",
+   "model": "gpt-5.6-luna",
+   "cliVersion": "codex-cli 0.146.0",
+   "pricingKey": "gpt-5.6-luna-2026-07-30",
+   "dependencyWarnings": [],
+   "agent": {
+    "command": [
+     "codex",
+     "exec",
+     "--json",
+     "--ephemeral",
+     "-s",
+     "danger-full-access",
+     "-m",
+     "gpt-5.6-luna",
+     "-C",
+     "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-sidecar-planet-house-v1/worktrees/candidate-a",
+     "-c",
+     "model_reasoning_effort=\"max\"",
+     "-c",
+     "approval_policy=\"never\"",
+     "-c",
+     "features.multi_agent=false",
+     "-"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 888.428
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "apps/api/app/services/natal_context_service.py",
+    "apps/api/app/services/normalization_service.py",
+    "apps/api/tests/test_normalization_planet_house.py",
+    "apps/solarsage/solarsage/api/natal.py",
+    "apps/solarsage/solarsage/schemas/natal.py",
+    "apps/solarsage/solarsage/services/calculation_core.py",
+    "apps/solarsage/solarsage/services/natal.py",
+    "apps/solarsage/tests/test_planet_house.py",
+    "grace/verification-matrix.md"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "233ab5ea2257b89027da7e99a871c7a194570fd0a04c556cc884f8683a79fc6e",
+   "patchBytes": 28614,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "sidecar-natal",
+     "command": "bash -c 'set -e; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 1.525,
+     "passed": true,
+     "stdout": "verification-sidecar-natal.stdout.log",
+     "stderr": "verification-sidecar-natal.stderr.log",
+     "reVerified": true,
+     "reVerifyNote": "Original gate run resolved solarsage imports to the main tree (editable install in the linked venv). Re-run manually in a fresh worktree with PYTHONPATH=apps/solarsage: all sidecar and API tests passed."
+    },
+    {
+     "name": "api-normalization",
+     "command": "bash -c '[ ! -f apps/api/tests/test_normalization_planet_house.py ] || apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.695,
+     "passed": true,
+     "stdout": "verification-api-normalization.stdout.log",
+     "stderr": "verification-api-normalization.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.516,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "apps/api/app/services/natal_context_service.py",
+    "apps/api/app/services/normalization_service.py",
+    "apps/api/tests/test_normalization_planet_house.py",
+    "apps/solarsage/solarsage/api/natal.py",
+    "apps/solarsage/solarsage/schemas/natal.py",
+    "apps/solarsage/solarsage/services/calculation_core.py",
+    "apps/solarsage/solarsage/services/natal.py",
+    "apps/solarsage/tests/test_planet_house.py",
+    "grace/verification-matrix.md"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "usage": {
+    "input_tokens": 4734266,
+    "cached_input_tokens": 4548096,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 42787,
+    "reasoning_tokens": 25330,
+    "reported_cost_usd": null
+   },
+   "cost": {
+    "pricingKey": "gpt-5.6-luna-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+    "componentsUsd": {
+     "uncachedInput": 0.037234,
+     "cachedInput": 0.09096192,
+     "cacheWrite": 0.0,
+     "output": 0.0513444
+    },
+    "normalizedCostUsd": 0.17954032,
+    "reportedCostUsd": null,
+    "warnings": [
+     "aggregate input exceeds long-context threshold; exact per-request surcharge is unknown"
+    ]
+   },
+   "usageError": null
+  },
+  {
+   "candidate": "C",
+   "runner": "opencode",
+   "modelKey": "gemini-3.6-high",
+   "model": "cliproxy/gemini-3.6-flash-high",
+   "cliVersion": "1.18.9",
+   "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "73089d2d403056f44c7d042702f97a14404da0cde14404f73cf3982566e0c744"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t18241785511446z-sidecar-planet-house-v1/worktrees/candidate-a",
+     "--model",
+     "cliproxy/gemini-3.6-flash-high",
+     "--format",
+     "json",
+     "--title",
+     "eval:sidecar-planet-house-v1:A",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 45
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [],
+   "scopeViolations": [],
+   "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "patchBytes": 0,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "sidecar-natal",
+     "command": "bash -c 'set -e; export PYTHONPATH=apps/solarsage; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.767,
+     "passed": true,
+     "stdout": "verification-sidecar-natal.stdout.log",
+     "stderr": "verification-sidecar-natal.stderr.log"
+    },
+    {
+     "name": "api-normalization",
+     "command": "bash -c '[ ! -f apps/api/tests/test_normalization_planet_house.py ] || apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.005,
+     "passed": true,
+     "stdout": "verification-api-normalization.stdout.log",
+     "stderr": "verification-api-normalization.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.517,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "openCodeSessionId": "ses_0469494ccffez3jeaNlSST6mTB",
+   "usage": {
+    "input_tokens": 88783,
+    "cached_input_tokens": 130849,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 54,
+    "reasoning_tokens": 2581,
+    "reported_cost_usd": 0.0
+   },
+   "cost": {
+    "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://ai.google.dev/gemini-api/docs/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.0280185,
+     "cachedInput": 0.00428205,
+     "cacheWrite": 0.0,
+     "output": 0.0037425
+    },
+    "normalizedCostUsd": 0.26839999999999997,
+    "reportedCostUsd": 0.0,
+    "warnings": []
+   },
+   "usageError": null,
+   "rerunNote": "No result: three consecutive attempts (20s, 15s, 10s) terminated by the runner with an empty patch and rc=0, mid-exploration, no model error. Same anomaly as the first attempts in grace-event-registry-v1 and day-momentum-v1."
+  },
+  {
+   "candidate": "B",
+   "runner": "opencode",
+   "modelKey": "deepseek-v4-flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "cliVersion": "1.18.9",
+   "pricingKey": "deepseek-v4-flash-2026-07-31",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "4fbf9eac04e32ec7084b2b13342fc7bdd9c9d86d136393f34c6ae7191972eb14"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t17541785509664z-sidecar-planet-house-v1/worktrees/candidate-b",
+     "--model",
+     "deepseek/deepseek-v4-flash",
+     "--format",
+     "json",
+     "--title",
+     "eval:sidecar-planet-house-v1:B",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 507.648
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "apps/api/app/services/natal_context_service.py",
+    "apps/api/app/services/normalization_service.py",
+    "apps/api/tests/test_normalization_planet_house.py",
+    "apps/solarsage/solarsage/api/natal.py",
+    "apps/solarsage/solarsage/models/chart.py",
+    "apps/solarsage/solarsage/schemas/natal.py",
+    "apps/solarsage/solarsage/services/calculation_core.py",
+    "apps/solarsage/solarsage/services/natal.py",
+    "apps/solarsage/tests/test_planet_house.py",
+    "grace/verification-matrix.md"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "25014e8e57abb705189134c59638c49a0b049b916a64e7410aad7fb7b7a80ce3",
+   "patchBytes": 32303,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "sidecar-natal",
+     "command": "bash -c 'set -e; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 1.92,
+     "passed": true,
+     "stdout": "verification-sidecar-natal.stdout.log",
+     "stderr": "verification-sidecar-natal.stderr.log",
+     "reVerified": true,
+     "reVerifyNote": "Original gate run resolved solarsage imports to the main tree (editable install in the linked venv). Re-run manually in a fresh worktree with PYTHONPATH=apps/solarsage: all sidecar and API tests passed."
+    },
+    {
+     "name": "api-normalization",
+     "command": "bash -c '[ ! -f apps/api/tests/test_normalization_planet_house.py ] || apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q'",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.68,
+     "passed": true,
+     "stdout": "verification-api-normalization.stdout.log",
+     "stderr": "verification-api-normalization.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.516,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "apps/api/app/services/natal_context_service.py",
+    "apps/api/app/services/normalization_service.py",
+    "apps/api/tests/test_normalization_planet_house.py",
+    "apps/solarsage/solarsage/api/natal.py",
+    "apps/solarsage/solarsage/models/chart.py",
+    "apps/solarsage/solarsage/schemas/natal.py",
+    "apps/solarsage/solarsage/services/calculation_core.py",
+    "apps/solarsage/solarsage/services/natal.py",
+    "apps/solarsage/tests/test_planet_house.py",
+    "grace/verification-matrix.md"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "openCodeSessionId": "ses_046a1b396ffenBv8kLxJJTrvI6",
+   "usage": {
+    "input_tokens": 101835,
+    "cached_input_tokens": 7131008,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 23846,
+    "reasoning_tokens": 24632,
+    "reported_cost_usd": 0.0477975624
+   },
+   "cost": {
+    "pricingKey": "deepseek-v4-flash-2026-07-31",
+    "pricingAsOf": "2026-07-31",
+    "pricingSource": "https://api-docs.deepseek.com/quick_start/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.0142569,
+     "cachedInput": 0.01996682,
+     "cacheWrite": 0.0,
+     "output": 0.00667688
+    },
+    "normalizedCostUsd": 0.0409006,
+    "reportedCostUsd": 0.0477975624,
+    "warnings": []
+   },
+   "usageError": null
+  }
+ ]
+}

@@ -23,7 +23,7 @@ allowed_paths = [
 
 [[verification]]
 name = "sidecar-natal"
-command = "bash -c 'set -e; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'"
+command = "bash -c 'set -e; export PYTHONPATH=apps/solarsage; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'"
 timeout_seconds = 600
 
 [[verification]]

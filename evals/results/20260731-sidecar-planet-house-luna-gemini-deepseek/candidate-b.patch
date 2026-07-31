@@ -1,0 +1,796 @@
+diff --git a/apps/api/app/services/natal_context_service.py b/apps/api/app/services/natal_context_service.py
+index f932ac1f..af90e71d 100644
+--- a/apps/api/app/services/natal_context_service.py
++++ b/apps/api/app/services/natal_context_service.py
+@@ -30,6 +30,9 @@
+ #   - missing_profile_fields checks strict natal fields in deterministic order.
+ #   - Service never calls transits.
+ #   - Service never calls LLM.
++#   - Sidecar planet `house` (int 1-12 or None) passes through validation and
++#     serialization into NatalChartPlanet.house; cached contexts created before
++#     this change (no house) stay valid — normalization falls back to find_house.
+ # failure_policy:
+ #   - Incomplete profile → raises HTTPException 409 with missing fields.
+ #   - Sidecar unavailable → raises HTTPException 502.
+@@ -55,6 +58,7 @@
+ # owned_tests:
+ #   - apps/api/tests/test_natal_context_service.py
+ #   - apps/api/tests/test_profile_readiness.py
++#   - apps/api/tests/test_normalization_planet_house.py
+ # END_MODULE_MAP: M-NATAL-CONTEXT-SERVICE
+ 
+ from __future__ import annotations
+diff --git a/apps/api/app/services/normalization_service.py b/apps/api/app/services/normalization_service.py
+index 406836f0..2bddf9a2 100644
+--- a/apps/api/app/services/normalization_service.py
++++ b/apps/api/app/services/normalization_service.py
+@@ -24,6 +24,9 @@
+ # invariants:
+ #   - normalize_natal_only never includes transit signals
+ #   - normalize_day includes both natal and transit signals
++#   - planet_in_house prefers a valid provided planet house (int 1-12) and
++#     otherwise falls back to find_house(longitude, houses); old sidecar
++#     payloads without a `house` field map exactly as before
+ # failure_policy:
+ #   - returns empty list on empty input
+ # END_MODULE_CONTRACT: M-NORMALIZATION-SERVICE
+@@ -214,9 +217,10 @@ class NormalizationService:
+         houses = natal["houses"]
+ 
+         for planet in planets:
+-            # Find which house the planet is in
+-            planet_lon = planet["longitude"]
+-            house_num = find_house(planet_lon, houses)
++            # Prefer a valid provided house (1-12); otherwise fall back to the
++            # longitude→cusp mapping. Old sidecar payloads (no `house` field)
++            # behave exactly as before.
++            house_num = self._planet_house_number(planet, houses)
+             if house_num is None:
+                 continue
+ 
+@@ -229,6 +233,24 @@ class NormalizationService:
+ 
+         return signals
+ 
++    @staticmethod
++    def _planet_house_number(planet: dict, houses: list) -> int | None:
++        # START_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE._planet_house_number
++        # purpose: Resolve a natal planet's house, preferring the value provided
++        #   by the sidecar payload when valid.
++        # inputs: planet (dict), houses (list of house-cusp dicts).
++        # returns: int (house number 1-12) or None when it cannot be resolved.
++        # side_effects: none (pure function).
++        # emitted_logs: none.
++        # error_behavior: never raises; invalid provided values (0, 13, wrong
++        #   type) and missing field fall back to find_house(longitude, houses).
++        # END_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE._planet_house_number
++        """Prefer a valid provided `house`; else fall back to find_house."""
++        provided = planet.get("house")
++        if isinstance(provided, int) and not isinstance(provided, bool) and 1 <= provided <= 12:
++            return provided
++        return find_house(planet["longitude"], houses)
++
+     def _planets_in_signs(self, natal: dict) -> list[AstroSignal]:
+         """Generate planet_in_sign signals."""
+         signals = []
+diff --git a/apps/api/tests/test_normalization_planet_house.py b/apps/api/tests/test_normalization_planet_house.py
+new file mode 100644
+index 00000000..5212c6e5
+--- /dev/null
++++ b/apps/api/tests/test_normalization_planet_house.py
+@@ -0,0 +1,188 @@
++
++# ############################################################################
++# AI_HEADER: MODULE_TESTS_TEST_NORMALIZATION_PLANET_HOUSE
++# ROLE: Module
++# DEPENDENCIES: local modules
++# GRACE_ANCHORS: []
++# SLICE: SLICE-BACKEND-SERVICES
++# ######################################### START_MODULE_CONTRACT
++# purpose: Tests for NormalizationService planet-in-house resolution: a valid
++#   provided `house` is preferred; missing or invalid values fall back to the
++#   existing find_house(longitude, houses) mapping.
++# owns:
++#   - apps/api/tests/test_normalization_planet_house.py
++# inputs: Mocks, fixtures
++# outputs: Assertion results
++# dependencies: local modules
++# side_effects: n/a (tests)
++# emitted_logs: n/a (tests)
++# invariants:
++#   - Old sidecar payloads (no `house`) behave exactly as before.
++#   - Invalid provided values (0, 13, wrong type) never override the fallback.
++# failure_policy: log and raise
++# END_MODULE_CONTRACT
++# AI_HEADER
++# module: M-TEST-NORMALIZATION-PLANET-HOUSE
++# wave: W-4.1
++# purpose: Normalization planet-house preference/fallback tests
++
++import pytest
++
++from app.services.normalization_service import NormalizationService
++
++
++@pytest.fixture
++def sample_houses():
++    """Regular 30-degree house cusps: house N spans [(N-1)*30, N*30)."""
++    return [
++        {"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)
++    ]
++
++
++def _natal(planet_fields, houses):
++    return {"planets": [planet_fields], "houses": houses}
++
++
++def _house_signals(natal):
++    service = NormalizationService()
++    return service._planets_in_houses(natal)
++
++
++def test_prefers_provided_valid_house(sample_houses):
++    """A valid provided house (int 1-12) wins over the longitude mapping."""
++    # 69.5° would map to house 3 via find_house, but the payload says house 7.
++    natal = _natal({"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": 7}, sample_houses)
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].type == "planet_in_house"
++    assert signals[0].planet == "Sun"
++    assert signals[0].house == 7
++
++
++def test_falls_back_when_house_absent(sample_houses):
++    """Old sidecar payloads without a `house` field use find_house as before."""
++    natal = _natal({"name": "Sun", "longitude": 69.5, "sign": "Gemini"}, sample_houses)
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].house == 3  # 69.5° is in house 3 (60-90)
++
++
++@pytest.mark.parametrize("invalid_house", [
++    0,
++    13,
++    -1,
++    100,
++    "5",
++    "7",
++    5.0,
++    7.5,
++    True,
++    [5],
++])
++def test_falls_back_when_house_invalid(sample_houses, invalid_house):
++    """Invalid provided houses (out of range or wrong type) fall back to find_house."""
++    natal = _natal(
++        {"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": invalid_house},
++        sample_houses,
++    )
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].house == 3  # find_house fallback for 69.5°
++
++
++def test_none_house_falls_back(sample_houses):
++    """A null provided house falls back to find_house."""
++    natal = _natal(
++        {"name": "Moon", "longitude": 120.0, "sign": "Leo", "house": None},
++        sample_houses,
++    )
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].house == 5  # 120.0° is in house 5
++
++
++def test_boundary_house_preference(sample_houses):
++    """Valid boundary houses are honored: house 1 and house 12."""
++    natal = _natal(
++        {
++            "name": "Sun",
++            "longitude": 359.0,
++            "sign": "Pisces",
++            "house": 1,
++        },
++        sample_houses,
++    )
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].house == 1  # preference overrides find_house -> 12
++
++
++def test_provided_house_used_even_with_empty_houses(sample_houses):
++    """A valid provided house is preferred even when the houses list is empty."""
++    natal = _natal(
++        {"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": 3},
++        [],
++    )
++
++    signals = _house_signals(natal)
++
++    assert len(signals) == 1
++    assert signals[0].house == 3
++
++
++def test_empty_houses_without_provided_house_fail_closed(sample_houses):
++    """Empty houses with no valid provided house fabricate nothing."""
++    natal = _natal(
++        {"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": None},
++        [],
++    )
++
++    signals = _house_signals(natal)
++
++    assert signals == []
++
++
++def test_normalize_natal_only_uses_preference(sample_houses):
++    """normalize_natal_only planet_in_house signals honor the provided house."""
++    natal = {
++        "planets": [
++            {"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": 9},
++            {"name": "Moon", "longitude": 120.0, "sign": "Leo"},
++        ],
++        "houses": sample_houses,
++    }
++
++    service = NormalizationService()
++    signals = service.normalize_natal_only(natal)
++    house_signals = {s.planet: s.house for s in signals if s.type == "planet_in_house"}
++
++    assert house_signals["Sun"] == 9  # provided house preferred
++    assert house_signals["Moon"] == 5  # absent house falls back to find_house
++
++
++def test_normalize_day_rebuild_fallback(sample_houses):
++    """normalize_day rebuild-from-raw falls back to find_house for old contexts."""
++    natal_context = {
++        "planets": [
++            {"name": "Sun", "longitude": 69.5, "sign": "Gemini", "house": 11},
++        ],
++        "houses": sample_houses,
++        "natal_signals": [],
++    }
++    transits = {"planets": []}
++
++    service = NormalizationService()
++    signals = service.normalize_day(natal_context, transits)
++    house_signals = [s for s in signals if s.type == "planet_in_house"]
++
++    assert house_signals[0].house == 11  # provided house preferred
+diff --git a/apps/solarsage/solarsage/api/natal.py b/apps/solarsage/solarsage/api/natal.py
+index 5f804aea..cd754d20 100644
+--- a/apps/solarsage/solarsage/api/natal.py
++++ b/apps/solarsage/solarsage/api/natal.py
+@@ -1,21 +1,23 @@
+ 
+ # ############################################################################
+-# AI_HEADER: MODULE_API_NATAL
++# AI_HEADER: MODULE_API_NATAL — POST /v1/natal endpoint.
+ # ROLE: Sidecar calculation
+ # DEPENDENCIES: local modules
+ # GRACE_ANCHORS: []
+ # SLICE: SLICE-SIDECAR-CALCULATION
+ # ######################################### START_MODULE_CONTRACT
+-# purpose: HTTP routes for natal operations
++# purpose: HTTP routes for natal operations. Thin facade over the natal
++#   calculation path — planet-to-house mapping happens in NatalService.
+ # owns:
+ #   - apps/solarsage/solarsage/api/natal.py
+ # inputs: HTTP request, path/query params
+-# outputs: HTTP response / JSON body
++# outputs: HTTP response / JSON body (NatalResponse with per-planet house)
+ # dependencies: local modules
+ # side_effects: Processes HTTP requests
+ # emitted_logs: n/a (pure)
+ # invariants:
+-#   - n/a
++#   - Every natal planet in the response carries a house field (1-12 or null).
++#   - No astrological computation lives in the HTTP layer.
+ # failure_policy: log and raise
+ # END_MODULE_CONTRACT
+ # AI_HEADER
+@@ -37,7 +39,7 @@ async def post_natal(request: NatalRequest) -> NatalResponse:
+ 
+     W-SOLARSAGE-SVC: Uses NatalService.
+ 
+-    Returns planets, houses, and special points.
++    Returns planets (each with its natal house), houses, and special points.
+     """
+     try:
+         return calculate_natal_response(
+diff --git a/apps/solarsage/solarsage/models/chart.py b/apps/solarsage/solarsage/models/chart.py
+index 3a0d79e6..757f0b82 100644
+--- a/apps/solarsage/solarsage/models/chart.py
++++ b/apps/solarsage/solarsage/models/chart.py
+@@ -1,12 +1,13 @@
+ 
+ # ############################################################################
+-# AI_HEADER: MODULE_MODELS_CHART
++# AI_HEADER: MODULE_MODELS_CHART — chart data models and natal house mapping.
+ # ROLE: Sidecar calculation
+ # DEPENDENCIES: local modules
+ # GRACE_ANCHORS: []
+ # SLICE: SLICE-SIDECAR-CALCULATION
+ # ######################################### START_MODULE_CONTRACT
+-# purpose: Module: chart.py
++# purpose: Module: chart.py — NatalChart dataclass plus the natal house-finding
++#   helper used by the natal calculation path.
+ # owns:
+ #   - apps/solarsage/solarsage/models/chart.py
+ # inputs: Function args
+@@ -15,7 +16,10 @@
+ # side_effects: n/a (pure)
+ # emitted_logs: n/a (pure)
+ # invariants:
+-#   - n/a
++#   - find_house mirrors the API's M-ASTRO-UTILS.find_house wraparound interval
++#     semantics (lower cusp inclusive, upper cusp exclusive).
++#   - assign_planet_houses mutates NatalChart.positions entries, adding a
++#     `house` key; house is None when the chart has no house geometry.
+ # failure_policy: log and raise
+ # END_MODULE_CONTRACT
+ # AI_HEADER
+@@ -28,9 +32,55 @@ from datetime import datetime, date
+ from typing import Dict, List, Any
+ 
+ 
++def find_house(longitude: float, houses: List[Dict[str, Any]]) -> int | None:
++    # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CHART-MODELS.find_house
++    # purpose: Find which natal house a longitude falls into.
++    # inputs: longitude (float), houses (list of dicts with number and cusp).
++    # returns: int (house number 1-12) or None if houses list is empty.
++    # side_effects: none (pure function).
++    # emitted_logs: none.
++    # error_behavior: returns None on empty input; never raises.
++    # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CHART-MODELS.find_house
++    """Find which natal house a longitude falls into.
++
++    Houses may be in any order — sorts by cusp ascending before lookup.
++    Handles wrap-around (e.g., a house spanning 350°→10°). Semantics mirror
++    the API's M-ASTRO-UTILS.find_house so both sides agree on every planet.
++
++    Returns None if houses list is empty, otherwise always returns a house number.
++    """
++    if not houses:
++        return None
++
++    def _house_cusp(house: Dict[str, Any]) -> float:
++        raw = house.get("cusp", house.get("longitude", 0))
++        return float(raw or 0)
++
++    sorted_houses = sorted(houses, key=_house_cusp)
++
++    for i, h in enumerate(sorted_houses):
++        next_h = sorted_houses[(i + 1) % len(sorted_houses)]
++        cusp = _house_cusp(h)
++        next_cusp = _house_cusp(next_h)
++
++        if next_cusp > cusp:
++            if cusp <= longitude < next_cusp:
++                return int(h["number"])
++        else:  # wraparound: e.g., house starts at 350°, ends at 10°
++            if longitude >= cusp or longitude < next_cusp:
++                return int(h["number"])
++
++    # Fallback: should not reach here, but return first house
++    return int(sorted_houses[0]["number"])
++
++
+ @dataclass
+ class NatalChart:
+-    """Natal chart data."""
++    """Natal chart data.
++
++    positions entries carry a `house` key after assign_planet_houses() (the
++    natal house number 1-12, or None when the chart has no house geometry).
++    """
+     birth_datetime: datetime
+     latitude: float
+     longitude: float
+@@ -39,6 +89,20 @@ class NatalChart:
+     special_points: List[Dict[str, Any]]
+     house_system: str
+ 
++    def assign_planet_houses(self) -> None:
++        # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CHART-MODELS.assign_planet_houses
++        # purpose: Populate each position's `house` key from the house cusp
++        #   intervals, mirroring the API's find_house wraparound semantics.
++        # inputs: self (positions, houses).
++        # returns: None (mutates positions in place).
++        # side_effects: mutates NatalChart.positions entries.
++        # emitted_logs: none.
++        # error_behavior: never raises; house is None when houses are empty.
++        # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CHART-MODELS.assign_planet_houses
++        """Assign each planet's natal house number from the house cusps."""
++        for pos in self.positions:
++            pos["house"] = find_house(pos["longitude"], self.houses)
++
+ 
+ @dataclass
+ class Transit:
+diff --git a/apps/solarsage/solarsage/schemas/natal.py b/apps/solarsage/solarsage/schemas/natal.py
+index 6fdb5dc7..e5af2c44 100644
+--- a/apps/solarsage/solarsage/schemas/natal.py
++++ b/apps/solarsage/solarsage/schemas/natal.py
+@@ -1,12 +1,12 @@
+ 
+ # ############################################################################
+-# AI_HEADER: MODULE_SCHEMAS_NATAL
++# AI_HEADER: MODULE_SCHEMAS_NATAL — natal request/response schemas.
+ # ROLE: Sidecar calculation
+ # DEPENDENCIES: local modules
+ # GRACE_ANCHORS: []
+ # SLICE: SLICE-SIDECAR-CALCULATION
+ # ######################################### START_MODULE_CONTRACT
+-# purpose: Module: natal.py
++# purpose: Module: natal.py — natal request/response schemas.
+ # owns:
+ #   - apps/solarsage/solarsage/schemas/natal.py
+ # inputs: Function args
+@@ -15,7 +15,9 @@
+ # side_effects: n/a (pure)
+ # emitted_logs: n/a (pure)
+ # invariants:
+-#   - n/a
++#   - NatalPlanet carries house (int 1-12 or None); the shared Planet model
++#     used by the transit schema stays house-free so transit output is unchanged.
++#   - Existing natal response fields and the houses list stay unchanged.
+ # failure_policy: log and raise
+ # END_MODULE_CONTRACT
+ # AI_HEADER
+@@ -45,6 +47,11 @@ class Planet(BaseModel):
+     retrograde: bool
+ 
+ 
++class NatalPlanet(Planet):
++    """Natal planet position with its computed natal house."""
++    house: int | None = None  # natal house (1-12), or None when houses are unavailable
++
++
+ class House(BaseModel):
+     """House cusp."""
+     number: int
+@@ -61,7 +68,7 @@ class SpecialPoint(BaseModel):
+ 
+ class NatalResponse(BaseModel):
+     """Natal chart calculation response."""
+-    planets: list[Planet]
++    planets: list[NatalPlanet]
+     houses: list[House]
+     special_points: list[SpecialPoint]
+     house_system: str  # e.g., "PLACIDUS", "WHOLE_SIGN"
+diff --git a/apps/solarsage/solarsage/services/calculation_core.py b/apps/solarsage/solarsage/services/calculation_core.py
+index 481f7796..a83aa334 100644
+--- a/apps/solarsage/solarsage/services/calculation_core.py
++++ b/apps/solarsage/solarsage/services/calculation_core.py
+@@ -18,6 +18,8 @@
+ # invariants:
+ #   - HTTP routes and offline replay call these same functions.
+ #   - Returned models serialize identically for identical inputs.
++#   - Natal planets serialize as NatalPlanet (with house); transit planets stay
++#     house-free because they reuse the base Planet schema.
+ # failure_policy: propagates validation and calculation errors fail-closed.
+ # END_MODULE_CONTRACT: M-SIDECAR-CALCULATION-CORE
+ 
+@@ -41,7 +43,7 @@ from __future__ import annotations
+ from typing import Any, Literal
+ 
+ from solarsage.schemas.activation import ActivationLayer
+-from solarsage.schemas.natal import House, NatalResponse, Planet, SpecialPoint
++from solarsage.schemas.natal import House, NatalPlanet, NatalResponse, Planet, SpecialPoint
+ from solarsage.schemas.transits import TransitsResponse
+ from solarsage.services.activation_builder import (
+     NatalCalculationContext,
+@@ -68,7 +70,8 @@ def calculate_natal_response(
+     # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_natal_response
+     # purpose: Calculate and validate one natal response in process.
+     # inputs: exact birth event and requested house system.
+-    # returns: NatalResponse matching POST /v1/natal output.
++    # returns: NatalResponse matching POST /v1/natal output; every planet
++    #   carries its natal house (1-12) or null.
+     # side_effects: Swiss Ephemeris calculations.
+     # emitted_logs: none.
+     # error_behavior: propagates calculation or schema errors.
+@@ -82,7 +85,7 @@ def calculate_natal_response(
+         house_system=house_system,
+     )
+     return NatalResponse(
+-        planets=[Planet(**item) for item in chart.positions],
++        planets=[NatalPlanet(**item) for item in chart.positions],
+         houses=[House(**item) for item in chart.houses],
+         special_points=[SpecialPoint(**item) for item in chart.special_points],
+         house_system=chart.house_system,
+diff --git a/apps/solarsage/solarsage/services/natal.py b/apps/solarsage/solarsage/services/natal.py
+index 4eb91350..65165731 100644
+--- a/apps/solarsage/solarsage/services/natal.py
++++ b/apps/solarsage/solarsage/services/natal.py
+@@ -1,21 +1,24 @@
+ 
+ # ############################################################################
+-# AI_HEADER: MODULE_SERVICES_NATAL
++# AI_HEADER: MODULE_SERVICES_NATAL — natal chart calculation service.
+ # ROLE: Sidecar calculation
+ # DEPENDENCIES: local modules
+ # GRACE_ANCHORS: []
+ # SLICE: SLICE-SIDECAR-CALCULATION
+ # ######################################### START_MODULE_CONTRACT
+-# purpose: DB access for natal
++# purpose: Natal chart calculation service. Calculates the full natal chart
++#   (positions, houses, special points) and assigns each planet its natal
++#   house in the calculation path (not in the HTTP layer).
+ # owns:
+ #   - apps/solarsage/solarsage/services/natal.py
+-# inputs: Query params, models
+-# outputs: Records / query results
+-# dependencies: local modules
+-# side_effects: Database reads/writes
++# inputs: Birth event (date, time, tz, lat, lon) and requested house system.
++# outputs: NatalChart whose positions entries carry a `house` key.
++# dependencies: local modules (models.chart, utils.ephemeris)
++# side_effects: Swiss Ephemeris calculations
+ # emitted_logs: n/a (pure)
+ # invariants:
+-#   - n/a
++#   - Every position entry gains a `house` key (1-12 or None).
++#   - Houses list and all pre-existing position fields stay unchanged.
+ # failure_policy: log and raise
+ # END_MODULE_CONTRACT
+ # AI_HEADER
+@@ -55,7 +58,8 @@ class NatalService:
+             house_system: Requested house system ("PLACIDUS" or "WHOLE_SIGN")
+ 
+         Returns:
+-            NatalChart with positions, houses, and special points
++            NatalChart with positions, houses, and special points; every
++            position entry also carries a `house` key (1-12 or None).
+         """
+         # Calculate Julian Day
+         jd = calculate_julian_day(date_str, time_str, tz_str)
+@@ -71,7 +75,7 @@ class NatalService:
+         # Parse birth datetime for model
+         birth_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+ 
+-        return NatalChart(
++        chart = NatalChart(
+             birth_datetime=birth_datetime,
+             latitude=latitude,
+             longitude=longitude,
+@@ -80,3 +84,6 @@ class NatalService:
+             special_points=special_points,
+             house_system=resolved_house_system,
+         )
++        # Assign each planet its natal house in the calculation path.
++        chart.assign_planet_houses()
++        return chart
+diff --git a/apps/solarsage/tests/test_planet_house.py b/apps/solarsage/tests/test_planet_house.py
+new file mode 100644
+index 00000000..c50f63ae
+--- /dev/null
++++ b/apps/solarsage/tests/test_planet_house.py
+@@ -0,0 +1,199 @@
++
++# ############################################################################
++# AI_HEADER: MODULE_TESTS_TEST_PLANET_HOUSE — natal planet house coverage.
++# ROLE: Sidecar calculation
++# DEPENDENCIES: local modules
++# GRACE_ANCHORS: []
++# SLICE: SLICE-SIDECAR-CALCULATION
++# ######################################### START_MODULE_CONTRACT
++# purpose: Tests for the natal planet `house` field emitted by the sidecar
++#   natal calculation path.
++# owns:
++#   - apps/solarsage/tests/test_planet_house.py
++# inputs: Endpoint params, NatalChart fixtures
++# outputs: Assertion results
++# dependencies: local modules
++# side_effects: n/a (tests)
++# emitted_logs: n/a (tests)
++# invariants:
++#   - Every natal planet carries a `house` field.
++#   - house matches the cusp interval containing the planet longitude,
++#     including the 12th/1st-house wraparound.
++#   - Both supported house systems (PLACIDUS and WHOLE_SIGN) produce valid houses.
++# failure_policy: log and raise
++# END_MODULE_CONTRACT
++# AI_HEADER
++# module: M-SIDECAR-TEST-PLANET-HOUSE
++# wave: W-3.2
++# purpose: Natal planet house tests
++
++import pytest
++
++pytestmark = pytest.mark.usefixtures("moshier_mode")
++from datetime import datetime
++
++from httpx import AsyncClient, ASGITransport
++
++from solarsage.app import app
++from solarsage.models.chart import NatalChart, find_house
++from solarsage.services.calculation_core import calculate_natal_response
++from solarsage.services.natal import NatalService
++
++MOSCOW = {
++    "birth_date": "1990-01-15",
++    "birth_time": "14:30",
++    "birth_lat": 55.7558,
++    "birth_lon": 37.6173,
++    "birth_tz": "Europe/Moscow",
++}
++
++MURMANSK = {
++    "birth_date": "1980-10-30",
++    "birth_time": "19:50",
++    "birth_lat": 67.9387,  # Murmansk (high latitude) -> WHOLE_SIGN
++    "birth_lon": 32.9241,
++    "birth_tz": "Europe/Moscow",
++}
++
++# Houses whose 12th cusp wraps around 0/360 (350° -> 10°) so the 12th/1st
++# house interval crosses the 360° boundary.
++WRAPAROUND_HOUSES = [
++    {"number": 1, "cusp": 10.0},
++    {"number": 2, "cusp": 40.0},
++    {"number": 3, "cusp": 70.0},
++    {"number": 4, "cusp": 100.0},
++    {"number": 5, "cusp": 130.0},
++    {"number": 6, "cusp": 160.0},
++    {"number": 7, "cusp": 190.0},
++    {"number": 8, "cusp": 220.0},
++    {"number": 9, "cusp": 250.0},
++    {"number": 10, "cusp": 280.0},
++    {"number": 11, "cusp": 310.0},
++    {"number": 12, "cusp": 350.0},
++]
++
++
++@pytest.mark.asyncio
++async def test_natal_endpoint_planets_carry_house():
++    """Every planet in the natal response carries a valid house field."""
++    transport = ASGITransport(app=app)
++    async with AsyncClient(transport=transport, base_url="http://test") as client:
++        response = await client.post("/v1/natal", json=MOSCOW)
++
++        assert response.status_code == 200
++        data = response.json()
++
++        assert len(data["planets"]) == 10
++        for planet in data["planets"]:
++            assert "house" in planet, f"planet {planet['name']} missing house"
++            assert planet["house"] is None or 1 <= planet["house"] <= 12
++
++
++@pytest.mark.asyncio
++async def test_natal_planets_house_matches_cusp_intervals():
++    """Each planet's house equals the house whose cusp interval contains its longitude."""
++    transport = ASGITransport(app=app)
++    async with AsyncClient(transport=transport, base_url="http://test") as client:
++        response = await client.post("/v1/natal", json=MOSCOW)
++        assert response.status_code == 200
++        data = response.json()
++
++        for planet in data["planets"]:
++            expected = find_house(planet["longitude"], data["houses"])
++            assert planet["house"] == expected, (
++                f"{planet['name']} at {planet['longitude']}° expected house {expected}, got {planet['house']}"
++            )
++
++
++@pytest.mark.asyncio
++async def test_both_house_systems_produce_correct_house_values():
++    """PLACIDUS (normal latitude) and WHOLE_SIGN (high latitude) both emit valid houses."""
++    transport = ASGITransport(app=app)
++    async with AsyncClient(transport=transport, base_url="http://test") as client:
++        for payload in (MOSCOW, MURMANSK):
++            response = await client.post("/v1/natal", json=payload)
++            assert response.status_code == 200
++            data = response.json()
++            assert data["house_system"] in ("PLACIDUS", "WHOLE_SIGN")
++
++            for planet in data["planets"]:
++                expected = find_house(planet["longitude"], data["houses"])
++                assert planet["house"] == expected, (
++                    f"{data['house_system']}: {planet['name']} at {planet['longitude']}° "
++                    f"expected house {expected}, got {planet['house']}"
++                )
++
++
++def test_calculate_natal_response_planets_carry_house():
++    """The direct natal calculation path also emits a house on every planet."""
++    response = calculate_natal_response(**MOSCOW)
++    for planet in response.planets:
++        assert planet.house is not None
++        assert 1 <= planet.house <= 12
++
++
++def test_find_house_basic_intervals():
++    """find_house matches lower-inclusive / upper-exclusive cusp intervals."""
++    houses = [{"number": i, "cusp": float(30 * (i - 1))} for i in range(1, 13)]
++
++    assert find_house(5.0, houses) == 1
++    assert find_house(29.9, houses) == 1
++    assert find_house(30.0, houses) == 2
++    assert find_house(89.0, houses) == 3
++    assert find_house(120.0, houses) == 5
++    assert find_house(359.0, houses) == 12
++
++
++def test_find_house_wraparound():
++    """Longitudes near 0/360 resolve into the 12th/1st house wraparound interval."""
++    assert find_house(355.0, WRAPAROUND_HOUSES) == 12
++    assert find_house(5.0, WRAPAROUND_HOUSES) == 12
++    assert find_house(10.0, WRAPAROUND_HOUSES) == 1
++    assert find_house(39.0, WRAPAROUND_HOUSES) == 1
++    assert find_house(40.0, WRAPAROUND_HOUSES) == 2
++    assert find_house(345.0, WRAPAROUND_HOUSES) == 11
++
++
++def test_find_house_empty_houses():
++    """Empty houses resolve to None, never to a fabricated house number."""
++    assert find_house(123.0, []) is None
++
++
++def test_assign_planet_houses_wraparound():
++    """NatalChart.assign_planet_houses uses the wraparound semantics end-to-end."""
++    chart = NatalChart(
++        birth_datetime=datetime(1990, 1, 15, 14, 30),
++        latitude=55.7558,
++        longitude=37.6173,
++        positions=[
++            {"name": "Sun", "longitude": 355.0, "latitude": 0.0, "speed": 1.0, "sign": "Pisces", "retrograde": False},
++            {"name": "Moon", "longitude": 5.0, "latitude": 0.0, "speed": 13.0, "sign": "Aries", "retrograde": False},
++            {"name": "Mercury", "longitude": 10.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "retrograde": False},
++        ],
++        houses=WRAPAROUND_HOUSES,
++        special_points=[],
++        house_system="PLACIDUS",
++    )
++
++    chart.assign_planet_houses()
++    by_name = {p["name"]: p["house"] for p in chart.positions}
++
++    assert by_name["Sun"] == 12  # 355° lies in the wrapped 12th house
++    assert by_name["Moon"] == 12  # 5° lies before the 1st-house cusp at 10°
++    assert by_name["Mercury"] == 1  # 10° is the 1st-house cusp (lower inclusive)
++
++
++def test_natal_service_assigns_planet_houses():
++    """NatalService.calculate_natal_chart already carries a house on every position."""
++    chart = NatalService().calculate_natal_chart(
++        date_str=MOSCOW["birth_date"],
++        time_str=MOSCOW["birth_time"],
++        tz_str=MOSCOW["birth_tz"],
++        latitude=MOSCOW["birth_lat"],
++        longitude=MOSCOW["birth_lon"],
++    )
++    assert len(chart.positions) == 10
++    for pos in chart.positions:
++        assert "house" in pos
++        assert pos["house"] is None or 1 <= pos["house"] <= 12
++        assert pos["house"] == find_house(pos["longitude"], chart.houses)
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..429c4c1e 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -125,6 +125,12 @@ These gates apply before broad autonomous business-feature work.
+ 
+ ---
+ 
++## UC-SIDECAR-PLANET-HOUSE · Natal planet house emission and consumption
++
++| Modules | Gates | Scenarios |
++|---|---|---|
++| M-SIDECAR-CALCULATION → M-SOLARSAGE-CHART-MODELS → M-SIDECAR-SCHEMA-NATAL → M-NORMALIZATION-SERVICE → M-NATAL-CONTEXT-SERVICE | Sidecar natal response carries a `house` (int 1–12 or null) on every planet computed in the natal calculation path with the same wraparound interval semantics as the API's `find_house`; API normalization prefers a valid provided `house` (int 1–12) and otherwise falls back to `find_house`; natal context passes the field through without dropping it and old cached contexts (no `house`) stay valid. | S1: `apps/solarsage/tests/test_planet_house.py` — every natal planet carries `house`, values match cusp intervals including 12th/1st-house wraparound, both PLACIDUS and WHOLE_SIGN covered. S2: `apps/api/tests/test_normalization_planet_house.py` — provided valid `house` preferred; absent `house` (old sidecar) and invalid values (`0`, `13`, wrong type) fall back to `find_house`. S3: pre-existing sidecar natal tests and API normalization/natal-context tests stay green. |
++
+ ## UC-SCORING-SEMANTIC-LLM · Interpretation pipeline
+ 
+ | Modules | Gates | Scenarios |
