@@ -86,6 +86,7 @@ EXPECTED_ROOT_NAMES = [
     "TodayConvergencePayload",
     "TodayPayload",
     "TodaySphereDrilldownPayload",
+    "TodaySpherePagePayload",
     "YesterdayCheckinResponse",
 ]
 

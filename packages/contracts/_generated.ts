@@ -620,6 +620,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/todayspherepagepayload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Todayspherepagepayload */
+        get: operations["contracts__todayspherepagepayload___contracts___todayspherepagepayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/yesterdaycheckinresponse": {
         parameters: {
             query?: never;
@@ -3260,6 +3277,70 @@ export interface components {
              */
             state: "convergence_today" | "quiet_day";
         };
+        /** TodaySphereNatal */
+        TodaySphereNatal: {
+            /** Paragraphs */
+            paragraphs?: components["schemas"]["TodaySphereNatalParagraph"][] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "unavailable";
+        };
+        /** TodaySphereNatalParagraph */
+        TodaySphereNatalParagraph: {
+            /** Sourcefactids */
+            sourceFactIds: string[];
+            /** Text */
+            text: string;
+        };
+        /** TodaySpherePagePayload */
+        TodaySpherePagePayload: {
+            /**
+             * Birthtimemode
+             * @enum {string}
+             */
+            birthTimeMode: "exact" | "bucket" | "unknown";
+            /** Housesavailable */
+            housesAvailable: boolean;
+            natal: components["schemas"]["TodaySphereNatal"];
+            /** Period */
+            period: components["schemas"]["TodaySpherePeriodItem"][];
+            /** Periodidentity */
+            periodIdentity: string;
+            /**
+             * Periodunavailable
+             * @default false
+             */
+            periodUnavailable: boolean;
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+        };
+        /** TodaySpherePeriodItem */
+        TodaySpherePeriodItem: {
+            /**
+             * Activefrom
+             * Format: date
+             */
+            activeFrom: string;
+            /**
+             * Activeuntil
+             * Format: date
+             */
+            activeUntil: string;
+            /** Id */
+            id: string;
+            /**
+             * Technique
+             * @enum {string}
+             */
+            technique: "annual_profection" | "firdar_major" | "firdar_minor" | "solar_return";
+            /** Title */
+            title: string;
+        };
         /** TodayV2ActivatedTarget */
         TodayV2ActivatedTarget: {
             /** Activationids */
@@ -4430,6 +4511,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodaySphereDrilldownPayload"];
+                };
+            };
+        };
+    };
+    contracts__todayspherepagepayload___contracts___todayspherepagepayload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodaySpherePagePayload"];
                 };
             };
         };

@@ -5,7 +5,7 @@
 #       semantic_layers (W-4.3), microcopy_misses (W-9.2),
 #       natal_chart_cache, natal_reports (W-NATAL-FULL).
 # DEPENDENCIES: sqlalchemy, app.db.session.Base
-# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE, NATAL_CHART_CACHE_TABLE, NATAL_REPORTS_TABLE, TODAY_SNAPSHOTS_TABLE, TODAY_SNAPSHOT_NARRATIVES_TABLE]
+# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE, NATAL_CHART_CACHE_TABLE, NATAL_REPORTS_TABLE, TODAY_SNAPSHOTS_TABLE, TODAY_SNAPSHOT_NARRATIVES_TABLE, TODAY_SPHERE_NATAL_NARRATIVES_TABLE]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-AUTH-TG.models
@@ -32,6 +32,7 @@
 #   - PromoRedemption: row in `promo_redemptions`, audit log of user campaign redemptions
 #   - TodaySnapshot: published deterministic Today convergence snapshot
 #   - TodaySnapshotNarrative: versioned narrative lease/content row for a snapshot
+#   - TodaySphereNatalNarrative: profile/sphere/prompt keyed static sphere natal content
 # dependencies:
 #   - M-DB-SESSION (Base)
 #   - alembic 0001_users migration creates users/profiles/sessions tables
@@ -52,6 +53,8 @@
 #   - PromoRedemption: unique (campaign_id, user_id) constraint
 #   - TodaySnapshot: unique published identity by owner/date/input/formula/calculation/canon hashes
 #   - TodaySnapshotNarrative: one narrative version per snapshot
+#   - TodaySphereNatalNarrative: one successful natal narrative per
+#     owner/profile/sphere/prompt identity
 #   - EveningCheckin forecast lineage is nullable and does not alter owner/date uniqueness or streak
 #   - UserProfile.birth_time_mode is one of "exact", "bucket", "unknown"
 #   - UserProfile.birth_time_bucket is NULL or one of "night", "morning",
@@ -97,12 +100,15 @@
 #   - SYNASTRY_TABLES: declarative classes SynastryPartner, SynastryReport, SynastryAspectDetail, SynastryFeedback, SynastryCreditSpend -> "synastry_partners", "synastry_reports", "synastry_aspect_details", "synastry_feedback", "synastry_credit_spends"
 #   - TODAY_SNAPSHOTS_TABLE: declarative class TodaySnapshot -> "today_snapshots"
 #   - TODAY_SNAPSHOT_NARRATIVES_TABLE: declarative class TodaySnapshotNarrative -> "today_snapshot_narratives"
+#   - TODAY_SPHERE_NATAL_NARRATIVES_TABLE: declarative class
+#     TodaySphereNatalNarrative -> "today_sphere_natal_narratives"
 # owned_tests:
 #   - apps/api/tests/test_auth_endpoints.py
 #   - apps/api/tests/test_profile_endpoints.py
 #   - apps/api/tests/test_alembic_roundtrip.py
 #   - apps/api/tests/test_birth_time_mode_migration.py
 #   - apps/api/tests/test_today_convergence_snapshot_schema.py
+#   - apps/api/tests/test_today_sphere_natal_postgres.py
 #   - apps/api/tests/test_access_service.py
 #   - apps/api/tests/test_cache.py
 #   - apps/api/tests/test_microcopy_misses.py
@@ -751,6 +757,50 @@ class TodaySnapshotNarrative(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 # END_BLOCK: TODAY_SNAPSHOT_NARRATIVES_TABLE
+
+
+# START_BLOCK: TODAY_SPHERE_NATAL_NARRATIVES_TABLE
+class TodaySphereNatalNarrative(Base):
+    """Successful claim-bound natal text for one static sphere page."""
+
+    __tablename__ = "today_sphere_natal_narratives"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "profile_hash",
+            "sphere_key",
+            "prompt_version",
+            name="uq_sphere_natal_identity",
+        ),
+        Index(
+            "ix_today_sphere_natal_narratives_user_sphere",
+            "user_id",
+            "sphere_key",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    sphere_key: Mapped[str] = mapped_column(String(24), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_json: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+# END_BLOCK: TODAY_SPHERE_NATAL_NARRATIVES_TABLE
 
 
 # START_BLOCK: EVENING_CHECKINS_TABLE

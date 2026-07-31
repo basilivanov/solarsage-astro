@@ -72,6 +72,7 @@ from .today_convergence import TodayConvergencePayload
 from .today_day_history import DayHistoryPayload
 from .today_focus import FocusEventDrilldown
 from .today_sphere_drilldown import TodaySphereDrilldownPayload
+from .today_sphere_page import TodaySpherePagePayload
 
 
 # START_BLOCK: PUBLIC_ROOTS
@@ -112,6 +113,7 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     TodayConvergencePayload,
     TodayPayload,
     TodaySphereDrilldownPayload,
+    TodaySpherePagePayload,
     YesterdayCheckinResponse,
 )
 # END_BLOCK: PUBLIC_ROOTS
