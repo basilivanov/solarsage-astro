@@ -30,7 +30,8 @@
 #     price to 0.01); acceptance = passed verification gates / total gates;
 #   - the price axis (and cost metric block) is dropped unless every candidate
 #     has a positive cost.normalizedCostUsd;
-#   - all review strings are HTML-escaped except footerNotes (trusted HTML).
+#   - all review strings are HTML-escaped except footerNotes (trusted HTML,
+#     "**bold**" markdown converted to <strong>).
 # failure_policy: missing or invalid input -> message on stderr, non-zero exit.
 # END_MODULE_CONTRACT: M-SCRIPTS-AGENT-EVAL-REPORT
 
@@ -113,6 +114,7 @@ from html import escape as esc
 import json
 import math
 from pathlib import Path
+import re
 import sys
 from typing import Any, Sequence
 
@@ -214,6 +216,9 @@ class Candidate:
     accept_pct: float = 0.0
     speed_score: float | None = None
     price_score: float | None = None
+    # Optional controller note about a re-run (metrics.json "rerunNote");
+    # consumed by scripts/agent_eval_summary.py footnotes, not by this report.
+    rerun_note: str | None = None
 
 
 def hex_to_rgba(hex_color: str, alpha: float) -> str:
@@ -299,6 +304,7 @@ def build_candidates(metrics: dict[str, Any], review: dict[str, Any]) -> list[Ca
                 cost_usd=float(cost_usd) if isinstance(cost_usd, (int, float)) else None,
                 pricing_source=cost.get("pricingSource"),
                 usage=m.get("usage") or {},
+                rerun_note=m.get("rerunNote") if isinstance(m.get("rerunNote"), str) else None,
             )
         )
 
@@ -1160,12 +1166,27 @@ def render_findings(candidates: list[Candidate], review: dict[str, Any]) -> str:
     </section>"""
 
 
+def render_footer_note(note: str) -> str:
+    # START_FUNCTION_CONTRACT: F-M-SCRIPTS-AGENT-EVAL-REPORT.render_footer_note
+    # purpose: Render one footerNotes entry: input is trusted human-authored
+    #   HTML (not escaped); additionally `**bold**` markdown is converted to
+    #   <strong> because review authors use it (see evals/results/*/review.json).
+    # inputs: note — raw footerNotes string.
+    # returns: HTML fragment safe to embed.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: non-string input is stringified by caller contract; no raise.
+    # END_FUNCTION_CONTRACT: F-M-SCRIPTS-AGENT-EVAL-REPORT.render_footer_note
+    return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", note)
+
+
 def render_footer(candidates: list[Candidate], review: dict[str, Any], base_sha: str | None, base_tree: str | None) -> str:
     notes = review.get("footerNotes") or []
     if not isinstance(notes, list):
         fail("review.footerNotes must be a list of strings")
-    # footerNotes are trusted human-authored HTML and intentionally not escaped.
-    left = "\n        ".join(f"<p>{note}</p>" for note in notes) or "<p>—</p>"
+    # footerNotes are trusted human-authored HTML and intentionally not escaped;
+    # **bold** markdown is converted (see render_footer_note).
+    left = "\n        ".join(f"<p>{render_footer_note(note)}</p>" for note in notes) or "<p>—</p>"
 
     right: list[str] = []
     seen_sources: set[str] = set()
