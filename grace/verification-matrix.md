@@ -97,6 +97,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-BACKEND-API → M-CONTRACTS | Quiet payloads allow the legal maximum `mainEvent + 3 impulses + lookahead`; quiet still forbids convergences, preserves event-ledger/narrative/access guards, and caps the union of presentation spheres at three. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_contract.py -q`. S2: four unique exact-time event records round-trip in the maximum quiet composition; fourth presentation sphere fails `sphere_union_cap`; convergence/hero/preview/locked/unavailable guards remain green. S3: generated contracts report zero drift. |
 
+## UC-TODAY-CONVERGENCE-W2-SELECTION · deterministic presentation selector
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-SELECTION → M-TODAY-CONVERGENCE-TONE → M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-LEDGER | Pure selector returns `convergence_today` only for a public-polarity C1 hero; otherwise it returns `quiet_day` with at most one rare main event and three fresh impulses. Group/event ranking is strength → IANA-local time → ID; evidence pairs preserve anchor → confirmation order; selected presentation spheres and group/event caps are deterministic; steady and fourth-sphere candidates fail closed or are skipped without upstream recalculation. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py tests/test_today_convergence_tone.py tests/test_today_convergence_selection.py -q`. S2: hero-first/medium-group, single-rare-main-event, legal main+impulses, local-time/permutation, long-running, sphere-cap, steady-only, and malformed-reference fixtures. S3: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days
