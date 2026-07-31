@@ -37,9 +37,14 @@ vi.mock("@/lib/api/profile", () => ({
   apiProfileToProfile: vi.fn((value: unknown) => value),
 }))
 
-vi.mock("@/hooks/use-profile", () => ({
-  useProfile: () => ({ saveProfile: vi.fn() }),
-}))
+vi.mock("@/lib/profile", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/profile")>()
+  return {
+    ...actual,
+    saveProfile: vi.fn(),
+    apiProfileToProfile: vi.fn((value: unknown) => value),
+  }
+})
 
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow"
 import type { OnboardingState } from "@/lib/reducers/onboarding-reducer"
@@ -133,3 +138,54 @@ describe("OnboardingFlow finish guards", () => {
   })
 })
 // END_BLOCK: GUARDS
+
+// START_BLOCK: SAVE_PATH
+describe("OnboardingFlow save path", () => {
+  it("shows the backend error when profile save fails", async () => {
+    mockUpdateProfile.mockRejectedValue(new Error("Failed to update profile"))
+    render(
+      <OnboardingFlow
+        onComplete={() => undefined}
+        initialState={filledState}
+      />,
+    )
+
+    const cta = await screen.findByRole(
+      "button",
+      { name: /Открыть мой день/i },
+      { timeout: 4000 },
+    )
+    fireEvent.click(cta)
+
+    expect(await screen.findByText("Failed to update profile")).toBeTruthy()
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1)
+  })
+
+  it("completes and reports profile.updated on successful save", async () => {
+    mockUpdateProfile.mockResolvedValue({})
+    const onComplete = vi.fn()
+    render(
+      <OnboardingFlow
+        onComplete={onComplete}
+        initialState={filledState}
+      />,
+    )
+
+    const cta = await screen.findByRole(
+      "button",
+      { name: /Открыть мой день/i },
+      { timeout: 4000 },
+    )
+    fireEvent.click(cta)
+
+    await vi.waitFor(() => expect(mockUpdateProfile).toHaveBeenCalled())
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1))
+    expect(mockUpdateProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gender: "male",
+        birth: expect.objectContaining({ birthTimeMode: "exact" }),
+      }),
+    )
+  })
+})
+// END_BLOCK: SAVE_PATH
