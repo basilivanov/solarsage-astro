@@ -67,7 +67,7 @@ describe('useCalendar', () => {
   it('should fetch calendar data successfully', async () => {
     const mockPayload: CalendarPayload = {
       meta: {
-        schemaVersion: 'calendar/v1',
+        schemaVersion: 'calendar/v2',
         contractVersion: 2,
         generatedAt: '2026-05-30T12:00:00Z',
       },
@@ -77,7 +77,7 @@ describe('useCalendar', () => {
       days: [{
         date: '2026-05-01', dayNumber: 1,
         isCurrentMonth: true, isToday: false, disabled: false,
-        dayStatus: 'supportive',
+        dayState: 'ordinary',
         access: { state: 'full', reason: null, referralDaysLeft: null, subscriptionActive: null, accessUntil: null },
         lunar: {
           phase: 'waxing_crescent',
