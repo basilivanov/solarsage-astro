@@ -79,6 +79,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Pure immutable ledger deduplicates only by `canonical_event_id`; frozen producer precedence selects enrichment without changing identity; provenance is a sorted union; malformed rows and unknown producers fail closed into audit; audit-only units stay non-public; DayDelta matches exact semantic keys only. Grouping, hero, tone, projection, and adapters remain out of scope. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py -q`. S2: activation/day_signal dedup, permutation parity, deterministic same-producer conflict, immutable audit, malformed-row aggregation, and background/time-sensitive preservation. S3: exact semantic-key upgrade passes; duplicate and unmatched trigger counts are deterministic; planet-name trigger does not upgrade. S4: packet Ruff, `grace_lint`, marker, and `git diff --check` gates pass. |
 
+## UC-TODAY-CONVERGENCE-W2-GROUPS · direct stars, C1 hero, and group spheres
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Pure immutable direct-star groups use only shared target/theme links; public members are evidence-eligible and non-background; distinct drivers determine group validity; C1 requires a rare target-eligible anchor plus a direct independent confirmer; spheres project once per physical group with majority/anchor/canonical tie-break and at most one secondary. Tone, presentation, and adapters remain out of scope. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py -q`. S2: direct-star bridge-negative, background/ineligible exclusion, producer dedup, distinct-driver, hero fast/lot/direct-confirmation negatives, and immutable deterministic records. S3: per-group sphere majority, tie-break, secondary threshold/cap, input permutation, stable group IDs, duplicate-ledger-ID typed error. S4: packet Ruff, `grace_lint`, markers, and `git diff --check` pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days
