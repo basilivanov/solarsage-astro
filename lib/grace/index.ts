@@ -39,7 +39,7 @@
 // END_MODULE_MAP: M-FRONTEND-GRACE-INDEX
 
 export { fetchDay, fetchCalendar, ApiError, ApiContractError } from './api/client';
-export { useDay } from './hooks/useDay';
+
 export { useCalendar } from './hooks/useCalendar';
-export type { UseDayResult } from './hooks/useDay';
+
 export type { UseCalendarResult } from './hooks/useCalendar';

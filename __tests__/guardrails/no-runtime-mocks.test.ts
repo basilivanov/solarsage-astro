@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, join, normalize } from "node:path"
 
 const roots = ["app/(grace)", "components", "hooks", "lib/api", "lib/adapters", "lib/grace"]
@@ -47,6 +47,7 @@ function isForbiddenImport(file: string, importPath: string) {
 }
 
 function listSourceFiles(root: string): string[] {
+  if (!existsSync(root)) return []
   const entries = readdirSync(root)
   const files: string[] = []
 
