@@ -1,0 +1,130 @@
+// ############################################################################
+// AI_HEADER: MODULE_TODAY_CONVERGENCE_HERO — convergence_today hero block.
+// ROLE: Renders the sole “what converged” presentation and its bound narrative.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HERO
+// purpose: Render one hero and secondary convergence rows from generated groups.
+// owns:
+//   - components/today-convergence/convergence-hero.tsx
+// inputs: generated groups, dayTone, contentState, and optional retry callback.
+// outputs: convergence hero and public sphere/polarity selectors.
+// dependencies: today-formatters, today-narrative, packages/contracts/today-convergence.ts.
+// side_effects: sphere links navigate to the static sphere path; retry is delegated.
+// emitted_logs: none.
+// invariants: the “сошлось” copy exists only in this component; one hero group precedes secondary rows.
+// failure_policy: no hero is rendered when the caller supplies an empty group list.
+// END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HERO
+
+// START_MODULE_MAP: M-TODAY-CONVERGENCE-HERO
+// public_entrypoints:
+//   - ConvergenceHero
+// semantic_blocks:
+//   - HERO: primary convergence group and tone marker.
+//   - SECONDARY: additional canonical groups.
+// owned_tests:
+//   - __tests__/components/today-convergence/today-screen.test.tsx
+// END_MODULE_MAP: M-TODAY-CONVERGENCE-HERO
+
+import type {
+  TodayConvergenceGroup,
+  TodayConvergencePayload,
+} from "@/packages/contracts/today-convergence";
+import { getPolarityLabel, getTodaySphereLabel } from "./today-formatters";
+import { TodayNarrative } from "./today-narrative";
+
+type Props = {
+  groups: readonly TodayConvergenceGroup[];
+  dayTone: TodayConvergencePayload["dayTone"];
+  contentState: TodayConvergencePayload["contentState"];
+  onRetry?: () => void;
+};
+
+function groupClaims(group: TodayConvergenceGroup) {
+  return [group.summary, group.meaning, group.action];
+}
+
+function SphereLink({
+  sphere,
+  polarity,
+}: {
+  sphere: TodayConvergenceGroup["primarySphere"];
+  polarity: TodayConvergenceGroup["polarity"];
+}) {
+  return (
+    <a
+      href={`/day/spheres/${sphere}`}
+      data-testid={`convergence-sphere-${sphere}`}
+      data-polarity={polarity}
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-1 font-serif text-[20px] leading-tight text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      {getTodaySphereLabel(sphere)}
+      <span className="font-sans text-[12px] text-muted-foreground">{getPolarityLabel(polarity)}</span>
+    </a>
+  );
+}
+
+// START_BLOCK: HERO
+export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Props) {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-HERO.ConvergenceHero
+  // purpose: Render the primary convergence group, secondary rows, and bound LLM zone.
+  // inputs: groups — selected generated convergence groups; dayTone/contentState — root axes; onRetry — LLM retry.
+  // returns: hero DOM or null for an empty group list.
+  // side_effects: link navigation and delegated retry callback.
+  // emitted_logs: none.
+  // error_behavior: empty groups produce no hero rather than a fabricated placeholder.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-HERO.ConvergenceHero
+  const hero = groups[0];
+  if (!hero) return null;
+
+  const secondaryGroups = groups.slice(1);
+  const claims = groups.flatMap(groupClaims);
+
+  return (
+    <section
+      data-testid="convergence-hero"
+      data-day-tone={dayTone ?? undefined}
+      data-evidence-level={hero.evidenceLevel}
+      className="overflow-hidden rounded-[24px] border border-primary/40 bg-card p-5 shadow-sm"
+    >
+      <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        Что сошлось сегодня
+      </p>
+      <div className="mt-4 flex flex-col items-start gap-1">
+        <SphereLink sphere={hero.primarySphere} polarity={hero.polarity} />
+        {hero.secondarySphere ? (
+          <SphereLink sphere={hero.secondarySphere} polarity={hero.polarity} />
+        ) : null}
+      </div>
+
+      {secondaryGroups.length > 0 ? (
+        <div className="mt-5 space-y-2">
+          <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Также сегодня
+          </p>
+          {secondaryGroups.map((group) => (
+            <div
+              key={group.id}
+              data-testid="convergence-secondary"
+              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-[14px]"
+            >
+              <SphereLink sphere={group.primarySphere} polarity={group.polarity} />
+              {group.secondarySphere ? (
+                <>
+                  <span aria-hidden className="text-muted-foreground">·</span>
+                  <SphereLink sphere={group.secondarySphere} polarity={group.polarity} />
+                </>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex items-center gap-2 text-[13px] text-muted-foreground">
+        <span>Доказательность: {hero.evidenceLevel === "high" ? "высокая" : "средняя"}</span>
+      </div>
+      <TodayNarrative state={contentState} claims={claims} onRetry={onRetry} />
+    </section>
+  );
+}
+// END_BLOCK: HERO
