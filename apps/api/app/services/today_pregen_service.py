@@ -129,6 +129,7 @@ class PregenUserOutcome(StrEnum):
     LLM_SKIPPED_IN_FLIGHT = "llm_skipped_in_flight"
     LLM_SKIPPED_COOLDOWN = "llm_skipped_cooldown"
     LLM_SKIPPED_EXHAUSTED = "llm_skipped_exhausted"
+    LLM_SKIPPED_NOT_NEEDED = "llm_skipped_not_needed"
     FAILED = "failed"
 
 
@@ -293,6 +294,7 @@ def _normalise_activity(value: object, fallback: object, now: datetime) -> datet
 
 
 def _access_state(access_state: object) -> str:
+
     # START_FUNCTION_CONTRACT: F-M-TODAY-PREGEN-SERVICE.access_state
     # purpose: Read the stable state value from a ContentAccessState-like object.
     # inputs: AccessService result.
@@ -303,6 +305,23 @@ def _access_state(access_state: object) -> str:
     # END_FUNCTION_CONTRACT: F-M-TODAY-PREGEN-SERVICE.access_state
     value = getattr(access_state, "state", access_state)
     return value.lower() if isinstance(value, str) else "invalid"
+
+
+def _snapshot_has_selected_blocks(snapshot: object) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-PREGEN-SERVICE.has_selected_blocks
+    # purpose: Tell whether a snapshot carries any LLM-writable selected block.
+    # inputs: snapshot — TodaySnapshot-like row with deterministic_result_json.
+    # returns: True when convergences, main_event, or impulses are present.
+    # side_effects: none. emitted_logs: none.
+    # error_behavior: malformed payloads answer False (fail-closed no-LLM).
+    # END_FUNCTION_CONTRACT: F-M-TODAY-PREGEN-SERVICE.has_selected_blocks
+    result = getattr(snapshot, "deterministic_result_json", None)
+    if not isinstance(result, dict):
+        return False
+    selected = result.get("selected")
+    if not isinstance(selected, dict):
+        return False
+    return bool(selected.get("convergences") or selected.get("main_event") or selected.get("impulses"))
 
 
 def _validate_settings(config: object) -> None:
@@ -627,6 +646,11 @@ class TodayPregenService:
                 else PregenUserOutcome.LLM_SKIPPED_PREVIEW
             )
             return _NarrativeResult(skip)
+
+        if not _snapshot_has_selected_blocks(snapshot):
+            # Quiet day with no selected blocks: contentState=not_needed —
+            # no lease, no provider call (deterministic data already published).
+            return _NarrativeResult(PregenUserOutcome.LLM_SKIPPED_NOT_NEEDED)
 
         cutoff = now - timedelta(days=self.settings.day_pregen_llm_active_days)
         if member.last_active_at < cutoff:

@@ -451,7 +451,7 @@ def test_quiet_without_content_gets_honest_no_strong_accent_context() -> None:
     assert context.sphere is None
     assert context.event_ids == []
     assert full_payload.events == []
-    assert full_payload.content_state == "pending"
+    assert full_payload.content_state == "not_needed"
     # Preview keeps every content block hidden (04 §3.2) and stays valid.
     assert preview_payload.period_context is None
     assert preview_payload.preview_teaser is not None

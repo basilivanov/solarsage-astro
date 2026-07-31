@@ -605,6 +605,11 @@ def _content_state_and_narrative(
     impulses: list[dict[str, Any]],
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any] | None, list[dict[str, Any]]]:
     if narrative is None:
+        # Quiet day without any selected blocks carries only the honest
+        # no_strong_accent context — there is nothing for the LLM to write
+        # (04 §3.2 full + quiet + not_needed).
+        if not groups and main_event is None and not impulses:
+            return "not_needed", groups, main_event, impulses
         return "pending", groups, main_event, impulses
     narrative_snapshot_id = getattr(narrative, "snapshot_id", _MISSING)
     if narrative_snapshot_id is _MISSING or str(narrative_snapshot_id) != str(snapshot.id):

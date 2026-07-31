@@ -124,6 +124,7 @@ class FakeSnapshotService:
             profile_hash=document.profile_hash,
             first_day_seen_at=None,
             first_lookahead_seen_at=None,
+            deterministic_result_json={"selected": {"convergences": [{"group_id": "cvg-test"}], "main_event": None, "impulses": []}},
         )
         self.store.snapshots[key] = snapshot
         self.store.publications += 1
@@ -138,6 +139,7 @@ class FakeSnapshotService:
             supersedes_snapshot_id=old_snapshot_id,
             first_day_seen_at=None,
             first_lookahead_seen_at=None,
+            deterministic_result_json={"selected": {"convergences": [{"group_id": "cvg-test"}], "main_event": None, "impulses": []}},
         )
         self.store.snapshots[key] = snapshot
         self.store.supersessions += 1

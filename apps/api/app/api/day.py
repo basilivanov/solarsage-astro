@@ -253,6 +253,23 @@ def _retry_at() -> datetime:
     return datetime.now(UTC) + _NARRATIVE_RETRY_DELAY
 
 
+def _snapshot_has_selected_blocks(snapshot: object) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-API-DAY._snapshot_has_selected_blocks
+    # purpose: Tell whether a snapshot carries any LLM-writable selected block.
+    # inputs: snapshot — TodaySnapshot-like row with deterministic_result_json.
+    # returns: True when convergences, main_event, or impulses are present.
+    # side_effects: none. emitted_logs: none.
+    # error_behavior: malformed payloads answer False (fail-closed no-LLM).
+    # END_FUNCTION_CONTRACT: F-M-API-DAY._snapshot_has_selected_blocks
+    result = getattr(snapshot, "deterministic_result_json", None)
+    if not isinstance(result, dict):
+        return False
+    selected = result.get("selected")
+    if not isinstance(selected, dict):
+        return False
+    return bool(selected.get("convergences") or selected.get("main_event") or selected.get("impulses"))
+
+
 async def _run_narrative_background(
     db: AsyncSession,
     snapshot: object,
@@ -315,6 +332,11 @@ async def _project_full_day(
     lease_service = TodayNarrativeLeaseService(db)
     narrative = await lease_service.load(snapshot.id, settings.today_narrative_prompt_version)
     claim_or_skip: NarrativeLeaseClaim | NarrativeLeaseSkip | None = None
+    if narrative is None and not _snapshot_has_selected_blocks(snapshot):
+        # Quiet day with no selected blocks: nothing for the LLM to write —
+        # projection returns contentState=not_needed, no lease is created.
+        payload = project_snapshot_payload(snapshot, None, access_state)
+        return payload, None
     if narrative is None or narrative.status != "ready":
         claim_or_skip = await lease_service.acquire(
             snapshot.id,
