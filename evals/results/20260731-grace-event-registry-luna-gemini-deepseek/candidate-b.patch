@@ -1,0 +1,39 @@
+diff --git a/apps/api/app/core/logging_events.py b/apps/api/app/core/logging_events.py
+index 1c029d4a..a8e7cc51 100644
+--- a/apps/api/app/core/logging_events.py
++++ b/apps/api/app/core/logging_events.py
+@@ -65,6 +65,7 @@ LogEventName = Literal[
+     # day / calendar
+     "day.viewed",
+     "checkin.submitted",
++    "checkin.metrics_viewed",
+     "feedback.reminder_sent",
+     "feedback.broadcast_skipped",
+     "feedback.received",
+diff --git a/grace/canon/observability.xml b/grace/canon/observability.xml
+index 8a9a0cd8..1e6081bd 100644
+--- a/grace/canon/observability.xml
++++ b/grace/canon/observability.xml
+@@ -254,6 +254,10 @@
+       <payload-field name="cached"       type="boolean" required="true" />
+     </event>
+     <event name="checkin.submitted"      owner="W-FEEDBACK" desc="Evening checkin submitted." />
++    <event name="checkin.metrics_viewed" owner="M-COMPONENTS-CHECKIN-STATISTICS" desc="Profile check-in statistics viewed.">
++      <payload-field name="total_checkins" type="number" required="true" />
++      <payload-field name="range_days"     type="number" required="true" />
++    </event>
+     <event name="feedback.reminder_sent"  owner="W-FEEDBACK" desc="Feedback broadcast reminder sent.">
+       <payload-field name="count"        type="number" required="true" />
+     </event>
+diff --git a/lib/log/events.gen.ts b/lib/log/events.gen.ts
+index 5c0fc8c7..703abc99 100644
+--- a/lib/log/events.gen.ts
++++ b/lib/log/events.gen.ts
+@@ -44,6 +44,7 @@ export type LogEventName =
+   // day / calendar
+   | "day.viewed"
+   | "checkin.submitted"
++  | "checkin.metrics_viewed"
+   | "feedback.reminder_sent"
+   | "feedback.broadcast_skipped"
+   | "feedback.received"

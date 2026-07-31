@@ -1,0 +1,239 @@
+diff --git a/__tests__/components/CheckinStatistics.test.tsx b/__tests__/components/CheckinStatistics.test.tsx
+new file mode 100644
+index 00000000..02108c19
+--- /dev/null
++++ b/__tests__/components/CheckinStatistics.test.tsx
+@@ -0,0 +1,124 @@
++// @vitest-environment jsdom
++// ############################################################################
++// AI_HEADER: MODULE_TESTS_CHECKIN_STATISTICS
++// ROLE: Unit tests for CheckinStatistics rendering and checkin.metrics_viewed emission.
++// DEPENDENCIES: vitest, @testing-library/react, components/profile/checkin-statistics
++// GRACE_ANCHORS: [CHECKIN_STATISTICS_TESTS]
++// SLICE: SLICE-PROFILE-ONBOARDING
++// ############################################################################
++
++// START_MODULE_CONTRACT: M-TESTS-CHECKIN-STATISTICS
++// purpose: Verify CheckinStatistics rendering contract and the checkin.metrics_viewed
++//   business event emission rules (exactly once per successful non-empty load, never on
++//   loading/error/empty, exact payload, existing rendered content preserved).
++// owns:
++//   - __tests__/components/CheckinStatistics.test.tsx
++// inputs: mock lib/api/checkin and lib/log
++// outputs: Vitest assertion results
++// dependencies:
++//   - M-COMPONENTS-CHECKIN-STATISTICS
++// side_effects: renders React components in jsdom environment
++// failure_policy: raise assertions
++// END_MODULE_CONTRACT: M-TESTS-CHECKIN-STATISTICS
++
++// START_MODULE_MAP: M-TESTS-CHECKIN-STATISTICS
++// public_entrypoints:
++//   - none (test suite)
++// semantic_blocks:
++//   - EMISSION_TESTS: event emitted once with exact payload on successful non-empty load
++//   - NEGATIVE_TESTS: no emission on error or empty metrics
++//   - RENDER_TESTS: existing rendered content still present
++// owned_tests:
++//   - __tests__/components/CheckinStatistics.test.tsx
++// END_MODULE_MAP: M-TESTS-CHECKIN-STATISTICS
++
++import { render, screen, waitFor } from "@testing-library/react"
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
++
++const { mockGetCheckinMetrics, mockLogEvent } = vi.hoisted(() => ({
++  mockGetCheckinMetrics: vi.fn(),
++  mockLogEvent: vi.fn(),
++}))
++
++vi.mock("@/lib/api/checkin", () => ({
++  getCheckinMetrics: (...args: unknown[]) => mockGetCheckinMetrics(...args),
++  formatDateInTimeZone: () => "2026-07-31",
++}))
++
++vi.mock("@/lib/log", () => ({
++  logEvent: (...args: unknown[]) => mockLogEvent(...args),
++}))
++
++import { CheckinStatistics } from "@/components/profile/checkin-statistics"
++
++function makeMetrics(totalCheckins: number) {
++  return {
++    totalCheckins,
++    currentStreak: 3,
++    longestStreak: 10,
++    averageMood: 3.5,
++    averageEnergy: 3.2,
++    averageAccuracy: 2.8,
++    moodDistribution: { "3": 2, "4": 1 },
++    accuracyDistribution: {},
++    tagFrequency: { Спокойствие: 2 },
++  }
++}
++
++describe("CheckinStatistics", () => {
++  beforeEach(() => {
++    vi.clearAllMocks()
++  })
++
++  afterEach(() => {
++    vi.resetModules()
++  })
++
++  it("renders statistics and emits checkin.metrics_viewed exactly once on successful load", async () => {
++    mockGetCheckinMetrics.mockResolvedValue(makeMetrics(12))
++
++    render(<CheckinStatistics />)
++
++    await waitFor(() => {
++      expect(screen.getByTestId("profile-checkin-statistics")).toBeDefined()
++    })
++    expect(screen.getByText("Статистика оценок")).toBeDefined()
++    expect(screen.getByText("Текущая серия")).toBeDefined()
++    expect(screen.getByText("Всего оценок")).toBeDefined()
++
++    expect(mockLogEvent).toHaveBeenCalledTimes(1)
++    expect(mockLogEvent).toHaveBeenCalledWith(
++      "checkin.metrics_viewed",
++      { total_checkins: 12, range_days: 30 },
++      {
++        slice: "SLICE-PROFILE-ONBOARDING",
++        module: "M-COMPONENTS-CHECKIN-STATISTICS",
++        block: "CHECKIN_STATISTICS_COMPONENT",
++      },
++    )
++  })
++
++  it("does not emit when the metrics fetch fails", async () => {
++    mockGetCheckinMetrics.mockRejectedValue(new Error("boom"))
++
++    render(<CheckinStatistics />)
++
++    await waitFor(() => {
++      expect(screen.getByRole("alert")).toBeDefined()
++    })
++    expect(screen.getByText(/Статистика оценок недоступна/)).toBeDefined()
++    expect(mockLogEvent).not.toHaveBeenCalled()
++  })
++
++  it("does not emit when metrics are empty (totalCheckins === 0)", async () => {
++    mockGetCheckinMetrics.mockResolvedValue(makeMetrics(0))
++
++    const { container } = render(<CheckinStatistics />)
++
++    await waitFor(() => {
++      expect(mockGetCheckinMetrics).toHaveBeenCalledTimes(1)
++    })
++    expect(container.querySelector('[data-testid="profile-checkin-statistics"]')).toBeNull()
++    expect(mockLogEvent).not.toHaveBeenCalled()
++  })
++})
+diff --git a/apps/api/app/core/logging_events.py b/apps/api/app/core/logging_events.py
+index 1c029d4a..a8e7cc51 100644
+--- a/apps/api/app/core/logging_events.py
++++ b/apps/api/app/core/logging_events.py
+@@ -65,6 +65,7 @@ LogEventName = Literal[
+     # day / calendar
+     "day.viewed",
+     "checkin.submitted",
++    "checkin.metrics_viewed",
+     "feedback.reminder_sent",
+     "feedback.broadcast_skipped",
+     "feedback.received",
+diff --git a/components/profile/checkin-statistics.tsx b/components/profile/checkin-statistics.tsx
+index 14465b95..f80b3871 100644
+--- a/components/profile/checkin-statistics.tsx
++++ b/components/profile/checkin-statistics.tsx
+@@ -12,9 +12,9 @@
+ //   - components/profile/checkin-statistics.tsx
+ // inputs: timeZone (string | null)
+ // outputs: CheckinStatistics React component
+-// dependencies: getCheckinMetrics, packages/contracts
+-// side_effects: fetches checkin metrics from API
+-// emitted_logs: none
++// dependencies: getCheckinMetrics, packages/contracts, lib/log
++// side_effects: fetches checkin metrics from API; emits checkin.metrics_viewed on successful non-empty load
++// emitted_logs: checkin.metrics_viewed
+ // failure_policy: none
+ // END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-STATISTICS
+ 
+@@ -24,6 +24,7 @@
+ // semantic_blocks:
+ //   - CHECKIN_STATISTICS_COMPONENT: checkin statistics component
+ // owned_tests:
++//   - __tests__/components/CheckinStatistics.test.tsx
+ //   - __tests__/components/ProfileScreen.test.tsx
+ // END_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+ 
+@@ -33,6 +34,7 @@ import { useEffect, useState } from "react"
+ import { Award, BarChart3, Calendar, Flame, TrendingUp } from "lucide-react"
+ 
+ import { formatDateInTimeZone, getCheckinMetrics } from "@/lib/api/checkin"
++import { logEvent } from "@/lib/log"
+ import type { CheckinMetrics } from "@/packages/contracts"
+ 
+ type Props = {
+@@ -81,6 +83,17 @@ export function CheckinStatistics({ timeZone }: Props) {
+       .then((value) => {
+         if (!active) return
+         setMetrics(value)
++        if (value.totalCheckins > 0) {
++          logEvent(
++            "checkin.metrics_viewed",
++            { total_checkins: value.totalCheckins, range_days: 30 },
++            {
++              slice: "SLICE-PROFILE-ONBOARDING",
++              module: "M-COMPONENTS-CHECKIN-STATISTICS",
++              block: "CHECKIN_STATISTICS_COMPONENT",
++            },
++          )
++        }
+       })
+       .catch((reason: unknown) => {
+         if (!active) return
+diff --git a/grace/canon/observability.xml b/grace/canon/observability.xml
+index 8a9a0cd8..feded53b 100644
+--- a/grace/canon/observability.xml
++++ b/grace/canon/observability.xml
+@@ -254,6 +254,10 @@
+       <payload-field name="cached"       type="boolean" required="true" />
+     </event>
+     <event name="checkin.submitted"      owner="W-FEEDBACK" desc="Evening checkin submitted." />
++    <event name="checkin.metrics_viewed" owner="SLICE-PROFILE-ONBOARDING" desc="Profile check-in statistics loaded with non-empty metrics (aggregate counts only).">
++      <payload-field name="total_checkins" type="number" required="true" />
++      <payload-field name="range_days"     type="number" required="true" />
++    </event>
+     <event name="feedback.reminder_sent"  owner="W-FEEDBACK" desc="Feedback broadcast reminder sent.">
+       <payload-field name="count"        type="number" required="true" />
+     </event>
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..1ecf876f 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -55,6 +55,14 @@ These gates apply before broad autonomous business-feature work.
+ 
+ ---
+ 
++## UC-CHECKIN-METRICS-VIEW · Profile check-in statistics view
++
++| Modules | Gates | Scenarios |
++|---|---|---|
++| M-COMPONENTS-CHECKIN-STATISTICS → M-LOG-FRONTEND → M-OBSERVABILITY-EVENTS | Checkin statistics render unchanged; `checkin.metrics_viewed` emitted exactly once per successful non-empty load with aggregate-only payload `{total_checkins, range_days: 30}` and exact slice/module/block meta; never emitted on loading/error/empty; registry drift check stays green. | S1: `__tests__/components/CheckinStatistics.test.tsx` — emitted once with exact payload. S2: not emitted on fetch error. S3: not emitted for empty metrics (`totalCheckins === 0`). S4: existing rendered content (stats/mood/tags) still present. S5: `check_registry_drift()` passes — `grace/canon/observability.xml` ↔ `logging_events.py` ↔ `events.gen.ts`. |
++
++---
++
+ ## UC-DAY-VIEW · Today screen
+ 
+ | Modules | Gates | Scenarios |
+diff --git a/lib/log/events.gen.ts b/lib/log/events.gen.ts
+index 5c0fc8c7..703abc99 100644
+--- a/lib/log/events.gen.ts
++++ b/lib/log/events.gen.ts
+@@ -44,6 +44,7 @@ export type LogEventName =
+   // day / calendar
+   | "day.viewed"
+   | "checkin.submitted"
++  | "checkin.metrics_viewed"
+   | "feedback.reminder_sent"
+   | "feedback.broadcast_skipped"
+   | "feedback.received"

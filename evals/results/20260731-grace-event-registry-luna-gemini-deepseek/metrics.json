@@ -1,0 +1,476 @@
+{
+ "baseline": [
+  {
+   "name": "registry-drift",
+   "command": "python3 -c \"import sys; sys.path.insert(0,'scripts'); import check_logging_guardrails as g; sys.exit(0 if g.check_registry_drift() else 1)\"",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.065,
+   "passed": true,
+   "stdout": "verification-registry-drift.stdout.log",
+   "stderr": "verification-registry-drift.stderr.log"
+  },
+  {
+   "name": "frontend-checkin-statistics",
+   "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx --passWithNoTests",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.616,
+   "passed": true,
+   "stdout": "verification-frontend-checkin-statistics.stdout.log",
+   "stderr": "verification-frontend-checkin-statistics.stderr.log"
+  },
+  {
+   "name": "typescript",
+   "command": "npx tsc --noEmit",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 13.207,
+   "passed": true,
+   "stdout": "verification-typescript.stdout.log",
+   "stderr": "verification-typescript.stderr.log"
+  },
+  {
+   "name": "grace-backend",
+   "command": "python3 scripts/grace_lint.py apps/api/app",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.517,
+   "passed": true,
+   "stdout": "verification-grace-backend.stdout.log",
+   "stderr": "verification-grace-backend.stderr.log"
+  },
+  {
+   "name": "diff-check",
+   "command": "git diff --check",
+   "returncode": 0,
+   "timedOut": false,
+   "wallSeconds": 0.115,
+   "passed": true,
+   "stdout": "verification-diff-check.stdout.log",
+   "stderr": "verification-diff-check.stderr.log"
+  }
+ ],
+ "candidates": [
+  {
+   "candidate": "A",
+   "runner": "codex",
+   "modelKey": "luna-max",
+   "model": "gpt-5.6-luna",
+   "cliVersion": "codex-cli 0.146.0",
+   "pricingKey": "gpt-5.6-luna-2026-07-30",
+   "dependencyWarnings": [],
+   "agent": {
+    "command": [
+     "codex",
+     "exec",
+     "--json",
+     "--ephemeral",
+     "-s",
+     "danger-full-access",
+     "-m",
+     "gpt-5.6-luna",
+     "-C",
+     "/opt/solarsage-astro/.eval-runs/20260731t17261785507996z-grace-event-registry-v1/worktrees/candidate-a",
+     "-c",
+     "model_reasoning_effort=\"max\"",
+     "-c",
+     "approval_policy=\"never\"",
+     "-c",
+     "features.multi_agent=false",
+     "-"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 426.975
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "__tests__/components/CheckinStatistics.test.tsx",
+    "apps/api/app/core/logging_events.py",
+    "components/profile/checkin-statistics.tsx",
+    "grace/canon/observability.xml",
+    "grace/verification-matrix.md",
+    "lib/log/events.gen.ts"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "434219b53034d65d0c888626d731cfed9ba44458546f3d5f08c2a1d787600b65",
+   "patchBytes": 11848,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "registry-drift",
+     "command": "python3 -c \"import sys; sys.path.insert(0,'scripts'); import check_logging_guardrails as g; sys.exit(0 if g.check_registry_drift() else 1)\"",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.065,
+     "passed": true,
+     "stdout": "verification-registry-drift.stdout.log",
+     "stderr": "verification-registry-drift.stderr.log"
+    },
+    {
+     "name": "frontend-checkin-statistics",
+     "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx --passWithNoTests",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 1.42,
+     "passed": true,
+     "stdout": "verification-frontend-checkin-statistics.stdout.log",
+     "stderr": "verification-frontend-checkin-statistics.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.4,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.567,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.009,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "__tests__/components/CheckinStatistics.test.tsx",
+    "apps/api/app/core/logging_events.py",
+    "components/profile/checkin-statistics.tsx",
+    "grace/canon/observability.xml",
+    "grace/verification-matrix.md",
+    "lib/log/events.gen.ts"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "usage": {
+    "input_tokens": 1873033,
+    "cached_input_tokens": 1747456,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 20376,
+    "reasoning_tokens": 8833,
+    "reported_cost_usd": null
+   },
+   "cost": {
+    "pricingKey": "gpt-5.6-luna-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+    "componentsUsd": {
+     "uncachedInput": 0.0251154,
+     "cachedInput": 0.03494912,
+     "cacheWrite": 0.0,
+     "output": 0.0244512
+    },
+    "normalizedCostUsd": 0.08451572,
+    "reportedCostUsd": null,
+    "warnings": [
+     "aggregate input exceeds long-context threshold; exact per-request surcharge is unknown"
+    ]
+   },
+   "usageError": null
+  },
+  {
+   "candidate": "B",
+   "runner": "opencode",
+   "modelKey": "gemini-3.6-high",
+   "model": "cliproxy/gemini-3.6-flash-high",
+   "cliVersion": "1.18.9",
+   "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "38b59a6cd0695d138b820c1ae4f75125ef267dc7aa102e54ecfcf07da968728d"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t17401785508828z-grace-event-registry-v1/worktrees/candidate-a",
+     "--model",
+     "cliproxy/gemini-3.6-flash-high",
+     "--format",
+     "json",
+     "--title",
+     "eval:grace-event-registry-v1:A",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 76.792
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "apps/api/app/core/logging_events.py",
+    "grace/canon/observability.xml",
+    "lib/log/events.gen.ts"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "4201f9648416960e27904022d0a4e40ee0e00dfb7e28fc72c32c5760d7ff044f",
+   "patchBytes": 1685,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "registry-drift",
+     "command": "python3 -c \"import sys; sys.path.insert(0,'scripts'); import check_logging_guardrails as g; sys.exit(0 if g.check_registry_drift() else 1)\"",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.032,
+     "passed": true,
+     "stdout": "verification-registry-drift.stdout.log",
+     "stderr": "verification-registry-drift.stderr.log"
+    },
+    {
+     "name": "frontend-checkin-statistics",
+     "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx --passWithNoTests",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.721,
+     "passed": true,
+     "stdout": "verification-frontend-checkin-statistics.stdout.log",
+     "stderr": "verification-frontend-checkin-statistics.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 9.211,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.518,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "apps/api/app/core/logging_events.py",
+    "grace/canon/observability.xml",
+    "lib/log/events.gen.ts"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "openCodeSessionId": "ses_046bc4c65ffezNMUo2xV15bXgj",
+   "usage": {
+    "input_tokens": 296355,
+    "cached_input_tokens": 1477744,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 3236,
+    "reasoning_tokens": 6562,
+    "reported_cost_usd": 0.0
+   },
+   "cost": {
+    "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+    "pricingAsOf": "2026-07-30",
+    "pricingSource": "https://ai.google.dev/gemini-api/docs/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.4445325,
+     "cachedInput": 0.2216616,
+     "cacheWrite": 0.0,
+     "output": 0.073485
+    },
+    "normalizedCostUsd": 0.7396791,
+    "reportedCostUsd": 0.0,
+    "warnings": []
+   },
+   "usageError": null,
+   "rerunNote": "Second attempt: first run terminated by the runner after 21s with an empty patch (rc=0, no error). Re-run solo; metrics from the re-run."
+  },
+  {
+   "candidate": "C",
+   "runner": "opencode",
+   "modelKey": "deepseek-v4-flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "cliVersion": "1.18.9",
+   "pricingKey": "deepseek-v4-flash-2026-07-31",
+   "dependencyWarnings": [],
+   "openCodePolicy": {
+    "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+    "agent": "repo-eval",
+    "resolvedSha256": "9553ec6bd848a64e6d839ab0be5dc92e8b961b05c2dadaae5fef0d247aa30f55"
+   },
+   "agent": {
+    "command": [
+     "opencode",
+     "run",
+     "--pure",
+     "--dir",
+     "/opt/solarsage-astro/.eval-runs/20260731t17261785507996z-grace-event-registry-v1/worktrees/candidate-c",
+     "--model",
+     "deepseek/deepseek-v4-flash",
+     "--format",
+     "json",
+     "--title",
+     "eval:grace-event-registry-v1:C",
+     "--agent",
+     "repo-eval",
+     "<EVAL_PROMPT>"
+    ],
+    "returncode": 0,
+    "timedOut": false,
+    "wallSeconds": 195.471
+   },
+   "headIntegrity": {
+    "expected": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "afterAgent": "ae8dba4f4f1aeeb55604eca005927df688e5f553",
+    "passed": true,
+    "afterVerification": "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+   },
+   "changedPaths": [
+    "__tests__/components/CheckinStatistics.test.tsx",
+    "apps/api/app/core/logging_events.py",
+    "components/profile/checkin-statistics.tsx",
+    "grace/canon/observability.xml",
+    "grace/verification-matrix.md",
+    "lib/log/events.gen.ts"
+   ],
+   "scopeViolations": [],
+   "patchSha256": "a8e6139657727217559d29fb766afb48765e6fee5f23e32b5419bf6badee67bf",
+   "patchBytes": 9722,
+   "verificationDependencyWarnings": [],
+   "verification": [
+    {
+     "name": "registry-drift",
+     "command": "python3 -c \"import sys; sys.path.insert(0,'scripts'); import check_logging_guardrails as g; sys.exit(0 if g.check_registry_drift() else 1)\"",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.065,
+     "passed": true,
+     "stdout": "verification-registry-drift.stdout.log",
+     "stderr": "verification-registry-drift.stderr.log"
+    },
+    {
+     "name": "frontend-checkin-statistics",
+     "command": "npx vitest run __tests__/components/CheckinStatistics.test.tsx --passWithNoTests",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 1.471,
+     "passed": true,
+     "stdout": "verification-frontend-checkin-statistics.stdout.log",
+     "stderr": "verification-frontend-checkin-statistics.stderr.log"
+    },
+    {
+     "name": "typescript",
+     "command": "npx tsc --noEmit",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 3.602,
+     "passed": true,
+     "stdout": "verification-typescript.stdout.log",
+     "stderr": "verification-typescript.stderr.log"
+    },
+    {
+     "name": "grace-backend",
+     "command": "python3 scripts/grace_lint.py apps/api/app",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.717,
+     "passed": true,
+     "stdout": "verification-grace-backend.stdout.log",
+     "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+     "name": "diff-check",
+     "command": "git diff --check",
+     "returncode": 0,
+     "timedOut": false,
+     "wallSeconds": 0.017,
+     "passed": true,
+     "stdout": "verification-diff-check.stdout.log",
+     "stderr": "verification-diff-check.stderr.log"
+    }
+   ],
+   "verificationMutatedPatch": false,
+   "postVerificationChangedPaths": [
+    "__tests__/components/CheckinStatistics.test.tsx",
+    "apps/api/app/core/logging_events.py",
+    "components/profile/checkin-statistics.tsx",
+    "grace/canon/observability.xml",
+    "grace/verification-matrix.md",
+    "lib/log/events.gen.ts"
+   ],
+   "controllerValidity": {
+    "passed": true,
+    "violations": []
+   },
+   "openCodeSessionId": "ses_046c1d29effebkZjBMvEOMRSO9",
+   "usage": {
+    "input_tokens": 57492,
+    "cached_input_tokens": 2137088,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8313,
+    "reasoning_tokens": 6448,
+    "reported_cost_usd": 0.018165806399999998
+   },
+   "cost": {
+    "pricingKey": "deepseek-v4-flash-2026-07-31",
+    "pricingAsOf": "2026-07-31",
+    "pricingSource": "https://api-docs.deepseek.com/quick_start/pricing",
+    "componentsUsd": {
+     "uncachedInput": 0.00804888,
+     "cachedInput": 0.00598385,
+     "cacheWrite": 0.0,
+     "output": 0.00232764
+    },
+    "normalizedCostUsd": 0.01636037,
+    "reportedCostUsd": 0.018165806399999998,
+    "warnings": []
+   },
+   "usageError": null
+  }
+ ]
+}
