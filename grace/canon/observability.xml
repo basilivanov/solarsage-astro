@@ -288,6 +288,20 @@
       <payload-field name="fast_path" type="number" required="true" />
       <payload-field name="failed" type="number" required="true" />
     </event>
+    <event name="day.snapshot_published" owner="W-TODAY-CONVERGENCE-W3" desc="Deterministic Today snapshot published for the first time.">
+      <payload-field name="state" type="string" required="true" />
+      <payload-field name="birth_time_mode" type="string" enum="exact,bucket,unknown" required="true" />
+    </event>
+    <event name="day.snapshot_conflict_reused" owner="W-TODAY-CONVERGENCE-W3" desc="Existing deterministic Today snapshot reused after an identity conflict.">
+      <payload-field name="state" type="string" required="true" />
+      <payload-field name="birth_time_mode" type="string" enum="exact,bucket,unknown" required="true" />
+    </event>
+    <event name="day.snapshot_lookup_hit" owner="W-TODAY-CONVERGENCE-W3" desc="Owned deterministic Today snapshot lookup found a row.">
+      <payload-field name="lookup" type="string" enum="owned_id" required="true" />
+    </event>
+    <event name="day.snapshot_lookup_miss" owner="W-TODAY-CONVERGENCE-W3" desc="Owned deterministic Today snapshot lookup found no owned row.">
+      <payload-field name="lookup" type="string" enum="owned_id" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

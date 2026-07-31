@@ -73,6 +73,10 @@ LogEventName = Literal[
     "day.pregen_started",
     "day.pregen_user_finished",
     "day.pregen_completed",
+    "day.snapshot_published",
+    "day.snapshot_conflict_reused",
+    "day.snapshot_lookup_hit",
+    "day.snapshot_lookup_miss",
     "calendar.viewed",
     # access / referral / payments
     "access.checked",

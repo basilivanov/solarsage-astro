@@ -147,6 +147,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-CANON → M-TODAY-CONVERGENCE-RUNTIME → M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT | Pure document construction fingerprints the strictly loaded three-file canon, derives mode-aware privacy-safe profile identity, content-addresses one canonical factor pack, and normalizes deterministic hero/quiet references without publishing to DB or wire. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_snapshot.py tests/test_today_convergence_runtime.py -q`. S2: exact/bucket/unknown, current-location/gender exclusion, negative-zero normalization, Decimal coordinates, Enum serialization, hero/quiet references, audit blocks, canonical unit uniqueness, extra unselected groups, repeated/permuted equality, and unknown→exact hash changes pass. S3: malformed canon/profile/resolution/version/state/reference/finite-value cases fail with stable `today_convergence_snapshot:*` tokens; privacy/source guards exclude raw profile, Telegram, legacy Today/cache, persistence, network, LLM, and artifact fallback. S4: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. No DB publication is claimed in this row. |
 
+## UC-TODAY-CONVERGENCE-W3-PUBLICATION · P3-C atomic PostgreSQL snapshot publication
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT → M-TODAY-SNAPSHOT-SERVICE → M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA | A typed deterministic document is inserted with PostgreSQL `ON CONFLICT DO NOTHING` on the frozen six-field identity; independent callers reuse one committed winner, owner lookup hides foreign/missing rows, and caller JSON remains immutable. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_snapshot.py tests/test_today_snapshot_service.py -q`. S2: `TODAY_TEST_POSTGRES_URL=<isolated PostgreSQL URL> ... -m pytest tests/test_today_snapshot_postgres.py -q` proves one-row concurrency, exact lineage/published timestamp, conflict immutability, caller JSON isolation, owner lookup, and changed-input identity. S3: XML/Python/TypeScript event parity, logging guardrails, packet Ruff, GRACE lint, marker parity, and diff scope pass. This row does not claim supersession, narrative, impression, check-in, cleanup, or API publication. |
+
 ## UC-DAY-NAV · Navigate days
 
 | Modules | Gates | Scenarios |

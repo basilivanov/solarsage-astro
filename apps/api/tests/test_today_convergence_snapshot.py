@@ -192,6 +192,13 @@ def hero_pipeline() -> CanonicalPipelineBuilt:
 def test_snapshot_canon_hash_is_exposed_and_document_uses_64_hex() -> None:
     document = document_for()
 
+    assert document.target_date == TARGET_DATE
+    assert document.timezone == "UTC"
+    assert document.canonical_input_json["target"] == {
+        "date": TARGET_DATE.isoformat(),
+        "time": "12:00",
+        "timezone": "UTC",
+    }
     assert len(document.canon_hash) == 64
     assert document.canon_hash == document.canon_hash.lower()
     assert len(document.profile_hash) == 64

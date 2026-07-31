@@ -86,6 +86,7 @@
     <module id="M-TODAY-CONVERGENCE-PIPELINE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_pipeline.py" />
     <module id="M-TODAY-CONVERGENCE-RUNTIME" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_runtime.py" />
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_snapshot.py" />
+    <module id="M-TODAY-SNAPSHOT-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_snapshot_service.py" />
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/models.py, apps/api/alembic/versions/0028_today_convergence_snapshots.py" />
     <module id="M-TODAY-CONVERGENCE-THEMES" slice="SLICE-BACKEND-SERVICES" layer="shared" path="grace/canon/today_convergence_themes.v1.yml" />
     <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
@@ -143,9 +144,10 @@
     <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-SIDECAR-ACTIVATION-GRID" via="one-activation-grid-request" />
     <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-TODAY-BIRTH-TIME-FACTS" via="robust-facts-composition" />
     <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-TODAY-CONVERGENCE-PIPELINE" via="canonical-pipeline-composition" />
-    <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="published-deterministic-snapshot-input" />
     <edge from="M-TODAY-CONVERGENCE-CANON" to="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" via="strict-canon-fingerprint-and-pack" />
     <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" via="deterministic-runtime-document" />
+    <edge from="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" to="M-TODAY-SNAPSHOT-SERVICE" via="typed-deterministic-publication" />
+    <edge from="M-TODAY-SNAPSHOT-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="postgresql-atomic-publication" />
     <edge from="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" to="M-DB" via="snapshot-narrative-and-checkin-lineage" />
     <edge from="M-TODAY-CONVERGENCE-CANON" to="M-TODAY-CONVERGENCE-THEMES" via="strict-yaml-load" />
     <edge from="M-TODAY-BIRTH-TIME" to="M-TODAY-CONVERGENCE-CANON" via="strict-birth-time-canon" />

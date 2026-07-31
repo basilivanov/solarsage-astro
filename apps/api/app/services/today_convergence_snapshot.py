@@ -78,6 +78,8 @@ class TodayConvergenceSnapshotError(ValueError):
 class TodayConvergenceSnapshotDocument:
     """Immutable deterministic snapshot document without persistence metadata."""
 
+    target_date: date
+    timezone: str
     profile_hash: str
     input_hash: str
     canon_hash: str
@@ -439,10 +441,19 @@ def build_today_convergence_snapshot_document(
     selection = _validate_selection(calculation.pipeline, units, canon)
     profile_hash = _profile_hash(profile, calculation.birth_time)
     canonical_input_json = _factor_pack(profile, calculation, calculation.birth_time, canon_hash, units)
+    expected_target = {
+        "date": calculation.target_date.isoformat(),
+        "time": calculation.target_time,
+        "timezone": target_timezone,
+    }
+    if canonical_input_json.get("target") != expected_target:
+        _fail("target_disagreement")
     canonical_input_json["profile_hash"] = profile_hash
     canonical_input_bytes = _canonical_bytes(canonical_input_json)
     deterministic_result_json = _result_pack(calculation, selection)
     return TodayConvergenceSnapshotDocument(
+        target_date=calculation.target_date,
+        timezone=target_timezone,
         profile_hash=profile_hash,
         input_hash=sha256(canonical_input_bytes).hexdigest(),
         canon_hash=canon_hash,
