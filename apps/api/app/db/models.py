@@ -658,7 +658,13 @@ class TodaySnapshot(Base):
             "target_date",
             "published_at",
         ),
-        Index("ix_today_snapshots_supersedes_snapshot_id", "supersedes_snapshot_id"),
+        Index(
+            "ix_today_snapshots_supersedes_snapshot_id",
+            "supersedes_snapshot_id",
+            unique=True,
+            postgresql_where=text("supersedes_snapshot_id IS NOT NULL"),
+            sqlite_where=text("supersedes_snapshot_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)

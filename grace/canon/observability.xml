@@ -302,6 +302,17 @@
     <event name="day.snapshot_lookup_miss" owner="W-TODAY-CONVERGENCE-W3" desc="Owned deterministic Today snapshot lookup found no owned row.">
       <payload-field name="lookup" type="string" enum="owned_id" required="true" />
     </event>
+    <event name="day.snapshot_superseded" owner="W-TODAY-CONVERGENCE-W3" desc="Deterministic Today snapshot supersession was published or reused.">
+      <payload-field name="outcome" type="string" enum="published,conflict_reused" required="true" />
+    </event>
+    <event name="day.impression_recorded" owner="W-TODAY-CONVERGENCE-W3" desc="First or existing deterministic Today surface impression was recorded.">
+      <payload-field name="surface" type="string" enum="day,lookahead" required="true" />
+      <payload-field name="outcome" type="string" enum="recorded,existing" required="true" />
+    </event>
+    <event name="day.impression_rejected" owner="W-TODAY-CONVERGENCE-W3" desc="Deterministic Today impression relation was rejected without exposing row existence.">
+      <payload-field name="surface" type="string" enum="day,lookahead" required="true" />
+      <payload-field name="reason" type="string" enum="not_found,invalid_relation" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

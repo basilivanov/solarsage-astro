@@ -77,6 +77,9 @@ LogEventName = Literal[
     "day.snapshot_conflict_reused",
     "day.snapshot_lookup_hit",
     "day.snapshot_lookup_miss",
+    "day.snapshot_superseded",
+    "day.impression_recorded",
+    "day.impression_rejected",
     "calendar.viewed",
     # access / referral / payments
     "access.checked",

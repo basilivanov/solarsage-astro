@@ -153,6 +153,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT → M-TODAY-SNAPSHOT-SERVICE → M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA | A typed deterministic document is inserted with PostgreSQL `ON CONFLICT DO NOTHING` on the frozen six-field identity; independent callers reuse one committed winner, owner lookup hides foreign/missing rows, and caller JSON remains immutable. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_snapshot.py tests/test_today_snapshot_service.py -q`. S2: `TODAY_TEST_POSTGRES_URL=<isolated PostgreSQL URL> ... -m pytest tests/test_today_snapshot_postgres.py -q` proves one-row concurrency, exact lineage/published timestamp, conflict immutability, caller JSON isolation, owner lookup, and changed-input identity. S3: XML/Python/TypeScript event parity, logging guardrails, packet Ruff, GRACE lint, marker parity, and diff scope pass. This row does not claim supersession, narrative, impression, check-in, cleanup, or API publication. |
 
+## UC-TODAY-CONVERGENCE-W3-LINEAGE · snapshot supersession and impressions
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-API-TODAY-CONVERGENCE → M-TODAY-SNAPSHOT-SERVICE → M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA | PostgreSQL revision 0029 permits only same-owner/date supersession chains with one direct successor, rejects forks/cross-scope parents, preserves immutable deterministic and first-seen fields, and records independent day/lookahead first exposure timestamps through one authenticated strict endpoint. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_snapshot_lineage.py tests/test_today_snapshot_impression_api.py tests/test_today_convergence_snapshot_schema.py -q`. S2: `TODAY_TEST_POSTGRES_URL=<isolated PostgreSQL URL> ... -m pytest tests/test_today_snapshot_lineage_postgres.py -q` proves trigger/index upgrade-downgrade, cross-owner/date rejection, chain/fork/self/immutable guards, concurrent first/repeat outcomes, and independent surfaces in an exact temporary schema. S3: event XML/Python/TypeScript parity, sanitized logging, packet Ruff, GRACE lint, marker parity, `git diff --check`, and frozen W1/runtime/document/hash/legacy path diff checks pass. This row claims no check-in mutation, narrative/LLM, Today response, pregen, frontend, or SQLite lineage proof. |
+
 ## UC-DAY-NAV · Navigate days
 
 | Modules | Gates | Scenarios |

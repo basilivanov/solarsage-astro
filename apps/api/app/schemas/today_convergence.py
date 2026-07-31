@@ -31,11 +31,13 @@
 #   - TodayConvergenceImpulse
 #   - TodayConvergencePeriodContext
 #   - TodayConvergenceLookahead
+#   - TodaySnapshotImpressionRequest
 # semantic_blocks:
 #   - BIRTH_TIME: birth mode, range, and calculation capabilities.
 #   - EVENT_PRESENTATION: event ledger and presentation precision.
 #   - CONTENT_BLOCKS: convergence, quiet-day, period, and narrative shapes.
 #   - ROOT_VALIDATION: access/state/content matrix and reference integrity.
+#   - SNAPSHOT_IMPRESSION_REQUEST: strict authenticated impression input.
 # owned_tests:
 #   - apps/api/tests/test_today_convergence_contract.py
 # END_MODULE_MAP: M-SCHEMAS-TODAY-CONVERGENCE
@@ -45,6 +47,7 @@ from __future__ import annotations
 import re
 from datetime import date, datetime
 from typing import Any, ClassVar, Literal
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from pydantic import Field, model_validator
@@ -77,6 +80,23 @@ BirthBucket = Literal["night", "morning", "day", "evening"]
 EventTimeMode = Literal["exact", "partofday", "date"]
 PartOfDay = Literal["night", "morning", "day", "evening"]
 PeriodKind = Literal["active_period", "no_strong_accent"]
+SnapshotImpressionSurface = Literal["day", "lookahead"]
+
+
+# START_BLOCK: SNAPSHOT_IMPRESSION_REQUEST
+class TodaySnapshotImpressionRequest(CamelModel):
+    # START_FUNCTION_CONTRACT: F-M-SCHEMAS-TODAY-CONVERGENCE.TodaySnapshotImpressionRequest
+    # purpose: Validate the public snapshot impression request.
+    # inputs: surface and optional same-owner source snapshot UUID.
+    # returns: Strict request model serialized with camelCase aliases.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: Pydantic 422 for malformed UUID, enum, or extra fields.
+    # END_FUNCTION_CONTRACT: F-M-SCHEMAS-TODAY-CONVERGENCE.TodaySnapshotImpressionRequest
+
+    surface: SnapshotImpressionSurface
+    source_snapshot_id: UUID | None = None
+# END_BLOCK: SNAPSHOT_IMPRESSION_REQUEST
 
 _CLOCK_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 _CLOCK_OR_END_RE = re.compile(r"^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$")
@@ -527,5 +547,6 @@ __all__ = [
     "TodayConvergenceImpulse",
     "TodayConvergencePeriodContext",
     "TodayConvergenceLookahead",
+    "TodaySnapshotImpressionRequest",
     "TodayConvergencePayload",
 ]

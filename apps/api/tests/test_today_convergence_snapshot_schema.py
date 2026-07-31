@@ -51,7 +51,7 @@ from app.db.models import EveningCheckin, TodaySnapshot, TodaySnapshotNarrative,
 
 API_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = API_DIR.parents[1]
-SNAPSHOT_REVISION = "0028_today_convergence_snapshots"
+SNAPSHOT_REVISION = "0029_today_snapshot_lineage"
 
 
 # START_BLOCK: MIGRATION_ROUNDTRIP
