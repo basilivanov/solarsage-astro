@@ -73,6 +73,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Frozen canon and the versioned theme registry are loaded strictly; physical identity is producer-independent and window-aware; aspect/event-class/orb/target/data-quality failures are typed and fail closed; eligibility nesting and background exclusion hold; structural lunar events remain excluded until a canonical significance rule exists; canonical theme mappings project into immutable `theme_keys` without grouping, tone, or adapter behavior. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py -q`, including registry parity and malformed-copy rejection. S2: producer parity and prefix stripping preserve one `evt_v1_` ID; changing technical annotations changes only the mapped theme tuple; unknown mappings return `()`. S3: `python -m ruff check` on the four packet Python files, `python3 scripts/grace_lint.py apps/api/app --quiet`, `bash scripts/grace/check-markers.sh`, and `git diff --check` pass. |
 
+## UC-TODAY-BIRTH-TIME-PLAN · mode-aware birth-time calculation plan
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-BIRTH-TIME → M-TODAY-CONVERGENCE-CANON | The existing frozen `birth_time` section is extracted into immutable typed records; exact, bucket, and unknown states derive deterministic ranges and control grids; capability gates and migration values remain canon-driven; malformed persisted combinations fail closed without inference or fallback. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_birth_time.py -q`. S2: exact, all four bucket grids, unknown grid, capability immutability, malformed canon copies, invalid state combinations, precision rejection, profile parity, and no-analysis/noon-fallback source guard. S3: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. |
+
 ## UC-TODAY-CONVERGENCE-W2-LEDGER · canonical ledger, deduplication, and DayDelta
 
 | Modules | Gates | Scenarios |

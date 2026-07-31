@@ -76,6 +76,7 @@
     <module id="M-BACKEND-API" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/, apps/api/app/schemas/" />
     <module id="M-BACKEND-SERVICES" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/, apps/api/app/core/" />
     <module id="M-TODAY-CONVERGENCE-CANON" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_canon.py" />
+    <module id="M-TODAY-BIRTH-TIME" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_birth_time.py" />
     <module id="M-TODAY-CONVERGENCE-UNITS" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_units.py" />
     <module id="M-TODAY-CONVERGENCE-LEDGER" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_ledger.py" />
     <module id="M-TODAY-CONVERGENCE-GROUPS" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_groups.py" />
@@ -130,6 +131,7 @@
     <edge from="M-TODAY-CONVERGENCE-PIPELINE" to="M-TODAY-CONVERGENCE-TONE" via="provisional-and-rebound-tone" />
     <edge from="M-TODAY-CONVERGENCE-PIPELINE" to="M-TODAY-CONVERGENCE-SELECTION" via="presentation-selection-orchestration" />
     <edge from="M-TODAY-CONVERGENCE-CANON" to="M-TODAY-CONVERGENCE-THEMES" via="strict-yaml-load" />
+    <edge from="M-TODAY-BIRTH-TIME" to="M-TODAY-CONVERGENCE-CANON" via="strict-birth-time-canon" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
     <edge from="M-API-PROMO" to="M-PROMO-CAMPAIGN-SERVICE" via="service-call" />

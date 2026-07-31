@@ -19,6 +19,9 @@
 # START_MODULE_MAP: M-TODAY-CONVERGENCE-CANON
 # public_entrypoints:
 #   - TodayConvergenceCanon
+#   - BirthTimeCanon
+#   - BirthTimeCapabilities
+#   - BirthTimeOrbMargin
 #   - TonePolicyCanon
 #   - TodayConvergenceCanonError
 #   - load_today_convergence_canon
@@ -85,6 +88,38 @@ class TonePolicyCanon:
 
 
 @dataclass(frozen=True)
+class BirthTimeCapabilities:
+    """Frozen calculation capabilities for one persisted birth-time mode."""
+
+    houses: bool
+    angles: bool
+    lots: bool
+    exact_timing: bool
+
+
+@dataclass(frozen=True)
+class BirthTimeOrbMargin:
+    """Frozen birth-time uncertainty margin policy."""
+
+    rule: str
+    gap_hours: Mapping[str, int]
+    formula: str
+
+
+@dataclass(frozen=True)
+class BirthTimeCanon:
+    """Immutable extraction of the canonical birth-time section."""
+
+    modes: tuple[str, ...]
+    buckets_local: Mapping[str, tuple[int, int]]
+    control_grid: Mapping[str, str]
+    orb_margin: BirthTimeOrbMargin
+    gate: str
+    capabilities: Mapping[str, BirthTimeCapabilities]
+    migration: Mapping[str, str]
+
+
+@dataclass(frozen=True)
 class TodayConvergenceCanon:
     schema_version: str
     status: str
@@ -115,6 +150,7 @@ class TodayConvergenceCanon:
     technical_sphere_themes: Mapping[str, tuple[str, ...]]
     target_planet_themes: Mapping[str, tuple[str, ...]]
     tone_policy: TonePolicyCanon
+    birth_time: BirthTimeCanon
 
 
 def _fail(reason: str) -> None:
@@ -254,6 +290,127 @@ def _theme_mapping(value: Any, reason: str, *, uppercase_keys: bool) -> dict[str
             _fail(reason)
         result[key] = normalized_values
     return result
+
+
+def _birth_time_canon(value: Any) -> BirthTimeCanon:
+    birth_time = _require_mapping(value, "birth_time_mapping")
+    missing_reasons = {
+        "modes": "birth_time_modes",
+        "buckets_local": "birth_time_bucket_ranges",
+        "control_grid": "birth_time_control_grid",
+        "orb_margin": "birth_time_orb_margin",
+        "gate": "birth_time_gate",
+        "capabilities": "birth_time_capabilities",
+        "migration": "birth_time_migration",
+    }
+    for key, reason in missing_reasons.items():
+        if key not in birth_time:
+            _fail(reason)
+    _require_keys(
+        birth_time,
+        {"modes", "buckets_local", "control_grid", "orb_margin", "gate", "capabilities", "migration"},
+        "birth_time_keys",
+    )
+
+    raw_modes = birth_time["modes"]
+    if not isinstance(raw_modes, Sequence) or isinstance(raw_modes, (str, bytes)):
+        _fail("birth_time_modes")
+    modes = tuple(raw_modes)
+    if modes != ("exact", "bucket", "unknown") or any(not isinstance(mode, str) for mode in modes):
+        _fail("birth_time_modes")
+
+    bucket_mapping = _require_mapping(birth_time["buckets_local"], "birth_time_bucket_ranges")
+    _require_keys(bucket_mapping, {"night", "morning", "day", "evening"}, "birth_time_bucket_ranges")
+    bucket_ranges: dict[str, tuple[int, int]] = {}
+    for name in ("night", "morning", "day", "evening"):
+        raw_range = bucket_mapping[name]
+        if not isinstance(raw_range, Sequence) or isinstance(raw_range, (str, bytes)) or len(raw_range) != 2:
+            _fail("birth_time_bucket_ranges")
+        start, end = raw_range
+        if (
+            isinstance(start, bool)
+            or isinstance(end, bool)
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or not 0 <= start < end <= 24
+        ):
+            _fail("birth_time_bucket_ranges")
+        bucket_ranges[name] = (start, end)
+    if bucket_ranges != {
+        "night": (0, 6),
+        "morning": (6, 12),
+        "day": (12, 18),
+        "evening": (18, 24),
+    }:
+        _fail("birth_time_bucket_ranges")
+    ordered_ranges = tuple(bucket_ranges.values())
+    if ordered_ranges[0][0] != 0 or ordered_ranges[-1][1] != 24 or any(
+        left[1] != right[0] for left, right in zip(ordered_ranges, ordered_ranges[1:])
+    ):
+        _fail("birth_time_bucket_ranges")
+
+    control_grid = _require_mapping(birth_time["control_grid"], "birth_time_control_grid")
+    _require_keys(control_grid, {"bucket", "unknown"}, "birth_time_control_grid")
+    if dict(control_grid) != {
+        "bucket": "edges_plus_middle",
+        "unknown": "every_4h_plus_2359",
+    }:
+        _fail("birth_time_control_grid")
+
+    orb_margin = _require_mapping(birth_time["orb_margin"], "birth_time_orb_margin")
+    _require_keys(orb_margin, {"rule", "gap_hours", "formula"}, "birth_time_orb_margin")
+    if orb_margin["rule"] != "canonical_fixed":
+        _fail("birth_time_orb_margin_rule")
+    gap_hours = _require_mapping(orb_margin["gap_hours"], "birth_time_orb_margin_gap_hours")
+    _require_keys(gap_hours, {"bucket", "unknown"}, "birth_time_orb_margin_gap_hours")
+    if (
+        isinstance(gap_hours["bucket"], bool)
+        or isinstance(gap_hours["unknown"], bool)
+        or not isinstance(gap_hours["bucket"], int)
+        or not isinstance(gap_hours["unknown"], int)
+        or dict(gap_hours) != {"bucket": 3, "unknown": 4}
+    ):
+        _fail("birth_time_orb_margin_gap_hours")
+    if orb_margin["formula"] != "speed(target_deg_per_hour) * gap_hours / max_orb(source)":
+        _fail("birth_time_orb_margin_formula")
+    if birth_time["gate"] != "published_sparse_subset_of_robust_dense":
+        _fail("birth_time_gate")
+
+    capabilities_raw = _require_mapping(birth_time["capabilities"], "birth_time_capabilities")
+    _require_keys(capabilities_raw, set(modes), "birth_time_capabilities")
+    capability_values: dict[str, BirthTimeCapabilities] = {}
+    expected_capabilities = {
+        "exact": {"houses": True, "angles": True, "lots": True, "exact_timing": True},
+        "bucket": {"houses": False, "angles": False, "lots": False, "exact_timing": False},
+        "unknown": {"houses": False, "angles": False, "lots": False, "exact_timing": False},
+    }
+    for mode in modes:
+        raw_capabilities = _require_mapping(capabilities_raw[mode], "birth_time_capability_keys")
+        _require_keys(raw_capabilities, {"houses", "angles", "lots", "exact_timing"}, "birth_time_capability_keys")
+        if any(not isinstance(raw_capabilities[key], bool) for key in raw_capabilities):
+            _fail("birth_time_capability_value")
+        if dict(raw_capabilities) != expected_capabilities[mode]:
+            _fail("birth_time_capability_value")
+        capability_values[mode] = BirthTimeCapabilities(**dict(raw_capabilities))
+
+    migration = _require_mapping(birth_time["migration"], "birth_time_migration")
+    _require_keys(migration, {"null_birth_time", "non_null"}, "birth_time_migration")
+    if dict(migration) != {"null_birth_time": "unknown", "non_null": "exact"}:
+        _fail("birth_time_migration")
+
+    return BirthTimeCanon(
+        modes=modes,
+        buckets_local=MappingProxyType(bucket_ranges),
+        control_grid=MappingProxyType(dict(control_grid)),
+        orb_margin=BirthTimeOrbMargin(
+            rule="canonical_fixed",
+            gap_hours=MappingProxyType(dict(gap_hours)),
+            formula=orb_margin["formula"],
+        ),
+        gate="published_sparse_subset_of_robust_dense",
+        capabilities=MappingProxyType(capability_values),
+        migration=MappingProxyType(dict(migration)),
+    )
 
 
 def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConvergenceCanon:
@@ -432,6 +589,7 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         mixed_requires_fresh_support_and_tense=mixed_requires_fresh_support_and_tense,
         audit_fields=audit_fields,
     )
+    birth_time_canon = _birth_time_canon(today["birth_time"])
 
     canonical_event = _require_mapping(today["canonical_event"], "canonical_event")
     _require_keys(
@@ -627,6 +785,7 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         technical_sphere_themes=MappingProxyType(technical_sphere_themes),
         target_planet_themes=MappingProxyType(target_planet_themes),
         tone_policy=tone_policy,
+        birth_time=birth_time_canon,
     )
 # END_BLOCK: CANON_LOADER
 
@@ -808,6 +967,9 @@ def hero_confirmation_policy(
 
 
 __all__ = [
+    "BirthTimeCanon",
+    "BirthTimeCapabilities",
+    "BirthTimeOrbMargin",
     "TodayConvergenceCanon",
     "TodayConvergenceCanonError",
     "TonePolicyCanon",

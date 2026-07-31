@@ -74,6 +74,10 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
     assert canon.orb_ratio_max == 0.5
     assert source_max_orb(canon, "Jupiter") == 7.0
     assert canon.rare_transit_sources == frozenset({"JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"})
+    assert canon.birth_time.modes == ("exact", "bucket", "unknown")
+    assert canon.birth_time.orb_margin.gap_hours == {"bucket": 3, "unknown": 4}
+    assert canon.birth_time.capabilities["exact"].angles is True
+    assert canon.birth_time.capabilities["bucket"].angles is False
     assert canon.theme_schema_version == "today_convergence_themes.v1"
     assert canon.theme_status == "frozen_w1"
     assert canon.theme_formula_version == "today-convergence-2"
