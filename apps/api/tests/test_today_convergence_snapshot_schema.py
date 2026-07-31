@@ -51,7 +51,7 @@ from app.db.models import EveningCheckin, TodaySnapshot, TodaySnapshotNarrative,
 
 API_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = API_DIR.parents[1]
-SNAPSHOT_REVISION = "0029_today_snapshot_lineage"
+SNAPSHOT_REVISION = "0030_today_sphere_natal_narratives"
 
 
 # START_BLOCK: MIGRATION_ROUNDTRIP

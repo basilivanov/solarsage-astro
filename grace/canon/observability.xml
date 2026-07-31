@@ -357,6 +357,17 @@
       <payload-field name="error_code" type="string" required="true" />
       <payload-field name="latency_ms" type="number" required="true" />
     </event>
+    <event name="sphere.natal_generation_completed" owner="W-TODAY-CONVERGENCE-P4" desc="Bounded static sphere natal generation produced validated claim-bound content.">
+      <payload-field name="sphere" type="string" required="true" />
+      <payload-field name="prompt_version" type="string" required="true" />
+      <payload-field name="latency_ms" type="number" required="true" />
+      <payload-field name="paragraphs" type="number" required="true" />
+    </event>
+    <event name="sphere.natal_generation_failed" owner="W-TODAY-CONVERGENCE-P4" desc="Static sphere natal generation ended with an honest unavailable outcome.">
+      <payload-field name="sphere" type="string" required="true" />
+      <payload-field name="error_code" type="string" required="true" />
+      <payload-field name="latency_ms" type="number" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

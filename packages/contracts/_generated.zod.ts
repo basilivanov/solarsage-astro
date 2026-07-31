@@ -1735,6 +1735,50 @@ export const TodaySphereDrilldownPayload = z.object({
   ]),
   state: z.enum(["convergence_today", "quiet_day"]),
 });
+export const TodaySphereNatalParagraph = z.object({
+  sourceFactIds: z.array(z.string()).min(1),
+  text: z.string().min(1),
+});
+export const TodaySphereNatal = z.object({
+  paragraphs: z
+    .union([z.array(TodaySphereNatalParagraph), z.null()])
+    .optional(),
+  state: z.enum(["ready", "unavailable"]),
+});
+export const TodaySpherePeriodItem = z.object({
+  activeFrom: z.string(),
+  activeUntil: z.string(),
+  id: z.string().min(1).max(64),
+  technique: z.enum([
+    "annual_profection",
+    "firdar_major",
+    "firdar_minor",
+    "solar_return",
+  ]),
+  title: z.string().min(1).max(160),
+});
+export const TodaySpherePagePayload = z.object({
+  birthTimeMode: z.enum(["exact", "bucket", "unknown"]),
+  housesAvailable: z.boolean(),
+  natal: TodaySphereNatal,
+  period: z.array(TodaySpherePeriodItem).max(5),
+  periodIdentity: z.string(),
+  periodUnavailable: z.boolean().optional().default(false),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+});
 export const YesterdayForecastRecap = z.object({
   dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
   snapshotId: z.string(),
@@ -1918,6 +1962,10 @@ export const schemas = {
   TodayPayload,
   TodaySphereDrilldownConvergence,
   TodaySphereDrilldownPayload,
+  TodaySphereNatalParagraph,
+  TodaySphereNatal,
+  TodaySpherePeriodItem,
+  TodaySpherePagePayload,
   YesterdayForecastRecap,
   YesterdayCheckinResponse,
 };

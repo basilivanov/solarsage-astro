@@ -174,6 +174,9 @@ class Settings(BaseSettings):
     today_narrative_prompt_version: str = Field(
         "today-narrative-v1", alias="TODAY_NARRATIVE_PROMPT_VERSION"
     )
+    today_sphere_natal_prompt_version: str = Field(
+        "sphere-natal-v1", alias="TODAY_SPHERE_NATAL_PROMPT_VERSION"
+    )
     today_llm_on_demand_concurrency: int = Field(
         3, alias="TODAY_LLM_ON_DEMAND_CONCURRENCY"
     )

@@ -88,6 +88,9 @@
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_snapshot.py" />
     <module id="M-TODAY-SNAPSHOT-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_snapshot_service.py" />
     <module id="M-TODAY-NARRATIVE-LEASE-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_narrative_lease_service.py" />
+    <module id="M-TODAY-SPHERE-PAGE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_sphere_page_service.py" />
+    <module id="M-API-TODAY-SPHERE-PAGE" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/today_sphere_page.py" />
+    <module id="M-TODAY-SPHERE-NATAL-SCHEMA" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/models.py, apps/api/alembic/versions/0030_today_sphere_natal_narratives.py" />
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/models.py, apps/api/alembic/versions/0028_today_convergence_snapshots.py, apps/api/alembic/versions/0029_today_snapshot_lineage_guards.py" />
     <module id="M-SCHEMAS-CHECKIN" slice="SLICE-CONTRACTS" layer="backend" path="apps/api/app/schemas/checkin.py" />
     <module id="M-CHECKIN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/checkin_service.py" />
@@ -155,6 +158,11 @@
     <edge from="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" to="M-TODAY-SNAPSHOT-SERVICE" via="typed-deterministic-publication" />
     <edge from="M-TODAY-SNAPSHOT-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="postgresql-atomic-publication" />
     <edge from="M-TODAY-NARRATIVE-LEASE-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="published-snapshot-narrative-lease-persistence" />
+    <edge from="M-API-TODAY-SPHERE-PAGE" to="M-TODAY-SPHERE-PAGE" via="service-call" />
+    <edge from="M-TODAY-SPHERE-PAGE" to="M-TODAY-SPHERE-NATAL-SCHEMA" via="sphere-natal-cache-persistence" />
+    <edge from="M-TODAY-SPHERE-PAGE" to="M-TODAY-CONVERGENCE-CANON" via="sphere-canon-mapping" />
+    <edge from="M-TODAY-SPHERE-PAGE" to="M-SIDECAR-CALCULATION" via="period-activation-layer-request" />
+    <edge from="M-TODAY-SPHERE-PAGE" to="M-OBSERVABILITY-LOGGING" via="sanitized-sphere-natal-events" />
     <edge from="M-TODAY-NARRATIVE-LEASE-SERVICE" to="M-OBSERVABILITY-LOGGING" via="sanitized-narrative-lease-events" />
     <edge from="M-BACKEND-API" to="M-TODAY-SNAPSHOT-SERVICE" via="authenticated-impression-mutation" />
     <edge from="M-TODAY-SNAPSHOT-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="postgresql-lineage-and-first-seen-guards" />
