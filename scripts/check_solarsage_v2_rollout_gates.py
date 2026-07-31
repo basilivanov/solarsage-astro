@@ -174,7 +174,7 @@ def main() -> None:
     # 4. Verify frontend compatibility tests exist
     fe_tests = [
         "__tests__/contracts/today.test.ts",
-        "__tests__/lib/adapt-payload.test.ts",
+        "__tests__/contracts/today-convergence-contract.test.ts",
     ]
     for t in fe_tests:
         t_path = repo_root / t
