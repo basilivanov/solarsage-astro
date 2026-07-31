@@ -85,6 +85,7 @@ EXPECTED_ROOT_NAMES = [
     "TelegramAuthRequest",
     "TodayConvergencePayload",
     "TodayPayload",
+    "TodaySphereDrilldownPayload",
     "YesterdayCheckinResponse",
 ]
 

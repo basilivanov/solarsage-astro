@@ -53,12 +53,18 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from pydantic import ValidationError
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import log_block, log_event
 from app.db.models import EveningCheckin, TodaySnapshot, User, UserProfile
-from app.schemas.checkin import CheckinMetrics, CheckinResponse
+from app.schemas.checkin import (
+    CheckinMetrics,
+    CheckinResponse,
+    YesterdayCheckinResponse,
+    YesterdayForecastRecap,
+)
 
 
 LEGACY_MOOD_TO_SCORE = {
@@ -315,6 +321,128 @@ class CheckinService:
         # error_behavior: none
         # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.local_yesterday
         return await self.local_today(user) - timedelta(days=1)
+
+    # START_BLOCK: YESTERDAY_RECAP
+    async def get_yesterday_response(self, user: User) -> YesterdayCheckinResponse:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_yesterday_response
+        # purpose: Build the local-yesterday check-in response with snapshot
+        #   availability and post-submit deterministic recap.
+        # inputs: authenticated User with profile timezone and DB session.
+        # returns: YesterdayCheckinResponse; recap is hidden before submit.
+        # side_effects: reads one check-in row and published snapshot lineage.
+        # emitted_logs: none.
+        # error_behavior: malformed persisted deterministic data suppresses the
+        #   recap but never suppresses the check-in response.
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_yesterday_response
+        target_date = await self.local_yesterday(user)
+        checkin = await self.get_checkin(user.id, target_date)
+        forecast_available = await self._has_forecast_impression(user.id, target_date)
+
+        recap = None
+        if checkin is not None and checkin.forecast_snapshot_id is not None:
+            snapshot = await self._load_forecast_snapshot(
+                user.id,
+                target_date,
+                checkin.forecast_snapshot_id,
+            )
+            recap = self._forecast_recap(snapshot)
+
+        return YesterdayCheckinResponse(
+            target_date=target_date,
+            had_checkin=checkin is not None,
+            checkin=None if checkin is None else self.to_response(checkin),
+            forecast_available=forecast_available,
+            forecast_recap=recap,
+        )
+
+    async def _has_forecast_impression(self, user_id: uuid.UUID, target_date: date) -> bool:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._has_forecast_impression
+        # purpose: Test whether one published owner snapshot was shown for a date.
+        # inputs: user_id and target_date.
+        # returns: True for a day or lookahead impression, otherwise False.
+        # side_effects: one read-only TodaySnapshot SELECT.
+        # emitted_logs: none.
+        # error_behavior: database errors propagate.
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._has_forecast_impression
+        statement = (
+            select(TodaySnapshot.id)
+            .where(
+                TodaySnapshot.user_id == user_id,
+                TodaySnapshot.target_date == target_date,
+                TodaySnapshot.published_at.is_not(None),
+                or_(
+                    TodaySnapshot.first_day_seen_at.is_not(None),
+                    TodaySnapshot.first_lookahead_seen_at.is_not(None),
+                ),
+            )
+            .limit(1)
+        )
+        return (await self.db.execute(statement)).scalar_one_or_none() is not None
+
+    async def _load_forecast_snapshot(
+        self,
+        user_id: uuid.UUID,
+        target_date: date,
+        snapshot_id: uuid.UUID,
+    ) -> TodaySnapshot | None:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._load_forecast_snapshot
+        # purpose: Load the immutable owner/date/published snapshot referenced by
+        #   an already-bound check-in lineage.
+        # inputs: user_id, target_date, and forecast snapshot UUID.
+        # returns: Published owner snapshot with an impression, or None.
+        # side_effects: one read-only TodaySnapshot SELECT.
+        # emitted_logs: none.
+        # error_behavior: database errors propagate; invalid lineage fails closed.
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._load_forecast_snapshot
+        statement = (
+            select(TodaySnapshot)
+            .where(
+                TodaySnapshot.id == snapshot_id,
+                TodaySnapshot.user_id == user_id,
+                TodaySnapshot.target_date == target_date,
+                TodaySnapshot.published_at.is_not(None),
+                or_(
+                    TodaySnapshot.first_day_seen_at.is_not(None),
+                    TodaySnapshot.first_lookahead_seen_at.is_not(None),
+                ),
+            )
+            .limit(1)
+        )
+        return (await self.db.execute(statement)).scalar_one_or_none()
+
+    @staticmethod
+    def _forecast_recap(snapshot: TodaySnapshot | None) -> YesterdayForecastRecap | None:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._forecast_recap
+        # purpose: Project only deterministic recap fields from a valid snapshot.
+        # inputs: published owner snapshot or None.
+        # returns: compact recap or None for malformed persisted data.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: validation failures fail closed to None.
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._forecast_recap
+        if snapshot is None or not isinstance(snapshot.deterministic_result_json, dict):
+            return None
+        result = snapshot.deterministic_result_json
+        selected = result.get("selected")
+        if not isinstance(selected, dict):
+            return None
+        raw_spheres = selected.get("selected_spheres")
+        if (
+            not isinstance(raw_spheres, list)
+            or len(raw_spheres) > 3
+            or any(not isinstance(value, str) for value in raw_spheres)
+        ):
+            return None
+        try:
+            return YesterdayForecastRecap(
+                snapshot_id=str(snapshot.id),
+                state=result.get("state"),
+                day_tone=result.get("day_tone"),
+                sphere_keys=raw_spheres,
+            )
+        except ValidationError:
+            return None
+    # END_BLOCK: YESTERDAY_RECAP
 
     async def calculate_streak(self, user_id: uuid.UUID, target_date: date) -> int:
         # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.calculate_streak

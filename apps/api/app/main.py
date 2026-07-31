@@ -122,6 +122,8 @@ def create_app(app_settings: Settings = settings) -> FastAPI:
     application.include_router(access.router)
     application.include_router(today_convergence.router)  # W3 snapshot impressions
     application.include_router(day.router)  # W-1.3
+    from app.api import today_sphere_drilldown
+    application.include_router(today_sphere_drilldown.router)  # P4-D3B deterministic sphere evidence
     application.include_router(calendar.router)  # W-1.4
     from app.api import readings
     application.include_router(readings.router)  # P4-D3A published day history

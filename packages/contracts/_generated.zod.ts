@@ -1676,9 +1676,94 @@ export const TodayPayload = z.object({
   whyThisHappens: WhyThisHappens,
   yesterdayEcho: z.union([YesterdayEcho, z.null()]).optional(),
 });
+export const TodaySphereDrilldownConvergence = z.object({
+  eventIds: z.array(z.string()).min(2),
+  evidenceLevel: z.enum(["high", "medium"]),
+  id: z.string(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  primarySphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  secondarySphere: z.union([
+    z.enum([
+      "work",
+      "money",
+      "documents",
+      "relationships",
+      "sport",
+      "communication",
+      "health",
+      "decisions",
+      "travel",
+      "creativity",
+      "study",
+      "shopping",
+    ]),
+    z.null(),
+  ]),
+});
+export const TodaySphereDrilldownPayload = z.object({
+  birthTimeMode: z.enum(["exact", "bucket", "unknown"]),
+  convergence: z.union([TodaySphereDrilldownConvergence, z.null()]),
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  events: z.array(TodayConvergenceEvent),
+  snapshotId: z.string(),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
+export const YesterdayForecastRecap = z.object({
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  snapshotId: z.string(),
+  sphereKeys: z
+    .array(
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ])
+    )
+    .max(3),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
 export const YesterdayCheckinResponse = z.object({
   checkin: z.union([CheckinResponse, z.null()]),
+  forecastAvailable: z.boolean().optional().default(false),
+  forecastRecap: z.union([YesterdayForecastRecap, z.null()]).optional(),
   hadCheckin: z.boolean(),
+  targetDate: z.string().optional(),
 });
 // END_BLOCK: SCHEMA_DECLARATIONS
 
@@ -1831,6 +1916,9 @@ export const schemas = {
   WhyThisHappens,
   YesterdayEcho,
   TodayPayload,
+  TodaySphereDrilldownConvergence,
+  TodaySphereDrilldownPayload,
+  YesterdayForecastRecap,
   YesterdayCheckinResponse,
 };
 // END_BLOCK: SCHEMA_MAP
