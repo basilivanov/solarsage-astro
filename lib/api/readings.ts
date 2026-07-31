@@ -1,27 +1,28 @@
 // ############################################################################
-// AI_HEADER: FRONTEND_API_READINGS — past-day reading aggregation and static product catalog.
-// ROLE: Past-day reading aggregator and static readings catalog provider.
-// DEPENDENCIES: readings contracts and catalog types; TodayPayload; TodayPayloadWireSchema; lib/log/instrumented-fetch; lucide icons; Date; Promise.all
+// AI_HEADER: FRONTEND_API_READINGS — published day-history client and static product catalog.
+// ROLE: Published snapshot history facade and static readings catalog provider.
+// DEPENDENCIES: day-history contract types and generated wire schema; catalog types; lib/log/instrumented-fetch; lucide icons
 // GRACE_ANCHORS: [FRONTEND_API_READINGS]
 // WAVE: W-FRONTEND-OBSERVABILITY
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-FRONTEND-API-READINGS
-// purpose: Build unlocked reading previews from recent day payloads and expose available or coming reading products.
+// purpose: Fetch published Today snapshots for the readings history and expose available or coming reading products.
 // owns:
 //   - lib/api/readings.ts
 // inputs: limit and offset for history; authenticated session.
 // outputs: ReadingsList, ReadingsCatalog and async catalog alias.
-// dependencies: readings contracts and catalog types; TodayPayload; TodayPayloadWireSchema; lib/log/instrumented-fetch; lucide icons; Date; Promise.all.
-// side_effects: parallel credentialed GET /api/day/{date} calls for history via instrumentedFetch.
+// dependencies: DayHistoryPayload and DayHistoryItem types; generated DayHistoryPayload zod schema; lib/log/instrumented-fetch; catalog types.
+// side_effects: one credentialed GET /api/readings/day-history call for each history request.
 // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid.
 // invariants:
-//   - Requested dates remain prior days derived from offset and limit.
-//   - Failed or non-ok day fetches and locked payloads are omitted.
-//   - Preview remains the first reading paragraph or an empty string.
+//   - History contains only published snapshot summaries returned by day-history.
+//   - The client never fans out into one cold /api/day calculation per history item.
+//   - History entries contain state, dayTone, sphereKeys and impulseCount, not legacy reading paragraphs.
+//   - Transport, HTTP and wire-validation failures fail soft to an empty history.
 //   - hasMore remains entries.length equal to limit.
 //   - Stable catalog keys, copy, icons and order remain unchanged.
-// failure_policy: Per-day transport or non-ok failures return null and are omitted; catalog functions do not throw.
+// failure_policy: History request failures return an empty list; catalog functions do not throw.
 // END_MODULE_CONTRACT: M-FRONTEND-API-READINGS
 
 // START_MODULE_MAP: M-FRONTEND-API-READINGS
@@ -30,9 +31,7 @@
 //   - listReadings
 //   - listReadingsAsync
 // semantic_blocks:
-//   - HISTORY_DATE_PLAN: derive prior dates from offset and limit.
-//   - DAY_FETCH_FAIL_SOFT: fetch a day via instrumentedFetch and map request failures to null.
-//   - HISTORY_ASSEMBLY: omit locked or missing days and build previews.
+//   - HISTORY_REQUEST: fetch, validate and map the published day-history payload.
 //   - PRODUCT_CATALOG: expose the stable available and coming products.
 //   - ASYNC_CATALOG_ALIAS: resolve the synchronous catalog asynchronously.
 // owned_tests:
@@ -40,68 +39,48 @@
 //   - __tests__/components/ReadingsScreen.test.tsx
 // END_MODULE_MAP: M-FRONTEND-API-READINGS
 
-import type { ReadingsList, ReadingEntry } from "@/lib/contracts/readings"
 import type { ReadingsCatalog } from "@/lib/readings"
-import type { TodayPayload } from "@/packages/contracts"
-import { TodayPayloadWireSchema } from "@/packages/contracts/runtime"
+import type { DayHistoryItem, DayHistoryPayload } from "@/packages/contracts/day-history"
+// The generated DayHistory schema is not re-exported by the frozen runtime barrel yet.
+// eslint-disable-next-line grace/contracts-only-import
+import { DayHistoryPayload as DayHistoryPayloadWireSchema } from "@/packages/contracts/_generated.zod"
 import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
 import { Sparkles, Star, CalendarDays, Calendar, Users } from "lucide-react"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
-// START_BLOCK: HISTORY_ASSEMBLY
-export async function getReadingsList(limit: number = 10, offset: number = 0): Promise<ReadingsList> {
+export type ReadingEntry = Pick<
+  DayHistoryItem,
+  "date" | "snapshotId" | "state" | "dayTone" | "sphereKeys" | "impulseCount"
+>
+
+export type ReadingsList = {
+  entries: ReadingEntry[]
+  hasMore: boolean
+  access: DayHistoryPayload["access"] | null
+}
+
+function emptyReadingsList(): ReadingsList {
+  return { entries: [], hasMore: false, access: null }
+}
+
+// START_BLOCK: HISTORY_REQUEST
+export async function getReadingsList(limit: number = 10, _offset: number = 0): Promise<ReadingsList> {
   // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.getReadingsList
-  // purpose: Fetch history of past days concurrently, filtering unlocked readings and forming previews.
-  // inputs: limit — max days to fetch, offset — day offset
+  // purpose: Fetch the published day-history snapshot summaries in one request.
+  // inputs: limit — max snapshot summaries to request, _offset — retained compatibility argument; day-history is server-paginated by limit.
   // returns: Promise<ReadingsList>
-  // side_effects: parallel GET /api/day/{date} requests via fetchDayForReadings
+  // side_effects: one GET /api/readings/day-history?limit=N via instrumentedFetch
   // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
   // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.getReadingsList
-  const entries: ReadingEntry[] = []
+  const requestedLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 10
 
-  const today = new Date()
-  const promises: Promise<TodayPayload | null>[] = []
-  for (let i = 0; i < limit; i++) {
-    const date = new Date(today)
-    date.setDate(today.getDate() - offset - i - 1)
-    const dateStr = date.toISOString().split("T")[0]
-    promises.push(fetchDayForReadings(dateStr))
-  }
-
-  const results = await Promise.all(promises)
-
-  for (const payload of results) {
-    if (payload && payload.access.state !== "locked") {
-      entries.push({
-        date: payload.date,
-        headline: payload.headline,
-        dayStatus: payload.dayStatus,
-        preview: payload.reading.paragraphs[0] || "",
-      })
-    }
-  }
-
-  const hasMore = entries.length === limit
-  return { entries, hasMore }
-}
-// END_BLOCK: HISTORY_ASSEMBLY
-
-// START_BLOCK: DAY_FETCH_FAIL_SOFT
-async function fetchDayForReadings(date: string): Promise<TodayPayload | null> {
-  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.fetchDayForReadings
-  // purpose: Fetch single past day payload via instrumentedFetch with TodayPayload responseContract, returning null on transport or HTTP failure.
-  // inputs: date — YYYY-MM-DD string
-  // returns: Promise<TodayPayload | null>
-  // side_effects: GET /api/day/{date} via instrumentedFetch
-  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid
-  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.fetchDayForReadings
   try {
-    const res = await instrumentedFetch({
+    const response = await instrumentedFetch({
       operation: "readings.day_history",
-      routeTemplate: "GET /api/day/{date}",
-      url: `${API_BASE}/api/day/${date}`,
+      routeTemplate: "GET /api/readings/day-history",
+      url: `${API_BASE}/api/readings/day-history?limit=${requestedLimit}`,
       init: {
         credentials: "include",
         headers: {
@@ -109,25 +88,41 @@ async function fetchDayForReadings(date: string): Promise<TodayPayload | null> {
         },
       },
       responseContract: {
-        contractName: "TodayPayload",
+        contractName: "DayHistoryPayload",
         contractVersion: "v1",
         validate: (json) => {
-          const parsed = TodayPayloadWireSchema.safeParse(json)
+          const parsed = DayHistoryPayloadWireSchema.safeParse(json)
           if (parsed.success) return { valid: true }
-          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          const fields = parsed.error.issues.map((issue) => String(issue.path[0] || "unknown"))
           return { valid: false, missingFields: fields, invalidFieldTypes: fields }
         },
       },
     })
 
-    if (!res.ok) return null
+    if (!response.ok) return emptyReadingsList()
 
-    return res.json()
+    const parsed = DayHistoryPayloadWireSchema.safeParse(await response.json())
+    if (!parsed.success) return emptyReadingsList()
+
+    const payload = parsed.data as DayHistoryPayload
+    const entries: ReadingEntry[] = payload.items.map((item) => ({
+      date: item.date,
+      snapshotId: item.snapshotId,
+      state: item.state,
+      dayTone: item.dayTone,
+      sphereKeys: item.sphereKeys,
+      impulseCount: item.impulseCount,
+    }))
+    return {
+      entries,
+      hasMore: entries.length === requestedLimit,
+      access: payload.access,
+    }
   } catch {
-    return null
+    return emptyReadingsList()
   }
 }
-// END_BLOCK: DAY_FETCH_FAIL_SOFT
+// END_BLOCK: HISTORY_REQUEST
 
 // START_BLOCK: PRODUCT_CATALOG
 export function listReadings(): ReadingsCatalog {

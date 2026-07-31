@@ -34,6 +34,7 @@ components/readings/natal-preview/**/*.tsx
 components/readings/natal-preview/**/*.ts
 components/today/**/*.tsx
 components/today/**/*.ts
+components/today-convergence/**/*.tsx
 components/correlation-init.tsx
 components/debug-button.tsx
 components/locked-feature-card.tsx

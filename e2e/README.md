@@ -1,6 +1,6 @@
 # E2E Testing Guide
 
-## Real Today V2 preview (3003)
+## Real Today convergence preview (3003)
 
 Real preview on port 3003 expects an already-running API (8000) and sidecar
 (18091) on the host (Compose app stack on this machine); the launcher does not
@@ -20,19 +20,20 @@ docker compose -p solarsage-app ps
 pnpm preview:v2:real
 ```
 
-URL: `http://127.0.0.1:3003/day/2026-07-08?why=1`
+URL: `http://127.0.0.1:3003/day/2026-08-01`
 
 Run E2E from a second terminal while the launcher is running:
 
 ```bash
 E2E_BASE_URL=http://127.0.0.1:3003 \
-  pnpm exec playwright test e2e/real-v2-preview.spec.ts \
+  pnpm exec playwright test e2e/today-convergence.spec.ts \
     --project=chromium --project=mobile
 ```
 
-The real spec uses no route interception, no cookie seeding, no Telegram injection,
-and accepts only `today.v2.1 / frontend 3 / content 10` with all three backend
-horizons. Mock `pnpm preview:v2` remains a separate test-only reference.
+The real spec uses no route interception; the shared `e2e/fixtures.ts` performs
+real Telegram HMAC/session setup and disposable-user cleanup. Assertions target
+the generated `TodayConvergencePayload` DOM contract. Mock `pnpm preview:v2`
+remains a separate test-only reference.
 Stop the real launcher with Ctrl+C. It restores only the exact Next-generated
 `next-env.d.ts` declaration; `tsconfig.json` is verified during startup and is
 never rewritten during normal shutdown.
@@ -45,16 +46,18 @@ Playwright E2E tests для SolarSage Astro, которые ловят 95% ош�
 
 Real E2E suites (real Telegram HMAC, no route interception except where noted):
 
-- `today.spec.ts` — Today screen after real auth/onboarding, calendar navigation,
-  week strip navigation.
+- `today-convergence.spec.ts` — real Telegram-authenticated Today contract,
+  calendar/v2 dayState, and check-in pre-submit contract. It skips with a
+  clear reason when `E2E_BASE_URL` is not set.
 - `onboarding-real.spec.ts` — full real onboarding flow.
-- `calendar.spec.ts` — calendar grid and day navigation.
+- `mock-visual/today-convergence.spec.ts` — 16 Today fixtures, 3 Yesterday
+  check-in fixtures, drilldown/static-sphere wiring, visual baselines, and
+  WebKit smoke.
+- `mock-visual/calendar.spec.ts` — active calendar/v2 three-state grid.
 - `cross-feature-navigation.spec.ts` — Day → Calendar → Chat → Profile → Day
   with required link and destination assertions (no conditional passes).
-- `profile-city-checkin.spec.ts` — profile "Где живу сейчас" edit through the
-  public CityPicker contract (`city-picker-input/-suggestions/-suggestion`)
-  with real GET /api/profile proof, then check-in mood → energy → accuracy
-  with fresh-load read-back (no interception).
+- The real Today convergence spec also owns the check-in pre-submit recap
+  contract; profile city editing remains covered by the profile screen suite.
 - `readings-horary.spec.ts` — readings screen contract + real horary
   lifecycle: real referral deep-link grant (14-day access) → quota/unlocked
   proof → submit → auto-navigated answer view → API read-back
@@ -106,8 +109,12 @@ pnpm test:e2e
 # Run with UI (interactive mode)
 pnpm test:e2e:ui
 
-# Run specific test file
-pnpm exec playwright test e2e/today.spec.ts
+# Run the real Today convergence contract
+E2E_BASE_URL=http://127.0.0.1:3002 \
+  pnpm exec playwright test e2e/today-convergence.spec.ts --project=chromium
+
+# Run the shared release list locally (real + mock Today/calendar contracts)
+E2E_BASE_URL=http://127.0.0.1:3002 make e2e-release
 
 # Run in headed mode (see browser)
 pnpm exec playwright test --headed
@@ -168,17 +175,17 @@ cat test-results/error-events.json
 
 E2E tests are **manual-only** for ad-hoc runs and **reusable** for the release
 gate: `.github/workflows/e2e.yml` supports `workflow_dispatch` with a `suite`
-input (`smoke` = today/calendar/cross-feature-navigation on Chromium,
+input (`smoke` = Today convergence plus calendar mock contracts on Chromium,
 `release` = the blocking gate subset, `full` = all specs) and `workflow_call`
 (required string `suite` + required secrets `E2E_TELEGRAM_BOT_TOKEN` /
 `E2E_OPENROUTER_API_KEY`; missing secrets fail closed before the stack
 starts).
 
-The `release` suite runs only the existing real-HMAC specs without route
-interception: `onboarding-real.spec.ts`, `today.spec.ts`, `calendar.spec.ts`,
-`cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts`,
-`readings-horary.spec.ts`, `natal-report.spec.ts`,
-`referral-deeplink.spec.ts` (dev-v2 and edge-cases stay out of the gate). The production deploy workflow reuses it as
+The `release` suite is the single `TODAY_CONVERGENCE_RELEASE_SPECS` list in
+`Makefile`, shared by `make e2e-release` and `.github/workflows/e2e.yml`:
+the real `today-convergence.spec.ts`, mock Today/calendar contracts, and the
+existing onboarding/navigation/readings/natal/referral/payment real flows.
+The production deploy workflow reuses it as
 the `real-e2e` job (`needs: [source-quality, visual-baselines]`), and the
 `deploy` job requires it (`needs: [build, artifact-acceptance, real-e2e]`), so
 a failing real flow blocks migrate/deploy/tag.
@@ -204,7 +211,7 @@ pnpm exec playwright show-trace test-results/trace.zip
 
 ### 4. Run in debug mode
 ```bash
-pnpm exec playwright test --debug e2e/today.spec.ts
+pnpm exec playwright test --debug e2e/today-convergence.spec.ts
 ```
 
 ## Common Issues

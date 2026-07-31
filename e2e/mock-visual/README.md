@@ -37,7 +37,7 @@ Stop with `Ctrl+C` in the preview terminal.
 Use Playwright `page.route("**/api/**", ...)` for API interception in specs.
 
 ```bash
-E2E_BASE_URL=http://127.0.0.1:3003 pnpm exec playwright test e2e/mock-visual/day-v2.spec.ts --project=mobile
+E2E_BASE_URL=http://127.0.0.1:3003 pnpm exec playwright test e2e/mock-visual/today-convergence.spec.ts --project=mobile
 ```
 
 ## Rules

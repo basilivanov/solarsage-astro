@@ -140,10 +140,10 @@ function accessFor(date: string): CalendarDay["access"] {
   };
 }
 
-function statusFor(day: number): CalendarDay["dayStatus"] {
-  if (day % 5 === 0) return "supportive";
-  if (day % 4 === 0) return "tense";
-  return "steady";
+function statusFor(day: number): CalendarDay["dayState"] {
+  if (day % 5 === 0) return "hero";
+  if (day % 4 === 0) return "not-computed";
+  return "ordinary";
 }
 
 function day(date: string, isCurrentMonth: boolean, isToday = false): CalendarDay {
@@ -154,7 +154,7 @@ function day(date: string, isCurrentMonth: boolean, isToday = false): CalendarDa
     isCurrentMonth,
     isToday,
     disabled: !isCurrentMonth,
-    dayStatus: statusFor(dayNumber),
+    dayState: statusFor(dayNumber),
     access: accessFor(date),
     lunar: lunarFor(date),
   };
@@ -162,7 +162,7 @@ function day(date: string, isCurrentMonth: boolean, isToday = false): CalendarDa
 
 export const calendarPayload: components["schemas"]["CalendarPayload"] = {
   meta: {
-    schemaVersion: "calendar/v1",
+    schemaVersion: "calendar/v2",
     contractVersion: 2,
     generatedAt: "2026-07-08T06:00:00Z",
   },

@@ -53,10 +53,11 @@ echo "check.sh: 1. running focused contract tests..."
 echo "check.sh: 2. running generate.sh..."
 bash scripts/contracts/generate.sh
 
-echo "check.sh: 3. checking JSON fixture normalization..."
-bash scripts/contracts/today_fixture.sh --check
+# NOTE: legacy day-v2 JSON fixture normalization step removed with the
+# deleted V2 fixture (W9 staged removal); new convergence fixtures are
+# validated by __tests__/contracts/today-convergence-fixtures.test.ts.
 
-echo "check.sh: 4. checking git diff for generated contract files..."
+echo "check.sh: 3. checking git diff for generated contract files..."
 git diff --exit-code -- \
   packages/contracts/openapi.json \
   packages/contracts/_generated.ts \

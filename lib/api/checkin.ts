@@ -28,6 +28,7 @@
 //   - createCheckin
 //   - getCheckin
 //   - getYesterdayCheckin
+//   - fetchYesterdayCheckin
 //   - getCheckinMetrics
 // semantic_blocks:
 //   - ERROR_DECODE: preserve backend detail priority and endpoint fallback.
@@ -48,6 +49,9 @@ import type {
   CheckinResponse,
   YesterdayCheckinResponse,
 } from "@/packages/contracts"
+// The generated Yesterday schema is not re-exported by the frozen runtime barrel yet.
+// eslint-disable-next-line grace/contracts-only-import
+import { YesterdayCheckinResponse as YesterdayCheckinResponseWireSchema } from "@/packages/contracts/_generated.zod"
 
 const JSON_HEADERS = { Accept: "application/json" }
 
@@ -166,11 +170,19 @@ export async function getYesterdayCheckin(): Promise<YesterdayCheckinResponse> {
       headers: JSON_HEADERS,
     },
   })
-  return readJson<YesterdayCheckinResponse>(
-    response,
-    "Failed to load yesterday's check-in",
-  )
+  const body = await readJson<unknown>(response, "Failed to load yesterday's check-in")
+  const parsed = YesterdayCheckinResponseWireSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new Error("Ответ вчерашнего check-in имеет неверный формат")
+  }
+  return parsed.data
 }
+
+// START_BLOCK: YESTERDAY_ALIAS
+// The existing check-in client owns this endpoint; keep the packet's fetch-oriented
+// name as an additive alias without creating a second HTTP implementation.
+export const fetchYesterdayCheckin = getYesterdayCheckin
+// END_BLOCK: YESTERDAY_ALIAS
 
 export async function getCheckinMetrics({
   from,

@@ -645,21 +645,14 @@
             "title": "Daynumber",
             "type": "integer"
           },
-          "dayStatus": {
-            "anyOf": [
-              {
-                "enum": [
-                  "supportive",
-                  "steady",
-                  "tense"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "dayState": {
+            "enum": [
+              "hero",
+              "ordinary",
+              "not-computed"
             ],
-            "title": "Daystatus"
+            "title": "Daystate",
+            "type": "string"
           },
           "disabled": {
             "title": "Disabled",
@@ -682,7 +675,8 @@
           "dayNumber",
           "isCurrentMonth",
           "isToday",
-          "disabled"
+          "disabled",
+          "dayState"
         ],
         "title": "CalendarDay",
         "type": "object"
@@ -806,7 +800,7 @@
             "type": "string"
           },
           "schemaVersion": {
-            "const": "calendar/v1",
+            "const": "calendar/v2",
             "title": "Schemaversion",
             "type": "string"
           }
@@ -1890,6 +1884,82 @@
           "longitude"
         ],
         "title": "DayChartTransitPlanet",
+        "type": "object"
+      },
+      "DayHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "dayTone": {
+            "enum": [
+              "steady",
+              "supportive",
+              "mixed",
+              "tense"
+            ],
+            "title": "Daytone",
+            "type": "string"
+          },
+          "impulseCount": {
+            "minimum": 0.0,
+            "title": "Impulsecount",
+            "type": "integer"
+          },
+          "snapshotId": {
+            "title": "Snapshotid",
+            "type": "string"
+          },
+          "sphereKeys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Spherekeys",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "convergence_today",
+              "quiet_day"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "snapshotId",
+          "state",
+          "dayTone",
+          "sphereKeys",
+          "impulseCount"
+        ],
+        "title": "DayHistoryItem",
+        "type": "object"
+      },
+      "DayHistoryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ContentAccessState"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DayHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "access"
+        ],
+        "title": "DayHistoryPayload",
         "type": "object"
       },
       "DayQuality": {
@@ -6667,6 +6737,343 @@
         "title": "TodayPayload",
         "type": "object"
       },
+      "TodaySphereDrilldownConvergence": {
+        "additionalProperties": false,
+        "properties": {
+          "eventIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "title": "Eventids",
+            "type": "array"
+          },
+          "evidenceLevel": {
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Evidencelevel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "polarity": {
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "primarySphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Primarysphere",
+            "type": "string"
+          },
+          "secondarySphere": {
+            "anyOf": [
+              {
+                "enum": [
+                  "work",
+                  "money",
+                  "documents",
+                  "relationships",
+                  "sport",
+                  "communication",
+                  "health",
+                  "decisions",
+                  "travel",
+                  "creativity",
+                  "study",
+                  "shopping"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondarysphere"
+          }
+        },
+        "required": [
+          "id",
+          "primarySphere",
+          "secondarySphere",
+          "polarity",
+          "evidenceLevel",
+          "eventIds"
+        ],
+        "title": "TodaySphereDrilldownConvergence",
+        "type": "object"
+      },
+      "TodaySphereDrilldownPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "birthTimeMode": {
+            "enum": [
+              "exact",
+              "bucket",
+              "unknown"
+            ],
+            "title": "Birthtimemode",
+            "type": "string"
+          },
+          "convergence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodaySphereDrilldownConvergence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dayTone": {
+            "enum": [
+              "steady",
+              "supportive",
+              "mixed",
+              "tense"
+            ],
+            "title": "Daytone",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TodayConvergenceEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "snapshotId": {
+            "title": "Snapshotid",
+            "type": "string"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "convergence_today",
+              "quiet_day"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshotId",
+          "sphere",
+          "state",
+          "dayTone",
+          "birthTimeMode",
+          "events",
+          "convergence"
+        ],
+        "title": "TodaySphereDrilldownPayload",
+        "type": "object"
+      },
+      "TodaySphereNatal": {
+        "additionalProperties": false,
+        "properties": {
+          "paragraphs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TodaySphereNatalParagraph"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paragraphs"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "TodaySphereNatal",
+        "type": "object"
+      },
+      "TodaySphereNatalParagraph": {
+        "additionalProperties": false,
+        "properties": {
+          "sourceFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Sourcefactids",
+            "type": "array"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "sourceFactIds"
+        ],
+        "title": "TodaySphereNatalParagraph",
+        "type": "object"
+      },
+      "TodaySpherePagePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "birthTimeMode": {
+            "enum": [
+              "exact",
+              "bucket",
+              "unknown"
+            ],
+            "title": "Birthtimemode",
+            "type": "string"
+          },
+          "housesAvailable": {
+            "title": "Housesavailable",
+            "type": "boolean"
+          },
+          "natal": {
+            "$ref": "#/components/schemas/TodaySphereNatal"
+          },
+          "period": {
+            "items": {
+              "$ref": "#/components/schemas/TodaySpherePeriodItem"
+            },
+            "maxItems": 5,
+            "title": "Period",
+            "type": "array"
+          },
+          "periodIdentity": {
+            "title": "Periodidentity",
+            "type": "string"
+          },
+          "periodUnavailable": {
+            "default": false,
+            "title": "Periodunavailable",
+            "type": "boolean"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sphere",
+          "birthTimeMode",
+          "housesAvailable",
+          "natal",
+          "period",
+          "periodIdentity"
+        ],
+        "title": "TodaySpherePagePayload",
+        "type": "object"
+      },
+      "TodaySpherePeriodItem": {
+        "additionalProperties": false,
+        "properties": {
+          "activeFrom": {
+            "format": "date",
+            "title": "Activefrom",
+            "type": "string"
+          },
+          "activeUntil": {
+            "format": "date",
+            "title": "Activeuntil",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "technique": {
+            "enum": [
+              "annual_profection",
+              "firdar_major",
+              "firdar_minor",
+              "solar_return"
+            ],
+            "title": "Technique",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "technique",
+          "title",
+          "activeFrom",
+          "activeUntil"
+        ],
+        "title": "TodaySpherePeriodItem",
+        "type": "object"
+      },
       "TodayV2ActivatedTarget": {
         "additionalProperties": false,
         "properties": {
@@ -7996,9 +8403,29 @@
               }
             ]
           },
+          "forecastAvailable": {
+            "default": false,
+            "title": "Forecastavailable",
+            "type": "boolean"
+          },
+          "forecastRecap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/YesterdayForecastRecap"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "hadCheckin": {
             "title": "Hadcheckin",
             "type": "boolean"
+          },
+          "targetDate": {
+            "format": "date",
+            "title": "Targetdate",
+            "type": "string"
           }
         },
         "required": [
@@ -8072,6 +8499,63 @@
           "transition"
         ],
         "title": "YesterdayEcho",
+        "type": "object"
+      },
+      "YesterdayForecastRecap": {
+        "additionalProperties": false,
+        "properties": {
+          "dayTone": {
+            "enum": [
+              "steady",
+              "supportive",
+              "mixed",
+              "tense"
+            ],
+            "title": "Daytone",
+            "type": "string"
+          },
+          "snapshotId": {
+            "title": "Snapshotid",
+            "type": "string"
+          },
+          "sphereKeys": {
+            "items": {
+              "enum": [
+                "work",
+                "money",
+                "documents",
+                "relationships",
+                "sport",
+                "communication",
+                "health",
+                "decisions",
+                "travel",
+                "creativity",
+                "study",
+                "shopping"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Spherekeys",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "convergence_today",
+              "quiet_day"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshotId",
+          "state",
+          "dayTone",
+          "sphereKeys"
+        ],
+        "title": "YesterdayForecastRecap",
         "type": "object"
       },
       "app__schemas__horary__CalloutBlock": {
@@ -8779,6 +9263,27 @@
         ]
       }
     },
+    "/__contracts__/dayhistorypayload": {
+      "get": {
+        "operationId": "contracts__dayhistorypayload___contracts___dayhistorypayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayHistoryPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Dayhistorypayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
     "/__contracts__/focuseventdrilldown": {
       "get": {
         "operationId": "contracts__focuseventdrilldown___contracts___focuseventdrilldown_get",
@@ -9278,6 +9783,48 @@
           }
         },
         "summary": "Contracts  Todaypayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/todayspheredrilldownpayload": {
+      "get": {
+        "operationId": "contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodaySphereDrilldownPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Todayspheredrilldownpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/todayspherepagepayload": {
+      "get": {
+        "operationId": "contracts__todayspherepagepayload___contracts___todayspherepagepayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodaySpherePagePayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Todayspherepagepayload",
         "tags": [
           "__contracts__"
         ]

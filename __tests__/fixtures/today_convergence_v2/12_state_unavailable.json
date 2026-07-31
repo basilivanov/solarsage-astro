@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": null,
+  "targetDate": "2026-08-01",
+  "timezone": "Europe/Moscow",
+  "publishedAt": null,
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "unknown",
+    "bucket": null,
+    "rangeStart": "00:00",
+    "rangeEnd": "24:00",
+    "capabilities": {
+      "houses": false,
+      "angles": false,
+      "lots": false,
+      "exactTiming": false
+    }
+  },
+  "state": "unavailable",
+  "dayTone": null,
+  "personal": null,
+  "previewTeaser": null,
+  "convergences": [],
+  "mainEvent": null,
+  "impulses": [],
+  "periodContext": null,
+  "lookahead": null,
+  "events": [],
+  "contentState": "unavailable",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
+}

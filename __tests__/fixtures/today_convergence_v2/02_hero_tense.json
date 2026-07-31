@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "snap_v1_00000000000000000000000000000011",
+  "targetDate": "2026-08-01",
+  "timezone": "Europe/Moscow",
+  "publishedAt": "2026-07-31T21:00:00+03:00",
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "exact",
+    "bucket": null,
+    "rangeStart": "08:20",
+    "rangeEnd": "08:20",
+    "capabilities": {
+      "houses": true,
+      "angles": true,
+      "lots": true,
+      "exactTiming": true
+    }
+  },
+  "state": "convergence_today",
+  "dayTone": "tense",
+  "personal": true,
+  "previewTeaser": null,
+  "convergences": [
+    {
+      "id": "cvg_v1_00000000000000000000000000000011",
+      "primarySphere": "work",
+      "secondarySphere": "documents",
+      "polarity": "tense",
+      "evidenceLevel": "high",
+      "eventIds": [
+        "evt_v1_00000000000000000000000000000011",
+        "evt_v1_00000000000000000000000000000012"
+      ],
+      "summary": {
+        "text": "Рабочий темп упирается в документы: сроки и формальности требуют одной ясной последовательности.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000011",
+          "evt_v1_00000000000000000000000000000012"
+        ]
+      },
+      "meaning": {
+        "text": "Попытка ускорить процесс без проверки деталей добавит лишний круг исправлений.",
+        "sourceEventIds": ["evt_v1_00000000000000000000000000000012"]
+      },
+      "action": {
+        "text": "Оставь запас на проверку и попроси подтвердить условия до отправки.",
+        "sourceEventIds": ["evt_v1_00000000000000000000000000000011"]
+      }
+    }
+  ],
+  "mainEvent": null,
+  "impulses": [],
+  "periodContext": null,
+  "lookahead": null,
+  "events": [
+    {
+      "id": "evt_v1_00000000000000000000000000000011",
+      "kind": "aspect",
+      "sphere": "work",
+      "polarity": "tense",
+      "evidenceLevel": "high",
+      "time": {
+        "mode": "exact",
+        "peak": "15:40",
+        "start": "13:00",
+        "end": "18:00",
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000011"]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000012",
+      "kind": "structural",
+      "sphere": "documents",
+      "polarity": "mixed",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "10:20",
+        "start": null,
+        "end": null,
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000012"]
+    }
+  ],
+  "contentState": "ready",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
+}

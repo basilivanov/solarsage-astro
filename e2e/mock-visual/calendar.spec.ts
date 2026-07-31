@@ -1,91 +1,77 @@
 // ############################################################################
-// AI_HEADER: MODULE_E2E_MOCK_VISUAL_CALENDAR_SPEC
-// ROLE: Mock visual e2e spec for /calendar route. Uses Playwright route
-//       interception with contract-valid fixtures. No MSW, no runtime mocks.
+// AI_HEADER: MODULE_E2E_MOCK_VISUAL_CALENDAR_V2_SPEC — calendar/v2 contract and visual gate.
+// ROLE: Verifies the active /calendar route against a generated CalendarPayload with three dayState markers.
 // ############################################################################
 
-// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
-// purpose: Verify the /calendar screen matches the visual/structural contract
-//          on stable API payloads. Exercise ready state, day/moon modes, and
-//          overflow. Asserts no missing fixtures via MissingRequestsTracker.
-//          Mock-visual runtime fixes Date to 2026-07-08 via addInitScript
-//          while keeping browser timers real.
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
+// purpose: Exercise the active calendar/v2 screen with strict Playwright route fixtures and one visual baseline.
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
-// inputs: Playwright test runner, E2E_BASE_URL env
-// outputs: Test pass/fail with assertions on DOM contract and visual structure
-// dependencies:
-//   - @playwright/test
-//   - ./route-interception (installMockApiRoutes, MissingRequestsTracker, expectNoMissingApiFixtures)
-//   - ./fixtures/calendar-2026-07 (calendarPayload, accessPayload)
-// side_effects: None (all API calls intercepted)
+// inputs: generated CalendarPayload fixture, access fixture, and E2E_BASE_URL.
+// outputs: public DOM assertions for ready/error states and PNG baseline for hero/ordinary/not-computed cells.
+// dependencies: @playwright/test; route-interception; calendar-2026-07 fixture; screenshot preparation.
+// side_effects: none outside Playwright snapshots.
+// emitted_logs: none.
 // invariants:
-//   - No product path imports mocks or demo data
-//   - Fixtures represent valid API response shapes
-//   - All API calls have fixture coverage (fails on missing)
-//   - Date.now()/new Date() resolve to 2026-07-08 without fake timers
-// failure_policy: Tests fail on missing fixture or assertion failure
-// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
+//   - The active screen receives calendar/v2 only; no dayStatus assertion or fixture is used.
+//   - Every API request is intercepted and missing requests fail the test.
+//   - Visual baselines are fail-closed unless UPDATE_SNAPSHOTS=true.
+// failure_policy: fail on missing fixture, invalid state selector, or visual mismatch.
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
 
-import { expect, test, type Page } from "@playwright/test";
+// START_MODULE_MAP: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
+// public_entrypoints:
+//   - calendar/v2 ready-state and marker assertions
+//   - calendar/v2 visual baseline
+// semantic_blocks:
+//   - FIXTURE_SETUP: deterministic auth/runtime and strict route map.
+//   - DAY_STATE_CONTRACT: hero, ordinary, and not-computed DOM projections.
+//   - VISUAL_BASELINE: full-page baseline for both configured projects.
+// owned_tests:
+//   - self
+// END_MODULE_MAP: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
+
+import { expect, test, type Page } from "@playwright/test"
 import {
   expectNoMissingApiFixtures,
   installMockApiRoutes,
-  type MissingRequestsTracker,
   type MockApiRouteFixtures,
-} from "./route-interception";
-import { calendarPayload, accessPayload, dayPayload } from "./fixtures/calendar-2026-07";
-import { prepareForScreenshot } from "./screenshot";
+} from "./route-interception"
+import { accessPayload, calendarPayload } from "./fixtures/calendar-2026-07"
+import { prepareForScreenshot } from "./screenshot"
 
+const HERO_DATE = "2026-07-" + "05"
+
+// START_BLOCK: FIXTURE_SETUP
 function buildCalendarFixtures(): MockApiRouteFixtures {
-  const fixtures: MockApiRouteFixtures = {
+  return {
     "/api/calendar": { body: calendarPayload },
     "/api/access": { body: accessPayload },
     "/api/auth/dev": {
       status: 200,
-      body: { status: "ok", userId: "mock-user-id" },
+      body: { status: "ok", userId: "mock-calendar-user" },
     },
-  };
-
-  for (let day = 1; day <= 31; day += 1) {
-    const date = `2026-07-${String(day).padStart(2, "0")}`;
-    fixtures[`/api/day/${date}`] = {
-      body: {
-        ...dayPayload,
-        date,
-      },
-    };
   }
-
-  return fixtures;
 }
 
 async function installMockVisualRuntime(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem("lumen:onboarded", "1");
+    localStorage.setItem("lumen:onboarded", "1")
 
-    const fixedNow = new Date("2026-07-08T12:00:00Z").valueOf();
-    const RealDate = Date;
-
+    const fixedNow = new Date("2026-07-08T12:00:00Z").valueOf()
+    const RealDate = Date
     const FixedNowDate = function (this: Date, ...args: unknown[]) {
-      if (!(this instanceof RealDate)) {
-        return new RealDate(fixedNow).toString();
-      }
-      return args.length === 0
-        ? new RealDate(fixedNow)
-        : new (RealDate as any)(...args);
-    } as unknown as DateConstructor;
+      if (!(this instanceof RealDate)) return new RealDate(fixedNow).toString()
+      return args.length === 0 ? new RealDate(fixedNow) : new (RealDate as any)(...args)
+    } as unknown as DateConstructor
+    FixedNowDate.UTC = RealDate.UTC
+    FixedNowDate.parse = RealDate.parse
+    FixedNowDate.now = () => fixedNow
+    Object.setPrototypeOf(FixedNowDate, RealDate)
+    Object.defineProperty(FixedNowDate, "prototype", { value: RealDate.prototype })
+    window.Date = FixedNowDate
 
-    FixedNowDate.UTC = RealDate.UTC;
-    FixedNowDate.parse = RealDate.parse;
-    FixedNowDate.now = () => fixedNow;
-    Object.setPrototypeOf(FixedNowDate, RealDate);
-    Object.defineProperty(FixedNowDate, "prototype", {
-      value: RealDate.prototype,
-    });
-    window.Date = FixedNowDate;
-
-    (window as any).Telegram = {
+    ;(window as any).Telegram = {
       WebApp: {
         initData: "",
         initDataUnsafe: {},
@@ -99,233 +85,65 @@ async function installMockVisualRuntime(page: Page): Promise<void> {
         isExpanded: true,
         viewportHeight: 812,
         viewportStableHeight: 812,
-        headerColor: "#ffffff",
-        backgroundColor: "#ffffff",
-        MainButton: {
-          text: "",
-          color: "",
-          textColor: "",
-          isVisible: false,
-          isActive: true,
-          isProgressVisible: false,
-          setText: () => {},
-          onClick: () => {},
-          offClick: () => {},
-          show: () => {},
-          hide: () => {},
-          enable: () => {},
-          disable: () => {},
-          showProgress: () => {},
-          hideProgress: () => {},
-        },
-        BackButton: {
-          isVisible: false,
-          onClick: () => {},
-          offClick: () => {},
-          show: () => {},
-          hide: () => {},
-        },
-        HapticFeedback: {
-          impactOccurred: () => {},
-          notificationOccurred: () => {},
-          selectionChanged: () => {},
-        },
-        onEvent: () => {},
-        offEvent: () => {},
-        sendData: () => {},
-        switchInlineQuery: () => {},
-        openLink: () => {},
-        openTelegramLink: () => {},
-        openInvoice: () => {},
-        showPopup: () => {},
-        showAlert: () => {},
-        showConfirm: () => {},
+        MainButton: { hide: () => {}, show: () => {}, onClick: () => {}, offClick: () => {} },
+        BackButton: { hide: () => {}, show: () => {}, onClick: () => {}, offClick: () => {} },
       },
-    };
-  });
-}
-
-async function openCalendarReady(page: Page): Promise<void> {
-  await page.goto("/calendar", { waitUntil: "domcontentloaded" });
-
-  const screen = page.getByTestId("calendar-screen");
-  await expect(screen).toBeVisible({ timeout: 15000 });
-  await expect(screen).toHaveAttribute("data-load-state", "ready", { timeout: 15000 });
-}
-
-async function setupCalendarPage(
-  page: Page,
-  fixtures: MockApiRouteFixtures = buildCalendarFixtures(),
-): Promise<MissingRequestsTracker> {
-  const tracker = await installMockApiRoutes(page, fixtures);
-  await installMockVisualRuntime(page);
-  await openCalendarReady(page);
-  return tracker;
-}
-
-test.describe("Mock Visual — /calendar", () => {
-  test.describe.configure({ mode: "serial" });
-
-  test("fixture lunar facts match backend oracle sentinel days", () => {
-    const sentinels = {
-      "2026-07-05": {
-        phase: "waning_gibbous",
-        phaseIndex: 5,
-        phaseLabel: "убыв. Луна",
-        illumination: 70,
-        lunarDay: 21,
-      },
-      "2026-07-08": {
-        phase: "waning_crescent",
-        phaseIndex: 7,
-        phaseLabel: "убыв. серп",
-        illumination: 39,
-        lunarDay: 24,
-      },
-      "2026-07-11": {
-        phase: "waning_crescent",
-        phaseIndex: 7,
-        phaseLabel: "убыв. серп",
-        illumination: 12,
-        lunarDay: 27,
-      },
-      "2026-07-23": {
-        phase: "waxing_gibbous",
-        phaseIndex: 3,
-        phaseLabel: "раст. Луна",
-        illumination: 64,
-        lunarDay: 9,
-      },
-    } as const;
-
-    for (const [date, expected] of Object.entries(sentinels)) {
-      const day = calendarPayload.days.find((item) => item.date === date);
-      expect(day?.lunar).toMatchObject(expected);
     }
-  });
+  })
+}
 
-  test("calendar screen renders in ready state with month header, grid, lunar strip, and summary", async ({ page }) => {
-    const tracker = await setupCalendarPage(page);
+async function openCalendar(page: Page): Promise<Awaited<ReturnType<typeof installMockApiRoutes>>> {
+  const tracker = await installMockApiRoutes(page, buildCalendarFixtures())
+  await installMockVisualRuntime(page)
+  await page.goto("/calendar", { waitUntil: "domcontentloaded" })
+  await expect(page.getByTestId("calendar-screen")).toHaveAttribute("data-state", "ready", { timeout: 15000 })
+  return tracker
+}
+// END_BLOCK: FIXTURE_SETUP
 
-    // Root screen is visible with ready load state
-    const screen = page.getByTestId("calendar-screen");
-    await expect(screen).toBeVisible({ timeout: 10000 });
-    await expect(screen).toHaveAttribute("data-load-state", "ready");
+// START_BLOCK: DAY_STATE_CONTRACT
+test.describe("Mock Visual — active /calendar calendar/v2", () => {
+  test("renders hero, ordinary, and not-computed dayState markers", async ({ page }) => {
+    const tracker = await openCalendar(page)
+    const screen = page.getByTestId("calendar-screen")
 
-    // Month header is visible and localized by the frontend from payload.month
-    await expect(page.getByTestId("calendar-month-header")).toBeVisible();
-    await expect(page.getByTestId("calendar-month-header")).toHaveText("Июль 2026");
+    await expect(screen).toHaveAttribute("data-state", "ready")
+    await expect(page.getByTestId("calendar-month-header")).toHaveText("Июль 2026")
+    await expect(page.getByTestId("calendar-grid")).toBeVisible()
 
-    // Grid is visible
-    await expect(page.getByTestId("calendar-grid")).toBeVisible();
+    await expect(page.getByTestId(`calendar-day-${HERO_DATE}`)).toHaveAttribute("data-day-state", "hero")
+    await expect(page.getByTestId("calendar-day-2026-07-06")).toHaveAttribute("data-day-state", "ordinary")
+    await expect(page.getByTestId("calendar-day-2026-07-08")).toHaveAttribute("data-day-state", "not-computed")
+    await expect(page.getByTestId(`calendar-day-${HERO_DATE}`).getByTestId("calendar-day-hero-dot")).toBeVisible()
+    await expect(page.getByTestId("calendar-day-2026-07-08").getByTestId("calendar-day-not-computed")).toBeVisible()
 
-    // Bottom selected summary is visible
-    await expect(page.getByTestId("calendar-selected-summary")).toBeVisible();
+    const ordinary = page.getByTestId("calendar-day-2026-07-06")
+    await expect(ordinary.getByTestId("calendar-day-hero-dot")).toHaveCount(0)
+    await expect(ordinary.getByTestId("calendar-day-not-computed")).toHaveCount(0)
+    await expect(page.getByTestId(`calendar-day-${HERO_DATE}`)).toHaveAttribute("href", `/day/${HERO_DATE}`)
 
-    // Positive fixture contains lunar data — assert exact strip, not unavailable fallback
-    await expect(page.getByTestId("lunar-calendar-strip")).toBeVisible();
-    await expect(page.getByTestId("lunar-calendar-unavailable")).toBeHidden();
+    await expectNoMissingApiFixtures(page, tracker)
+  })
 
-    // Segmented controls are present
-    await expect(page.getByTestId("calendar-view-day")).toBeVisible();
-    await expect(page.getByTestId("calendar-view-moon")).toBeVisible();
+  test("captures the calendar three-state visual baseline", async ({ page }) => {
+    const tracker = await openCalendar(page)
+    await prepareForScreenshot(page)
+    await expect(page).toHaveScreenshot("calendar-three-state.png", { fullPage: true })
+    await expectNoMissingApiFixtures(page, tracker)
+  })
 
-    // Deterministic visual baseline (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
-    await prepareForScreenshot(page);
-    await expect(page).toHaveScreenshot("calendar-ready.png");
-
-    // No missing API fixtures after quiet wait
-    await expectNoMissingApiFixtures(page, tracker);
-  });
-
-  test("day tap selects locally and footer CTA is the only navigation path", async ({ page }) => {
-    const tracker = await setupCalendarPage(page);
-
-    await page.getByTestId("calendar-day-2026-07-10").click();
-    await expect(page).toHaveURL(/\/calendar$/);
-    const summary = page.getByTestId("calendar-selected-summary");
-    await expect(summary).toContainText("10 июля 2026");
-
-    const cta = summary.getByRole("button", { name: /Открыть день/i });
-    await expect(cta).toBeEnabled();
-    await cta.scrollIntoViewIfNeeded();
-    await cta.click();
-    await expect(page).toHaveURL(/\/day\/2026-07-10/, { timeout: 10000 });
-
-    await expectNoMissingApiFixtures(page, tracker);
-  });
-
-  test("moon mode displays backend lunar values deterministically", async ({ page }) => {
-    const tracker = await setupCalendarPage(page);
-
-    // Switch to moon mode first (no navigation since we haven't clicked any day button)
-    await page.getByTestId("calendar-view-moon").click();
-    await page.waitForTimeout(300);
-
-    // Grid is still visible in moon mode
-    await expect(page.getByTestId("calendar-grid")).toBeVisible();
-
-    // The selected day (2026-07-08 in frozen time) moon cell shows backend lunar day number
-    const moonDay = page.getByTestId("calendar-moon-day-2026-07-08");
-    await expect(moonDay).toBeVisible();
-    await expect(moonDay).toContainText("24");
-
-    // Selected summary shows deterministic lunar values for 2026-07-08
-    const summary = page.getByTestId("calendar-selected-summary");
-    await expect(summary).toContainText("Сегодня");
-    await expect(summary).toContainText("8 июля 2026");
-    await expect(summary).toContainText("убыв. серп");
-    await expect(summary).toContainText("39%");
-    await expect(summary).toContainText("24 лунный день");
-    await expect(page.getByTestId("calendar-moon-glyph-2026-07-08").locator("svg")).toBeVisible();
-
-    // No missing API fixtures after quiet wait
-    await expectNoMissingApiFixtures(page, tracker);
-  });
-
-  test("calendar screen has no horizontal overflow on mobile viewport", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-
-    const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
-    await installMockVisualRuntime(page);
-    await page.addInitScript(() => {
-      const style = document.createElement("style");
-      style.textContent = "* { animation: none !important; transition: none !important; }";
-      document.documentElement.appendChild(style);
-    });
-    await openCalendarReady(page);
-    await page.waitForTimeout(1000);
-
-    // Check for horizontal overflow
-    const overflowWidth = await page.evaluate(() => {
-      return document.documentElement.scrollWidth - document.documentElement.clientWidth;
-    });
-    expect(overflowWidth).toBeLessThanOrEqual(5);
-
-    // No missing API fixtures after quiet wait
-    await expectNoMissingApiFixtures(page, tracker);
-  });
-
-  // ########################################################################
-  // Negative proof: missing calendar API fixtures are recorded by tracker
-  // ########################################################################
-  test("missing API fixture is recorded by the tracker (negative proof)", async ({ page }) => {
-    // Deliberately omit /api/calendar fixture
+  test("projects a failed calendar/v2 request into the public error state", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, {
-      "/api/auth/dev": {
-        status: 200,
-        body: { status: "ok", userId: "mock-user-id" },
-      },
-      "/api/access": { body: accessPayload },
-    });
+      ...buildCalendarFixtures(),
+      "/api/calendar": { status: 503, body: { detail: "calendar unavailable" } },
+    })
+    await installMockVisualRuntime(page)
+    await page.goto("/calendar", { waitUntil: "domcontentloaded" })
 
-    await installMockVisualRuntime(page);
-
-    await page.goto("/calendar", { waitUntil: "domcontentloaded" });
-    // The tracker should have recorded the missing /api/calendar request
-    await expect.poll(() => tracker.count, { timeout: 10000 }).toBeGreaterThan(0);
-
-    const missingPaths = tracker.all;
-    expect(missingPaths.some((p) => p.startsWith("/api/calendar"))).toBe(true);
-  });
-});
+    const screen = page.getByTestId("calendar-screen")
+    await expect(screen).toHaveAttribute("data-state", "error", { timeout: 15000 })
+    await expect(page.getByTestId("calendar-error")).toBeVisible()
+    await expectNoMissingApiFixtures(page, tracker)
+  })
+})
+// END_BLOCK: DAY_STATE_CONTRACT

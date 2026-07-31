@@ -13,11 +13,13 @@
 #   - apps/api/app/core/__init__.py
 # inputs:
 #   - environment variables (APP_ENV, APP_DOMAIN, APP_VERSION, DATABASE_URL,
-#     CONTRACT_VERSION, CORS_ALLOWED_ORIGINS, GRACE_USER_SALT) read via pydantic-settings
+#     CONTRACT_VERSION, CORS_ALLOWED_ORIGINS, GRACE_USER_SALT and P5 day-pregen
+#     settings) read via pydantic-settings
 #   - .env file at repo root
 #   - `git rev-parse --short HEAD` for git_sha resolution
 # outputs:
 #   - settings: Settings singleton imported by other modules
+#   - settings.day_pregen_*: positive typed nightly pre-generation limits
 #   - settings.git_sha: short HEAD sha or "unknown"
 #   - settings.cors_allowed_origins: comma-separated exact origins
 #   - settings.grace_user_salt: salt for logging privacy
@@ -51,6 +53,7 @@
 #   - SETTINGS_SINGLETON: module-level `settings = Settings()` instance
 # owned_tests:
 #   - apps/api/tests/test_health.py (indirectly, via /api/health response)
+#   - apps/api/tests/test_today_pregen_service.py (P5 setting validation)
 # END_MODULE_MAP: M-CONFIG
 
 from __future__ import annotations
@@ -160,6 +163,39 @@ class Settings(BaseSettings):
     # Model configuration
     llm_model: str = Field("openai/gpt-4.1-nano", alias="LLM_MODEL")
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
+
+    # --- Today bounded narrative (P6) ---
+    today_narrative_max_output_tokens: int = Field(
+        700, alias="TODAY_NARRATIVE_MAX_OUTPUT_TOKENS"
+    )
+    today_narrative_timeout_seconds: int = Field(
+        45, alias="TODAY_NARRATIVE_TIMEOUT_SECONDS"
+    )
+    today_narrative_prompt_version: str = Field(
+        "today-narrative-v1", alias="TODAY_NARRATIVE_PROMPT_VERSION"
+    )
+    today_sphere_natal_prompt_version: str = Field(
+        "sphere-natal-v1", alias="TODAY_SPHERE_NATAL_PROMPT_VERSION"
+    )
+    today_llm_on_demand_concurrency: int = Field(
+        3, alias="TODAY_LLM_ON_DEMAND_CONCURRENCY"
+    )
+
+    # --- Nightly Today convergence pre-generation (P5) ---
+    # All values are positive by contract so the one-shot job fails closed
+    # before it queries the cohort when an environment is misconfigured.
+    day_pregen_active_days: int = Field(14, gt=0, alias="DAY_PREGEN_ACTIVE_DAYS")
+    day_pregen_llm_active_days: int = Field(
+        7, gt=0, alias="DAY_PREGEN_LLM_ACTIVE_DAYS"
+    )
+    day_pregen_concurrency: int = Field(3, gt=0, alias="DAY_PREGEN_CONCURRENCY")
+    day_pregen_max_users: int = Field(500, gt=0, alias="DAY_PREGEN_MAX_USERS")
+    day_pregen_deterministic_deadline_seconds: int = Field(
+        10, gt=0, alias="DAY_PREGEN_DETERMINISTIC_DEADLINE_SECONDS"
+    )
+    day_pregen_llm_deadline_seconds: int = Field(
+        45, gt=0, alias="DAY_PREGEN_LLM_DEADLINE_SECONDS"
+    )
 
     # OpenRouter specific settings
     openrouter_base_url: str = Field(

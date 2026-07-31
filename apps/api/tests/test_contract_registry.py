@@ -60,6 +60,7 @@ EXPECTED_ROOT_NAMES = [
     "CheckinMetrics",
     "CheckinResponse",
     "ConvergenceEvidence",
+    "DayHistoryPayload",
     "FocusEventDrilldown",
     "HoraryAnswerRead",
     "HoraryQuestionCreate",
@@ -84,6 +85,8 @@ EXPECTED_ROOT_NAMES = [
     "TelegramAuthRequest",
     "TodayConvergencePayload",
     "TodayPayload",
+    "TodaySphereDrilldownPayload",
+    "TodaySpherePagePayload",
     "YesterdayCheckinResponse",
 ]
 

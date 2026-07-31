@@ -1,0 +1,27 @@
+{
+  "targetDate": "2026-08-01",
+  "hadCheckin": true,
+  "checkin": {
+    "id": 8101,
+    "targetDate": "2026-08-01",
+    "mood": 4,
+    "accuracy": 4,
+    "energy": 3,
+    "tags": ["фокус", "разговор"],
+    "note": "Удалось удержать главное и не торопить разговор.",
+    "streak": 2,
+    "filledAt": "2026-08-01T21:15:00+03:00",
+    "createdAt": "2026-08-01T21:15:00+03:00",
+    "observedSpheres": ["work", "communication"],
+    "forecastSnapshotId": "snap_v1_00000000000000000000000000000161",
+    "predictionSeenAt": "2026-08-01T08:10:00+03:00",
+    "predictionSeenSurface": "day"
+  },
+  "forecastAvailable": true,
+  "forecastRecap": {
+    "snapshotId": "snap_v1_00000000000000000000000000000161",
+    "state": "quiet_day",
+    "dayTone": "steady",
+    "sphereKeys": ["work", "communication"]
+  }
+}

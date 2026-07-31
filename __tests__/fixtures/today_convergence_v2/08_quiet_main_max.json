@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "snap_v1_00000000000000000000000000000081",
+  "targetDate": "2026-08-01",
+  "timezone": "Europe/Moscow",
+  "publishedAt": "2026-07-31T21:00:00+03:00",
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "exact",
+    "bucket": null,
+    "rangeStart": "08:20",
+    "rangeEnd": "08:20",
+    "capabilities": {
+      "houses": true,
+      "angles": true,
+      "lots": true,
+      "exactTiming": true
+    }
+  },
+  "state": "quiet_day",
+  "dayTone": "steady",
+  "personal": true,
+  "previewTeaser": null,
+  "convergences": [],
+  "mainEvent": {
+    "id": "mev_v1_evt_v1_00000000000000000000000000000081",
+    "eventId": "evt_v1_00000000000000000000000000000081",
+    "sphere": "decisions",
+    "polarity": "mixed",
+    "evidenceLevel": "high",
+    "time": {
+      "mode": "exact",
+      "peak": "12:30",
+      "start": "10:30",
+      "end": "15:00",
+      "partOfDay": null
+    },
+    "summary": {
+      "text": "Главное событие дня просит выбрать направление, не пытаясь удержать все варианты сразу.",
+      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
+    },
+    "meaning": {
+      "text": "Решение становится устойчивее, когда у него есть ясный критерий и ближайшая проверка.",
+      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
+    },
+    "action": {
+      "text": "Запиши один выбранный путь и один признак, по которому проверишь его завтра.",
+      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
+    }
+  },
+  "impulses": [
+    {
+      "eventId": "evt_v1_00000000000000000000000000000082",
+      "sphere": "work",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "09:10",
+        "start": "08:00",
+        "end": "11:00",
+        "partOfDay": null
+      },
+      "summary": {
+        "text": "Утром проще собрать материалы для выбранного решения.",
+        "sourceEventIds": ["evt_v1_00000000000000000000000000000082"]
+      },
+      "meaning": null,
+      "action": null
+    },
+    {
+      "eventId": "evt_v1_00000000000000000000000000000083",
+      "sphere": "money",
+      "polarity": "mixed",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "16:15",
+        "start": null,
+        "end": null,
+        "partOfDay": null
+      },
+      "summary": {
+        "text": "После выбора внимательно проверь цену и ресурсы, которые он потребует.",
+        "sourceEventIds": ["evt_v1_00000000000000000000000000000083"]
+      },
+      "meaning": null,
+      "action": null
+    },
+    {
+      "eventId": "evt_v1_00000000000000000000000000000084",
+      "sphere": "study",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "20:40",
+        "start": "19:30",
+        "end": "22:00",
+        "partOfDay": null
+      },
+      "summary": {
+        "text": "Вечером полезно зафиксировать вывод короткой заметкой и одним вопросом.",
+        "sourceEventIds": ["evt_v1_00000000000000000000000000000084"]
+      },
+      "meaning": null,
+      "action": null
+    }
+  ],
+  "periodContext": null,
+  "lookahead": {
+    "targetDate": "2026-08-02",
+    "sphere": "work",
+    "snapshotId": "snap_v1_00000000000000000000000000000085"
+  },
+  "events": [
+    {
+      "id": "evt_v1_00000000000000000000000000000081",
+      "kind": "station",
+      "sphere": "decisions",
+      "polarity": "mixed",
+      "evidenceLevel": "high",
+      "time": {
+        "mode": "exact",
+        "peak": "12:30",
+        "start": "10:30",
+        "end": "15:00",
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000081"]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000082",
+      "kind": "aspect",
+      "sphere": "work",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "09:10",
+        "start": "08:00",
+        "end": "11:00",
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000082"]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000083",
+      "kind": "aspect",
+      "sphere": "money",
+      "polarity": "mixed",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "16:15",
+        "start": null,
+        "end": null,
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000083"]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000084",
+      "kind": "lunar",
+      "sphere": "study",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "20:40",
+        "start": "19:30",
+        "end": "22:00",
+        "partOfDay": null
+      },
+      "sourceIds": ["src_v1_00000000000000000000000000000084"]
+    }
+  ],
+  "contentState": "ready",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
+}

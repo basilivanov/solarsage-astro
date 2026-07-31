@@ -69,7 +69,10 @@ from .promo import (
 from .scoring_v2 import ScoringV2Result
 from .today import ConvergenceEvidence, TodayPayload
 from .today_convergence import TodayConvergencePayload
+from .today_day_history import DayHistoryPayload
 from .today_focus import FocusEventDrilldown
+from .today_sphere_drilldown import TodaySphereDrilldownPayload
+from .today_sphere_page import TodaySpherePagePayload
 
 
 # START_BLOCK: PUBLIC_ROOTS
@@ -84,6 +87,7 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     CheckinMetrics,
     CheckinResponse,
     ConvergenceEvidence,
+    DayHistoryPayload,
     FocusEventDrilldown,
     HoraryAnswerRead,
     HoraryQuestionCreate,
@@ -108,6 +112,8 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     TelegramAuthRequest,
     TodayConvergencePayload,
     TodayPayload,
+    TodaySphereDrilldownPayload,
+    TodaySpherePagePayload,
     YesterdayCheckinResponse,
 )
 # END_BLOCK: PUBLIC_ROOTS

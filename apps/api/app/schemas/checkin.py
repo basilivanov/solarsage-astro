@@ -5,7 +5,8 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SCHEMAS-CHECKIN
-# purpose: Request and response models for /api/checkin routes.
+# purpose: Request and response models for /api/checkin routes, including the
+#   generated yesterday forecast recap projection.
 # owns:
 #   - apps/api/app/schemas/checkin.py
 # inputs: request dicts
@@ -13,7 +14,10 @@
 # dependencies: M-SCHEMAS-TODAY-CONVERGENCE (CanonicalSphere)
 # side_effects: none
 # emitted_logs: none
-# invariants: observed_spheres is null or a unique list of at most 12 canonical spheres.
+# invariants:
+#   - observed_spheres is null or a unique list of at most 12 canonical spheres.
+#   - yesterday recap fields are additive and are always populated by the API
+#     route for new responses.
 # failure_policy: none
 # END_MODULE_CONTRACT: M-SCHEMAS-CHECKIN
 
@@ -21,6 +25,8 @@
 # public_entrypoints:
 #   - CheckinCreate
 #   - CheckinResponse
+#   - YesterdayForecastRecap
+#   - YesterdayCheckinResponse
 # semantic_blocks: none
 # owned_tests:
 #   - apps/api/tests/test_checkin.py
@@ -88,9 +94,23 @@ class CheckinResponse(CamelModel):
     prediction_seen_surface: Literal["day", "lookahead"] | None = None
 
 
+# START_BLOCK: YESTERDAY_RECAP
+class YesterdayForecastRecap(CamelModel):
+    snapshot_id: str
+    state: Literal["convergence_today", "quiet_day"]
+    day_tone: Literal["steady", "supportive", "mixed", "tense"]
+    sphere_keys: list[CanonicalSphere] = Field(..., max_length=3)
+
+
 class YesterdayCheckinResponse(CamelModel):
+    # New fields intentionally have defaults: the generated contract remains
+    # additive for clients that still construct the previous response shape.
+    target_date: date = Field(default_factory=date.today)
     had_checkin: bool
     checkin: CheckinResponse | None
+    forecast_available: bool = False
+    forecast_recap: YesterdayForecastRecap | None = None
+# END_BLOCK: YESTERDAY_RECAP
 
 
 class CheckinMetrics(CamelModel):

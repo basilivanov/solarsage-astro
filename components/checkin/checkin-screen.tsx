@@ -7,12 +7,12 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-SCREEN
-// purpose: Render multi-step evening checkin form (mood, energy, accuracy, tags, notes) and post-submit streak confirmation.
+// purpose: Render multi-step evening checkin form (mood, energy, accuracy, tags, observed spheres, notes) and snapshot recap.
 // owns:
 //   - components/checkin/checkin-screen.tsx
-// inputs: targetDate, dayStatusHint, onComplete
+// inputs: targetDate and onComplete
 // outputs: CheckinScreen React component
-// dependencies: createCheckin, getCheckin, lib/contracts/checkin
+// dependencies: createCheckin, getYesterdayCheckin, lib/contracts/checkin, generated YesterdayCheckinResponse.
 // side_effects: calls checkin API
 // emitted_logs: none
 // failure_policy: displays error alert and allows retry
@@ -33,13 +33,15 @@ import { useEffect, useState } from "react"
 import { Check } from "lucide-react"
 
 import { useToast } from "@/hooks/use-toast"
-import { createCheckin, getCheckin } from "@/lib/api/checkin"
-import type { CheckinResponse } from "@/packages/contracts"
+import { createCheckin, getYesterdayCheckin } from "@/lib/api/checkin"
+import type { CheckinResponse, YesterdayCheckinResponse } from "@/packages/contracts"
 import type {
   CheckinAccuracy,
   CheckinEnergy,
   CheckinMood,
 } from "@/lib/contracts/checkin"
+import { CANONICAL_PRODUCT_ORDER, type ProductSphereKey } from "@/lib/display/sphere-labels"
+import { getTodaySphereLabel } from "@/components/today-convergence/today-formatters"
 
 import { AccuracySelector } from "./accuracy-selector"
 import { CheckinTags } from "./checkin-tags"
@@ -50,7 +52,6 @@ type Step = "mood" | "energy" | "accuracy"
 
 type Props = {
   targetDate: string
-  dayStatusHint?: string
   onComplete?: (result: CheckinResponse) => void
 }
 
@@ -65,10 +66,76 @@ function pluralDays(n: number): string {
   return "дней"
 }
 
+const TONE_LABELS: Record<"steady" | "supportive" | "mixed" | "tense", string> = {
+  steady: "ровный",
+  supportive: "поддерживающий",
+  mixed: "смешанный",
+  tense: "напряжённый",
+}
+
+function ForecastRecap({ recap }: { recap: YesterdayCheckinResponse["forecastRecap"] }) {
+  if (!recap) return null
+
+  return (
+    <section
+      data-testid="yesterday-forecast-recap"
+      className="rounded-2xl border border-border/60 bg-card p-4 text-left"
+    >
+      <h3 className="text-[13px] font-medium text-foreground">Что было в прогнозе</h3>
+      <p className="mt-2 text-[13px] text-muted-foreground">
+        {recap.sphereKeys.map((key) => getTodaySphereLabel(key)).join(" · ") || "Без выделенной сферы"}
+      </p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Тон: {TONE_LABELS[recap.dayTone]}</p>
+    </section>
+  )
+}
+
+// START_BLOCK: OBSERVED_SPHERES
+function ObservedSpheresField({
+  selected,
+  onChange,
+}: {
+  selected: ProductSphereKey[]
+  onChange: (next: ProductSphereKey[]) => void
+}) {
+  return (
+    <fieldset data-testid="observed-spheres" className="space-y-3">
+      <legend className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        Какие сферы были заметны? <span className="normal-case tracking-normal">необязательно</span>
+      </legend>
+      <div className="grid grid-cols-2 gap-2">
+        {CANONICAL_PRODUCT_ORDER.map((sphere) => {
+          const isSelected = selected.includes(sphere.key)
+          return (
+            <label
+              key={sphere.key}
+              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/70 bg-card px-3 text-[12px] text-foreground"
+            >
+              <input
+                type="checkbox"
+                data-testid={`observed-sphere-${sphere.key}`}
+                checked={isSelected}
+                onChange={() => {
+                  onChange(
+                    isSelected
+                      ? selected.filter((key) => key !== sphere.key)
+                      : [...selected, sphere.key],
+                  )
+                }}
+              />
+              <span>{sphere.label}</span>
+            </label>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+// END_BLOCK: OBSERVED_SPHERES
+
 // START_BLOCK: CHECKIN_SCREEN_COMPONENT
 export function CheckinScreen({
   targetDate,
-  dayStatusHint,
   onComplete,
 }: Props) {
   const [step, setStep] = useState<Step>("mood")
@@ -79,6 +146,8 @@ export function CheckinScreen({
   const [note, setNote] = useState("")
   const [showDetails, setShowDetails] = useState(false)
   const [existing, setExisting] = useState<CheckinResponse | null>(null)
+  const [yesterday, setYesterday] = useState<YesterdayCheckinResponse | null>(null)
+  const [observedSpheres, setObservedSpheres] = useState<ProductSphereKey[]>([])
   const [submittedResult, setSubmittedResult] = useState<CheckinResponse | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(true)
   const [readError, setReadError] = useState<string | null>(null)
@@ -94,9 +163,11 @@ export function CheckinScreen({
     setSubmittedResult(null)
     setEditing(false)
 
-    getCheckin(targetDate)
-      .then((value) => {
+    getYesterdayCheckin()
+      .then((yesterdayResponse) => {
         if (!active) return
+        setYesterday(yesterdayResponse)
+        const value = yesterdayResponse.checkin
         setExisting(value)
         if (value) {
           setMood(value.mood as CheckinMood)
@@ -104,12 +175,14 @@ export function CheckinScreen({
           setAccuracy((value.accuracy ?? null) as CheckinAccuracy | null)
           setTags(value.tags)
           setNote(value.note ?? "")
+          setObservedSpheres((value.observedSpheres ?? []) as ProductSphereKey[])
         } else {
           setMood(null)
           setEnergy(null)
           setAccuracy(null)
           setTags([])
           setNote("")
+          setObservedSpheres([])
         }
       })
       .catch((reason: unknown) => {
@@ -138,10 +211,21 @@ export function CheckinScreen({
         energy,
         tags,
         note: note.trim() || null,
+        ...(observedSpheres.length ? { observedSpheres } : {}),
       })
       setExisting(result)
       setSubmittedResult(result)
       setEditing(false)
+      try {
+        const refreshed = await getYesterdayCheckin()
+        setYesterday(refreshed)
+        if (refreshed.checkin) {
+          setExisting(refreshed.checkin)
+          setSubmittedResult(refreshed.checkin)
+        }
+      } catch {
+        // The saved check-in remains visible if the recap refresh is unavailable.
+      }
     } catch (reason) {
       toast({
         description:
@@ -170,13 +254,13 @@ export function CheckinScreen({
       data-testid="checkin-screen"
     >
       {loadingExisting ? (
-        <p className="text-[13px] text-muted-foreground">
+        <p role="status" className="text-[13px] text-muted-foreground">
           Загружаем оценку...
         </p>
       ) : null}
 
       {!loadingExisting && readError ? (
-        <section>
+        <section role="alert">
           <h2 className="font-serif text-[22px] leading-tight text-foreground">
             Не удалось загрузить оценку
           </h2>
@@ -214,6 +298,8 @@ export function CheckinScreen({
             </p>
           </div>
 
+          <ForecastRecap recap={yesterday?.forecastRecap ?? null} />
+
           <button
             type="button"
             data-testid="checkin-done-btn"
@@ -238,6 +324,9 @@ export function CheckinScreen({
             {existing.accuracy ? <p>Точность: {existing.accuracy} / 3</p> : null}
             {existing.note ? <p className="text-foreground">{existing.note}</p> : null}
           </div>
+          <div className="mt-4">
+            <ForecastRecap recap={yesterday?.forecastRecap ?? null} />
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -253,14 +342,18 @@ export function CheckinScreen({
 
       {!loadingExisting && !readError && !submittedResult && (!existing || editing) ? (
         <>
+          <ObservedSpheresField selected={observedSpheres} onChange={setObservedSpheres} />
           {step === "mood" ? (
             <section>
               <h2 className="font-serif text-[24px] leading-tight text-foreground">
                 Как прошёл день?
               </h2>
-              {dayStatusHint ? (
-                <p className="mt-2 text-[13px] text-muted-foreground">
-                  Прогноз: {dayStatusHint}
+              {yesterday?.forecastAvailable ? (
+                <p
+                  data-testid="yesterday-forecast-available"
+                  className="mt-2 text-[13px] text-muted-foreground"
+                >
+                  Прогноз за этот день сохранён
                 </p>
               ) : null}
               <div className="mt-6">

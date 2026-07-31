@@ -14,7 +14,8 @@
 // side_effects: none directly; link activation delegates navigation to Next.js.
 // emitted_logs: none.
 // invariants:
-//   - data-testid="calendar-day-${date}", data-date and data-status remain stable.
+//   - data-testid="calendar-day-${date}", data-date and data-day-state remain stable.
+//   - Hero days get a filled neutral dot; not-computed days get an empty outline circle.
 //   - Locked days retain the lock marker and remain linked to their day route.
 //   - Current-month, today and access styling decisions remain unchanged.
 // failure_policy: Assumes valid YYYY-MM month data; render errors propagate.
@@ -79,7 +80,7 @@ export function CalendarMonth({ month }: CalendarMonthProps) {
               <Link
                 href={`/day/${day.date}`}
                 data-date={day.date}
-                data-status={day.dayStatus}
+                data-day-state={day.dayState}
                 data-testid={`calendar-day-${day.date}`}
                 className={cn(
                   "relative flex h-11 w-11 flex-col items-center justify-center rounded-full text-[15px] transition-colors",
@@ -91,6 +92,20 @@ export function CalendarMonth({ month }: CalendarMonthProps) {
                 )}
               >
                 <span className="font-serif leading-none">{day.dayNumber}</span>
+
+                {isCurrentMonth && day.dayState === "hero" && (
+                  <span
+                    className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-foreground/70"
+                    data-testid="calendar-day-hero-dot"
+                  />
+                )}
+
+                {isCurrentMonth && day.dayState === "not-computed" && (
+                  <span
+                    className="absolute bottom-1 h-1.5 w-1.5 rounded-full border border-muted-foreground/50"
+                    data-testid="calendar-day-not-computed"
+                  />
+                )}
 
                 {isCurrentMonth && !isAccessible && (
                   <span

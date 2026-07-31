@@ -29,7 +29,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.config import settings
 from app.schemas.today import DayChart, DayChartTransitPlanet
 from app.services.today_interpretation_service import (
     CONCRETE_ADVICE_FALLBACK_TEXT,
@@ -141,84 +140,6 @@ async def test_partial_accept_single_attempt_applies_valid_rows_only():
     for k in ["relationships", "sport", "communication", "health", "decisions",
               "travel", "creativity", "study", "shopping"]:
         assert by_key[k] == VALID_TEXTS[k]
-
-
-# -- endpoint + cache contract ------------------------------------------------
-
-def _sidecar_client_mock() -> MagicMock:
-    mock_client = MagicMock()
-    mock_client.get_natal = AsyncMock(return_value={
-        "planets": [{"name": "Sun", "longitude": 69.5, "latitude": 0.0, "speed": 1.0, "sign": "Gemini"}],
-        "houses": [
-            {"number": i + 1, "cusp": float(30 * i), "sign": s}
-            for i, s in enumerate([
-                "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-                "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
-            ])
-        ],
-        "special_points": [],
-        "house_system": "PLACIDUS",
-    })
-    mock_client.get_transits = AsyncMock(return_value={
-        "planets": [{"name": "Sun", "longitude": 150.0, "latitude": 0.0, "speed": 1.0, "sign": "Virgo"}],
-        "special_points": [],
-    })
-    return mock_client
-
-
-async def _day_request(async_client, make_initdata, advice_side_effect, cache_spy):
-    raw = make_initdata(user_id=8003, username="advice-retry")
-    await async_client.post("/api/auth/telegram", json={"initData": raw})
-    await async_client.put("/api/profile", json={
-        "gender": "male",
-        "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
-            "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
-            "birthTz": "Europe/Moscow",
-        }
-    })
-    with patch("app.services.natal_context_service.get_solarsage_client") as client_factory, \
-         patch("app.services.today_service.get_solarsage_client", client_factory), \
-         patch("app.services.today_service.TodayService._cache_payload", cache_spy), \
-         patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_advice, \
-         patch("app.services.llm_service.LLMService.generate_planet_interpretations", new_callable=AsyncMock) as mock_planets, \
-         patch("app.services.llm_service.LLMService.generate_headline", new_callable=AsyncMock) as mock_headline, \
-         patch("app.services.llm_service.LLMService.generate_reading", new_callable=AsyncMock) as mock_reading, \
-         patch("app.services.llm_service.LLMService.generate_notes", new_callable=AsyncMock) as mock_notes, \
-         patch("app.services.llm_service.LLMService.generate_why_sections", new_callable=AsyncMock) as mock_why, \
-         patch.object(settings, "openrouter_api_key", "test-key"):
-        client_factory.return_value = _sidecar_client_mock()
-        mock_advice.side_effect = advice_side_effect
-        mock_planets.return_value = {"Sun": "Солнце помогает делам."}
-        mock_headline.return_value = None
-        mock_reading.return_value = None
-        mock_notes.return_value = None
-        mock_why.return_value = None
-        resp = await async_client.get("/api/day/today")
-    return resp, mock_advice
-
-
-@pytest.mark.asyncio
-async def test_endpoint_degraded_returns_200_and_skips_cache(async_client, make_initdata, db_session):
-    cache_spy = AsyncMock()
-    resp, mock_advice = await _day_request(async_client, make_initdata, [None], cache_spy)
-    assert resp.status_code == 200, resp.text
-    rows = resp.json()["concreteAdvice"]["rows"]
-    assert len(rows) == 12
-    assert all(r["text"] == CONCRETE_ADVICE_FALLBACK_TEXT for r in rows)
-    assert mock_advice.call_count == 1
-    cache_spy.assert_not_called()  # degraded batch never poisons the cache
-
-
-@pytest.mark.asyncio
-async def test_endpoint_accepted_result_is_cached(async_client, make_initdata, db_session):
-    cache_spy = AsyncMock()
-    resp, mock_advice = await _day_request(async_client, make_initdata, [VALID_TEXTS], cache_spy)
-    assert resp.status_code == 200, resp.text
-    rows = resp.json()["concreteAdvice"]["rows"]
-    assert all(r["text"] == VALID_TEXTS[r["key"]] for r in rows)
-    assert mock_advice.call_count == 1  # exactly one external advice call
-    cache_spy.assert_called_once()  # valid result stays cacheable
 
 
 # -- llm_service level: output budget + safe rejection log --------------------

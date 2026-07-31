@@ -1,0 +1,5 @@
+W-TODAY-CONVERGENCE-REWRITE: intentional breaking wire changes approved by
+04_W2_W3_RUNTIME_CONTRACT_TZ §6 and W9_LEGACY_REMOVAL_MANIFEST:
+- CalendarDay.dayStatus removed, required dayState (hero|ordinary|not-computed) added.
+- Legacy Today roots removal follows in the W8/W9 stages of the same rewrite.
+Remove this override file with the W9 cleanup release.
