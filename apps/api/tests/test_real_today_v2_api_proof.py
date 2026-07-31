@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.prove_today_v2_real_api import (
+from scripts.prove_today_v2_real_api import (  # noqa: E402
     CANON_PROFILE,
     PipelineUnavailable,
     ProofErrorCode,
@@ -163,7 +163,7 @@ def test_redaction_cases(v):
     p2.v2.horizons.items[0].activation_ids=ids
     assert r["horizons"][0]["activationIdsSha256"]==build_redacted_proof(p2,"asgi","2026-07-08")["horizons"][0]["activationIdsSha256"]
     # Exact CANON_PROFILE shape matching document 82
-    assert CANON_PROFILE=={"firstName":"Dev","gender":"female","birth":{"birthday":"1990-01-01","birthTime":"12:00:00","birthCity":"Moscow, Russia","birthLat":55.7558,"birthLon":37.6173,"birthTz":"Europe/Moscow"},"currentLocation":{"city":"Moscow, Russia","lat":55.7558,"lon":37.6173,"tz":"Europe/Moscow"}}
+    assert CANON_PROFILE=={"firstName":"Dev","gender":"female","birth":{"birthday":"1990-01-01","birthTime":"12:00:00","birthTimeMode":"exact","birthCity":"Moscow, Russia","birthLat":55.7558,"birthLon":37.6173,"birthTz":"Europe/Moscow"},"currentLocation":{"city":"Moscow, Russia","lat":55.7558,"lon":37.6173,"tz":"Europe/Moscow"}}
 
 # ── 3. Request phase cases (real MockTransport behavior) ───────────
 @pytest.mark.parametrize("scenario,cookie_val,day_status,day_body,expected_code", [

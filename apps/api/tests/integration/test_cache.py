@@ -63,6 +63,7 @@ async def test_cache_miss_then_hit(async_client: AsyncClient, make_initdata, db_
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,
@@ -112,6 +113,7 @@ async def test_cache_invalidation_on_profile_edit(async_client: AsyncClient, mak
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,
@@ -142,6 +144,7 @@ async def test_cache_invalidation_on_profile_edit(async_client: AsyncClient, mak
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,

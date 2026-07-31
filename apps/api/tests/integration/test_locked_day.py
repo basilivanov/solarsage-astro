@@ -25,7 +25,7 @@
 
 import pytest
 from httpx import AsyncClient
-from datetime import date, timedelta, timezone, datetime
+from datetime import timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -45,6 +45,7 @@ async def _onboard_user(async_client: AsyncClient, db_session: AsyncSession, mak
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30:00",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,

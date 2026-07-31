@@ -9,7 +9,7 @@
 import argparse, enum, hashlib, json, os
 from datetime import date as Date; from pathlib import Path
 from urllib.parse import urlsplit
-CANON_PROFILE = {"firstName":"Dev","gender":"female","birth":{"birthday":"1990-01-01","birthTime":"12:00:00","birthCity":"Moscow, Russia","birthLat":55.7558,"birthLon":37.6173,"birthTz":"Europe/Moscow"},"currentLocation":{"city":"Moscow, Russia","lat":55.7558,"lon":37.6173,"tz":"Europe/Moscow"}}
+CANON_PROFILE = {"firstName":"Dev","gender":"female","birth":{"birthday":"1990-01-01","birthTime":"12:00:00","birthTimeMode":"exact","birthCity":"Moscow, Russia","birthLat":55.7558,"birthLon":37.6173,"birthTz":"Europe/Moscow"},"currentLocation":{"city":"Moscow, Russia","lat":55.7558,"lon":37.6173,"tz":"Europe/Moscow"}}
 class ProofErrorCode(str, enum.Enum):
     invalid_cli="invalid_cli";invalid_date="invalid_date";invalid_transport="invalid_transport"
     invalid_out_path="invalid_out_path";invalid_base_url="invalid_base_url"

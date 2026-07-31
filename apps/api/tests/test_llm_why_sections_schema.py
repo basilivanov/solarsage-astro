@@ -184,7 +184,7 @@ async def test_endpoint_malformed_why_batch_returns_200_with_fallback(async_clie
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }

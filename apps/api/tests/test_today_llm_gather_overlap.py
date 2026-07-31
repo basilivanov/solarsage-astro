@@ -120,7 +120,7 @@ async def test_six_llm_calls_overlap_with_preserved_semantics(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }
@@ -206,7 +206,7 @@ async def test_slow_branch_cancelled_at_deadline_fast_siblings_kept(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }
@@ -281,7 +281,7 @@ async def test_interpretation_cancel_falls_back_deterministically(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }
@@ -441,7 +441,7 @@ async def test_deadline_degraded_payload_never_cached_even_with_valid_advice(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }
@@ -513,7 +513,7 @@ async def test_llm_phase_completed_event_success_and_deadline(
         await async_client.put("/api/profile", json={
             "gender": "male",
             "birth": {
-                "birthday": "1990-01-15", "birthTime": "12:00",
+                "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
                 "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
                 "birthTz": "Europe/Moscow",
             }
@@ -577,7 +577,7 @@ async def test_fresh_payload_meta_and_cache_key_share_prompt_version_4(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }
@@ -663,7 +663,7 @@ async def test_slow_focus_narrative_bounded_facts_preserved(
     await async_client.put("/api/profile", json={
         "gender": "male",
         "birth": {
-            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthday": "1990-01-15", "birthTime": "12:00", "birthTimeMode": "exact",
             "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
             "birthTz": "Europe/Moscow",
         }

@@ -258,6 +258,7 @@ async def test_dev_auth_denies_loopback_in_staging_when_dev_mode_disabled(
 ) -> None:
     monkeypatch.setattr(settings, "dev_mode", False)
     monkeypatch.setattr(settings, "app_env", "staging")
+    monkeypatch.setattr(settings, "grace_user_salt", "test-grace-user-salt-" + "x" * 24)
 
     r = await async_client.post(
         "/api/auth/dev",

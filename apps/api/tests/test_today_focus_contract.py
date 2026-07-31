@@ -7,7 +7,6 @@
 from datetime import date, datetime, timezone
 import pytest
 
-from app.schemas.today import TodayPayload
 from app.schemas.today_focus import (
     TodayFocus,
     TodayConvergence,
@@ -167,6 +166,7 @@ async def test_today_service_builds_focus_in_payload(async_client, make_initdata
             "birth": {
                 "birthday": "1990-01-15",
                 "birthTime": "12:00",
+                "birthTimeMode": "exact",
                 "birthCity": "Moscow",
                 "birthLat": 55.75,
                 "birthLon": 37.61,
