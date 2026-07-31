@@ -1,13 +1,45 @@
+# ############################################################################
+# AI_HEADER: TEST_CHECKIN_ENDPOINTS — check-in CRUD and yesterday recap coverage.
+# ROLE: Exercises existing check-in mutation contracts plus snapshot-linked
+#   local-yesterday availability and deterministic forecast recap.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TEST-CHECKIN-ENDPOINTS
+# purpose: Validate check-in HTTP contracts, local-date behavior, immutable
+#   snapshot lineage, and yesterday recap visibility rules.
+# owns:
+#   - apps/api/tests/test_checkin_endpoints.py
+# inputs: authenticated test sessions, check-in payloads, and snapshot rows.
+# outputs: pytest assertions for check-in and yesterday response behavior.
+# dependencies: checkin API/service/schemas and isolated DB fixtures.
+# side_effects: isolated in-memory DB writes; no external calls.
+# emitted_logs: none.
+# invariants: check-in create/update wire shape and uniqueness remain unchanged;
+#   recap details are hidden before submit.
+# failure_policy: assertions fail closed on contract, lineage, or privacy drift.
+# END_MODULE_CONTRACT: M-TEST-CHECKIN-ENDPOINTS
+
+# START_MODULE_MAP: M-TEST-CHECKIN-ENDPOINTS
+# public_entrypoints:
+#   - pytest test functions
+# semantic_blocks:
+#   - CRUD_CONTRACT: create/update/read/metrics behavior.
+#   - YESTERDAY_RECAP: local date, impression availability, and post-submit recap.
+# owned_tests:
+#   - self
+# END_MODULE_MAP: M-TEST-CHECKIN-ENDPOINTS
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EveningCheckin, UserProfile
+from app.db.models import EveningCheckin, TodaySnapshot, User, UserProfile
 import app.services.checkin_service as checkin_service_module
 
 
@@ -30,6 +62,50 @@ async def _set_profile_timezone(db_session: AsyncSession, tz: str) -> None:
     profile = (await db_session.execute(select(UserProfile))).scalar_one()
     profile.current_tz = tz
     await db_session.commit()
+
+
+def _recap_snapshot(
+    user_id,
+    target_date: date,
+    *,
+    first_day_seen_at: datetime | None = None,
+    first_lookahead_seen_at: datetime | None = None,
+) -> TodaySnapshot:
+    snapshot_id = uuid4()
+    return TodaySnapshot(
+        id=snapshot_id,
+        user_id=user_id,
+        target_date=target_date,
+        timezone="UTC",
+        profile_hash="profile-hash",
+        input_hash=snapshot_id.hex.ljust(64, "0"),
+        canon_hash="canon-hash",
+        formula_version="today-convergence-2",
+        calculation_version="ss-calc-1.3.0",
+        ephemeris_artifact_id="ephemeris-1",
+        birth_time_mode="exact",
+        birth_time_range={"start": "12:00", "end": "12:00"},
+        deterministic_result_json={
+            "state": "quiet_day",
+            "day_tone": "supportive",
+            "selected": {
+                "convergences": [],
+                "main_event": {
+                    "event_id": "recap-event",
+                    "sphere": "work",
+                    "polarity": "supportive",
+                    "evidence_level": "medium",
+                },
+                "impulses": [],
+                "selected_unit_ids": ["recap-event"],
+                "selected_spheres": ["work"],
+            },
+        },
+        canonical_input_json={},
+        published_at=datetime(2026, 7, 31, 8, tzinfo=timezone.utc),
+        first_day_seen_at=first_day_seen_at,
+        first_lookahead_seen_at=first_lookahead_seen_at,
+    )
 
 
 @pytest.mark.asyncio
@@ -217,6 +293,143 @@ async def test_yesterday_uses_profile_timezone_not_utc_date(
     assert data["hadCheckin"] is True
     assert data["checkin"]["targetDate"] == "2025-12-31"
     assert data["checkin"]["mood"] == 4
+    assert data["targetDate"] == "2025-12-31"
+    assert data["forecastAvailable"] is False
+    assert data["forecastRecap"] is None
+
+
+@pytest.mark.asyncio
+async def test_yesterday_pre_submit_exposes_only_impression_availability(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    await _login(async_client, make_initdata, user_id=223009, username="checkin_pre_submit")
+    await _set_profile_timezone(db_session, "UTC")
+    monkeypatch.setattr(
+        checkin_service_module,
+        "utc_now",
+        lambda: datetime(2026, 7, 31, 12, tzinfo=timezone.utc),
+        raising=False,
+    )
+    owner = (
+        await db_session.execute(select(User).where(User.tg_user_id == 223009))
+    ).scalar_one()
+    db_session.add(
+        _recap_snapshot(
+            owner.id,
+            date(2026, 7, 30),
+            first_lookahead_seen_at=datetime(2026, 7, 30, 9, tzinfo=timezone.utc),
+        )
+    )
+    await db_session.commit()
+
+    response = await async_client.get("/api/checkin/yesterday")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["targetDate"] == "2026-07-30"
+    assert data["hadCheckin"] is False
+    assert data["forecastAvailable"] is True
+    assert data["forecastRecap"] is None
+    assert "dayTone" not in data
+
+
+@pytest.mark.asyncio
+async def test_yesterday_post_submit_recap_uses_immutable_lineage_and_preserves_streak(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    await _login(async_client, make_initdata, user_id=223010, username="checkin_recap")
+    await _set_profile_timezone(db_session, "UTC")
+    monkeypatch.setattr(
+        checkin_service_module,
+        "utc_now",
+        lambda: datetime(2026, 7, 31, 12, tzinfo=timezone.utc),
+        raising=False,
+    )
+    owner = (
+        await db_session.execute(select(User).where(User.tg_user_id == 223010))
+    ).scalar_one()
+    first = _recap_snapshot(
+        owner.id,
+        date(2026, 7, 30),
+        first_day_seen_at=datetime(2026, 7, 30, 9, tzinfo=timezone.utc),
+    )
+    db_session.add(first)
+    await db_session.commit()
+
+    submitted = await async_client.post(
+        "/api/checkin",
+        json={"targetDate": "2026-07-30", "mood": 4, "observedSpheres": ["work"]},
+    )
+    assert submitted.status_code == 200
+    first_response = submitted.json()
+    assert first_response["forecastSnapshotId"] == str(first.id)
+    assert first_response["streak"] == 1
+
+    newer = _recap_snapshot(
+        owner.id,
+        date(2026, 7, 30),
+        first_day_seen_at=datetime(2026, 7, 30, 13, tzinfo=timezone.utc),
+    )
+    db_session.add(newer)
+    await db_session.commit()
+    edited = await async_client.post(
+        "/api/checkin",
+        json={"targetDate": "2026-07-30", "mood": 5, "observedSpheres": ["money"]},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["forecastSnapshotId"] == str(first.id)
+    assert edited.json()["streak"] == 1
+
+    response = await async_client.get("/api/checkin/yesterday")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["forecastAvailable"] is True
+    assert data["checkin"]["forecastSnapshotId"] == str(first.id)
+    assert data["checkin"]["streak"] == 1
+    assert data["forecastRecap"] == {
+        "snapshotId": str(first.id),
+        "state": "quiet_day",
+        "dayTone": "supportive",
+        "sphereKeys": ["work"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_yesterday_submit_without_impression_has_no_forecast_recap(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    await _login(async_client, make_initdata, user_id=223011, username="checkin_no_impression")
+    await _set_profile_timezone(db_session, "UTC")
+    monkeypatch.setattr(
+        checkin_service_module,
+        "utc_now",
+        lambda: datetime(2026, 7, 31, 12, tzinfo=timezone.utc),
+        raising=False,
+    )
+
+    submitted = await async_client.post(
+        "/api/checkin",
+        json={"targetDate": "2026-07-30", "mood": 3},
+    )
+    assert submitted.status_code == 200
+    assert submitted.json()["forecastSnapshotId"] is None
+
+    response = await async_client.get("/api/checkin/yesterday")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["forecastAvailable"] is False
+    assert data["forecastRecap"] is None
 
 
 @pytest.mark.asyncio

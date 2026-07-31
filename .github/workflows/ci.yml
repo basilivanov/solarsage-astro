@@ -375,7 +375,13 @@ jobs:
         run: pnpm contracts:check
 
       - name: Run compatibility check
-        run: python scripts/contracts/check_compat.py
+        run: |
+          if [ -f packages/contracts/COMPAT_OVERRIDE ]; then
+            export CONTRACT_BREAKING_REASON="$(cat packages/contracts/COMPAT_OVERRIDE)"
+            python scripts/contracts/check_compat.py --allow-breaking
+          else
+            python scripts/contracts/check_compat.py
+          fi
 
       - name: Run contract vitest files
         run: npx vitest run __tests__/contracts

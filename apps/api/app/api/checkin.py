@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_CHECKIN
-# ROLE: Evening checkin endpoints
+# ROLE: Evening checkin endpoints with snapshot-linked yesterday recap
 # DEPENDENCIES: fastapi, sqlalchemy, app.services.checkin_service
 # GRACE_ANCHORS: [CHECKIN_CREATE, CHECKIN_YESTERDAY, CHECKIN_METRICS, CHECKIN_GET_BY_DATE, CHECKIN_REMINDER]
 # ############################################################################
@@ -22,7 +22,7 @@
 #   - M-DB-SESSION
 #   - M-AUTH-DEPENDENCIES
 # side_effects:
-#   - creates/updates EveningCheckin rows
+#   - creates/updates EveningCheckin rows; reads snapshot lineage for yesterday
 # emitted_logs: checkin.submitted
 # failure_policy: 400/401 standard FastAPI exceptions
 # END_MODULE_CONTRACT: M-API-CHECKIN
@@ -106,21 +106,13 @@ async def get_yesterday_checkin(
     user: User = Depends(require_session),
 ) -> YesterdayCheckinResponse:
     # START_FUNCTION_CONTRACT: F-M-API-CHECKIN.get_yesterday_checkin
-    # purpose: Retrieve checkin for user's local yesterday date.
+    # purpose: Retrieve checkin and snapshot-linked recap for local yesterday.
     # inputs: db (AsyncSession), user (User)
     # returns: YesterdayCheckinResponse
-    # side_effects: none
+    # side_effects: reads check-in and published snapshot impression lineage
     # error_behavior: 401 if unauthenticated
     # END_FUNCTION_CONTRACT: F-M-API-CHECKIN.get_yesterday_checkin
-    service = CheckinService(db)
-    target_date = await service.local_yesterday(user)
-    result = await service.get_checkin(user.id, target_date)
-    if result is None:
-        return YesterdayCheckinResponse(had_checkin=False, checkin=None)
-    return YesterdayCheckinResponse(
-        had_checkin=True,
-        checkin=service.to_response(result),
-    )
+    return await CheckinService(db).get_yesterday_response(user)
 # END_BLOCK: CHECKIN_YESTERDAY
 
 

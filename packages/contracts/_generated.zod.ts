@@ -169,9 +169,7 @@ export const CalendarDay = z.object({
   access: z.union([ContentAccessState, z.null()]).optional(),
   date: z.string(),
   dayNumber: z.number().int(),
-  dayStatus: z
-    .union([z.enum(["supportive", "steady", "tense"]), z.null()])
-    .optional(),
+  dayState: z.enum(["hero", "ordinary", "not-computed"]),
   disabled: z.boolean(),
   isCurrentMonth: z.boolean(),
   isToday: z.boolean(),
@@ -180,7 +178,7 @@ export const CalendarDay = z.object({
 export const CalendarMeta = z.object({
   contractVersion: z.number().int(),
   generatedAt: z.string(),
-  schemaVersion: z.literal("calendar/v1"),
+  schemaVersion: z.literal("calendar/v2"),
 });
 export const CalendarPayload = z.object({
   allowedRange: AllowedRange,
@@ -291,6 +289,18 @@ export const ConvergenceEvidence = z.object({
   summary: z.string(),
   techniques: z.array(z.string()),
   theme: z.string(),
+});
+export const DayHistoryItem = z.object({
+  date: z.string(),
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  impulseCount: z.number().int().gte(0),
+  snapshotId: z.string(),
+  sphereKeys: z.array(z.string()).max(3),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
+export const DayHistoryPayload = z.object({
+  access: ContentAccessState,
+  items: z.array(DayHistoryItem),
 });
 export const FocusEventNumber = z.object({
   label: z.string(),
@@ -1666,9 +1676,94 @@ export const TodayPayload = z.object({
   whyThisHappens: WhyThisHappens,
   yesterdayEcho: z.union([YesterdayEcho, z.null()]).optional(),
 });
+export const TodaySphereDrilldownConvergence = z.object({
+  eventIds: z.array(z.string()).min(2),
+  evidenceLevel: z.enum(["high", "medium"]),
+  id: z.string(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  primarySphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  secondarySphere: z.union([
+    z.enum([
+      "work",
+      "money",
+      "documents",
+      "relationships",
+      "sport",
+      "communication",
+      "health",
+      "decisions",
+      "travel",
+      "creativity",
+      "study",
+      "shopping",
+    ]),
+    z.null(),
+  ]),
+});
+export const TodaySphereDrilldownPayload = z.object({
+  birthTimeMode: z.enum(["exact", "bucket", "unknown"]),
+  convergence: z.union([TodaySphereDrilldownConvergence, z.null()]),
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  events: z.array(TodayConvergenceEvent),
+  snapshotId: z.string(),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
+export const YesterdayForecastRecap = z.object({
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  snapshotId: z.string(),
+  sphereKeys: z
+    .array(
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ])
+    )
+    .max(3),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
 export const YesterdayCheckinResponse = z.object({
   checkin: z.union([CheckinResponse, z.null()]),
+  forecastAvailable: z.boolean().optional().default(false),
+  forecastRecap: z.union([YesterdayForecastRecap, z.null()]).optional(),
   hadCheckin: z.boolean(),
+  targetDate: z.string().optional(),
 });
 // END_BLOCK: SCHEMA_DECLARATIONS
 
@@ -1690,6 +1785,8 @@ export const schemas = {
   CheckinMetrics,
   CheckinResponse,
   ConvergenceEvidence,
+  DayHistoryItem,
+  DayHistoryPayload,
   FocusEventNumber,
   FocusEventPlanetSide,
   FocusEventDrilldown,
@@ -1819,6 +1916,9 @@ export const schemas = {
   WhyThisHappens,
   YesterdayEcho,
   TodayPayload,
+  TodaySphereDrilldownConvergence,
+  TodaySphereDrilldownPayload,
+  YesterdayForecastRecap,
   YesterdayCheckinResponse,
 };
 // END_BLOCK: SCHEMA_MAP

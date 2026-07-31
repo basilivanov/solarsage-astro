@@ -27,4 +27,4 @@ import type { CalendarPayload as _CalendarPayload } from "./index";
 
 export type CalendarPayload = _CalendarPayload;
 export type CalendarDay = _CalendarPayload["days"][number];
-export type { ContentAccessState, DayStatus } from "./today";
+export type { ContentAccessState } from "./today";

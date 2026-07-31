@@ -178,6 +178,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/dayhistorypayload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Dayhistorypayload */
+        get: operations["contracts__dayhistorypayload___contracts___dayhistorypayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/focuseventdrilldown": {
         parameters: {
             query?: never;
@@ -578,6 +595,23 @@ export interface paths {
         };
         /** Contracts  Todaypayload */
         get: operations["contracts__todaypayload___contracts___todaypayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/todayspheredrilldownpayload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Todayspheredrilldownpayload */
+        get: operations["contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1039,8 +1073,11 @@ export interface components {
             date: string;
             /** Daynumber */
             dayNumber: number;
-            /** Daystatus */
-            dayStatus?: ("supportive" | "steady" | "tense") | null;
+            /**
+             * Daystate
+             * @enum {string}
+             */
+            dayState: "hero" | "ordinary" | "not-computed";
             /** Disabled */
             disabled: boolean;
             /** Iscurrentmonth */
@@ -1078,7 +1115,7 @@ export interface components {
              * Schemaversion
              * @constant
              */
-            schemaVersion: "calendar/v1";
+            schemaVersion: "calendar/v2";
         };
         /** CalendarPayload */
         CalendarPayload: {
@@ -1373,6 +1410,36 @@ export interface components {
             sign?: string | null;
             /** Speed */
             speed?: number | null;
+        };
+        /** DayHistoryItem */
+        DayHistoryItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Daytone
+             * @enum {string}
+             */
+            dayTone: "steady" | "supportive" | "mixed" | "tense";
+            /** Impulsecount */
+            impulseCount: number;
+            /** Snapshotid */
+            snapshotId: string;
+            /** Spherekeys */
+            sphereKeys: string[];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "convergence_today" | "quiet_day";
+        };
+        /** DayHistoryPayload */
+        DayHistoryPayload: {
+            access: components["schemas"]["ContentAccessState"];
+            /** Items */
+            items: components["schemas"]["DayHistoryItem"][];
         };
         /** DayQuality */
         DayQuality: {
@@ -3141,6 +3208,58 @@ export interface components {
             whyThisHappens: components["schemas"]["WhyThisHappens"];
             yesterdayEcho?: components["schemas"]["YesterdayEcho"] | null;
         };
+        /** TodaySphereDrilldownConvergence */
+        TodaySphereDrilldownConvergence: {
+            /** Eventids */
+            eventIds: string[];
+            /**
+             * Evidencelevel
+             * @enum {string}
+             */
+            evidenceLevel: "high" | "medium";
+            /** Id */
+            id: string;
+            /**
+             * Polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed";
+            /**
+             * Primarysphere
+             * @enum {string}
+             */
+            primarySphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            /** Secondarysphere */
+            secondarySphere: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+        };
+        /** TodaySphereDrilldownPayload */
+        TodaySphereDrilldownPayload: {
+            /**
+             * Birthtimemode
+             * @enum {string}
+             */
+            birthTimeMode: "exact" | "bucket" | "unknown";
+            convergence: components["schemas"]["TodaySphereDrilldownConvergence"] | null;
+            /**
+             * Daytone
+             * @enum {string}
+             */
+            dayTone: "steady" | "supportive" | "mixed" | "tense";
+            /** Events */
+            events: components["schemas"]["TodayConvergenceEvent"][];
+            /** Snapshotid */
+            snapshotId: string;
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "convergence_today" | "quiet_day";
+        };
         /** TodayV2ActivatedTarget */
         TodayV2ActivatedTarget: {
             /** Activationids */
@@ -3539,8 +3658,19 @@ export interface components {
         /** YesterdayCheckinResponse */
         YesterdayCheckinResponse: {
             checkin: components["schemas"]["CheckinResponse"] | null;
+            /**
+             * Forecastavailable
+             * @default false
+             */
+            forecastAvailable: boolean;
+            forecastRecap?: components["schemas"]["YesterdayForecastRecap"] | null;
             /** Hadcheckin */
             hadCheckin: boolean;
+            /**
+             * Targetdate
+             * Format: date
+             */
+            targetDate?: string;
         };
         /** YesterdayEcho */
         YesterdayEcho: {
@@ -3557,6 +3687,23 @@ export interface components {
              * @enum {string}
              */
             transition: "released" | "intensified" | "shifted" | "continued";
+        };
+        /** YesterdayForecastRecap */
+        YesterdayForecastRecap: {
+            /**
+             * Daytone
+             * @enum {string}
+             */
+            dayTone: "steady" | "supportive" | "mixed" | "tense";
+            /** Snapshotid */
+            snapshotId: string;
+            /** Spherekeys */
+            sphereKeys: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "convergence_today" | "quiet_day";
         };
     };
     responses: never;
@@ -3763,6 +3910,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConvergenceEvidence"];
+                };
+            };
+        };
+    };
+    contracts__dayhistorypayload___contracts___dayhistorypayload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayHistoryPayload"];
                 };
             };
         };
@@ -4243,6 +4410,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayPayload"];
+                };
+            };
+        };
+    };
+    contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodaySphereDrilldownPayload"];
                 };
             };
         };
