@@ -49,7 +49,6 @@ const filledState: OnboardingState = {
   birthDate: { day: "15", month: "01", year: "1990" },
   birthTime: { hours: "12", minutes: "00", unknown: false },
   birthPlace: {
-    id: 1,
     name: "Москва",
     country: "Россия",
     lat: 55.75,
