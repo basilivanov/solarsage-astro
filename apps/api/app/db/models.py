@@ -5,7 +5,7 @@
 #       semantic_layers (W-4.3), microcopy_misses (W-9.2),
 #       natal_chart_cache, natal_reports (W-NATAL-FULL).
 # DEPENDENCIES: sqlalchemy, app.db.session.Base
-# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE, NATAL_CHART_CACHE_TABLE, NATAL_REPORTS_TABLE]
+# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE, NATAL_CHART_CACHE_TABLE, NATAL_REPORTS_TABLE, TODAY_SNAPSHOTS_TABLE, TODAY_SNAPSHOT_NARRATIVES_TABLE]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-AUTH-TG.models
@@ -30,6 +30,8 @@
 #   - MicrocopyMiss: row in `microcopy_misses`, tracks missing microcopy keys (W-9.2)
 #   - PromoCampaign: row in `promo_campaigns`, promo benefits and redemption limits
 #   - PromoRedemption: row in `promo_redemptions`, audit log of user campaign redemptions
+#   - TodaySnapshot: published deterministic Today convergence snapshot
+#   - TodaySnapshotNarrative: versioned narrative lease/content row for a snapshot
 # dependencies:
 #   - M-DB-SESSION (Base)
 #   - alembic 0001_users migration creates users/profiles/sessions tables
@@ -48,6 +50,9 @@
 #   - MicrocopyMiss: key is indexed for fast lookup (W-9.2)
 #   - PromoCampaign: unique code_hash, positive max_redemptions, ends_at > starts_at constraint
 #   - PromoRedemption: unique (campaign_id, user_id) constraint
+#   - TodaySnapshot: unique published identity by owner/date/input/formula/calculation/canon hashes
+#   - TodaySnapshotNarrative: one narrative version per snapshot
+#   - EveningCheckin forecast lineage is nullable and does not alter owner/date uniqueness or streak
 #   - UserProfile.birth_time_mode is one of "exact", "bucket", "unknown"
 #   - UserProfile.birth_time_bucket is NULL or one of "night", "morning",
 #     "day", "evening"
@@ -73,6 +78,8 @@
 #   - MicrocopyMiss
 #   - PromoCampaign
 #   - PromoRedemption
+#   - TodaySnapshot
+#   - TodaySnapshotNarrative
 #   - SynastryPartner
 #   - SynastryReport
 #   - SynastryAspectDetail
@@ -88,11 +95,14 @@
 #   - MICROCOPY_MISSES_TABLE: declarative class MicrocopyMiss -> "microcopy_misses" (W-9.2)
 #   - PROMO_CAMPAIGN_TABLE: declarative classes PromoCampaign and PromoRedemption -> "promo_campaigns", "promo_redemptions"
 #   - SYNASTRY_TABLES: declarative classes SynastryPartner, SynastryReport, SynastryAspectDetail, SynastryFeedback, SynastryCreditSpend -> "synastry_partners", "synastry_reports", "synastry_aspect_details", "synastry_feedback", "synastry_credit_spends"
+#   - TODAY_SNAPSHOTS_TABLE: declarative class TodaySnapshot -> "today_snapshots"
+#   - TODAY_SNAPSHOT_NARRATIVES_TABLE: declarative class TodaySnapshotNarrative -> "today_snapshot_narratives"
 # owned_tests:
 #   - apps/api/tests/test_auth_endpoints.py
 #   - apps/api/tests/test_profile_endpoints.py
 #   - apps/api/tests/test_alembic_roundtrip.py
 #   - apps/api/tests/test_birth_time_mode_migration.py
+#   - apps/api/tests/test_today_convergence_snapshot_schema.py
 #   - apps/api/tests/test_access_service.py
 #   - apps/api/tests/test_cache.py
 #   - apps/api/tests/test_microcopy_misses.py
@@ -114,6 +124,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     SmallInteger,
     String,
@@ -622,6 +633,120 @@ class Purchase(Base):
 # END_BLOCK: BILLING_TABLES
 
 
+# START_BLOCK: TODAY_SNAPSHOTS_TABLE
+class TodaySnapshot(Base):
+    """Published deterministic Today convergence snapshot. P3-A schema only."""
+
+    __tablename__ = "today_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "target_date",
+            "input_hash",
+            "formula_version",
+            "calculation_version",
+            "canon_hash",
+            name="uq_today_snapshots_identity",
+        ),
+        CheckConstraint(
+            "birth_time_mode IN ('exact', 'bucket', 'unknown')",
+            name="ck_today_snapshots_birth_time_mode",
+        ),
+        Index(
+            "ix_today_snapshots_user_date_published",
+            "user_id",
+            "target_date",
+            "published_at",
+        ),
+        Index("ix_today_snapshots_supersedes_snapshot_id", "supersedes_snapshot_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", name="fk_today_snapshots_user_id_users", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_date: Mapped[date] = mapped_column(Date, nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    canon_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    formula_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    calculation_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    ephemeris_artifact_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    birth_time_mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    birth_time_range: Mapped[dict | list] = mapped_column(JSON, nullable=False)
+    deterministic_result_json: Mapped[dict | list] = mapped_column(JSON, nullable=False)
+    canonical_input_json: Mapped[dict | list] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    first_day_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_lookahead_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    supersedes_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "today_snapshots.id",
+            name="fk_today_snapshots_supersedes_snapshot_id",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+# END_BLOCK: TODAY_SNAPSHOTS_TABLE
+
+
+# START_BLOCK: TODAY_SNAPSHOT_NARRATIVES_TABLE
+class TodaySnapshotNarrative(Base):
+    """Versioned narrative lease/content row for one published snapshot."""
+
+    __tablename__ = "today_snapshot_narratives"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "prompt_version",
+            name="uq_today_snapshot_narratives_version",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'ready', 'unavailable')",
+            name="ck_today_snapshot_narratives_status",
+        ),
+        CheckConstraint(
+            "attempt_count >= 0",
+            name="ck_today_snapshot_narratives_attempt_count",
+        ),
+        Index("ix_today_snapshot_narratives_status_retry", "status", "next_retry_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "today_snapshots.id",
+            name="fk_today_snapshot_narratives_snapshot_id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    content_json: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+# END_BLOCK: TODAY_SNAPSHOT_NARRATIVES_TABLE
+
+
 # START_BLOCK: EVENING_CHECKINS_TABLE
 class EveningCheckin(Base):
     """Evening checkin entries. W-8.1."""
@@ -641,6 +766,11 @@ class EveningCheckin(Base):
             "energy IS NULL OR (energy >= 1 AND energy <= 5)",
             name="ck_evening_checkins_energy_range",
         ),
+        CheckConstraint(
+            "prediction_seen_surface IS NULL OR prediction_seen_surface IN ('day', 'lookahead')",
+            name="ck_evening_checkins_prediction_seen_surface",
+        ),
+        Index("ix_evening_checkins_forecast_snapshot_id", "forecast_snapshot_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -659,6 +789,18 @@ class EveningCheckin(Base):
     tags_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     streak: Mapped[int] = mapped_column(nullable=False, server_default="0")
+    forecast_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "today_snapshots.id",
+            name="fk_evening_checkins_forecast_snapshot_id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+    prediction_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    prediction_seen_surface: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    observed_spheres: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
     filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

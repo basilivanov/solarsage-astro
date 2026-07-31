@@ -135,6 +135,12 @@ These gates apply before broad autonomous business-feature work.
 
 ---
 
+## UC-TODAY-CONVERGENCE-W3-SCHEMA · P3-A snapshot persistence schema
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA → M-DB | Additive `TodaySnapshot` and versioned `TodaySnapshotNarrative` tables persist only published deterministic data; nullable `EveningCheckin` lineage preserves the existing owner/date uniqueness and streak contract. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_snapshot_schema.py tests/test_birth_time_mode_migration.py tests/test_checkin.py tests/test_checkin_endpoints.py -q`. S2: SQLite `0027 → head → 0027 → head` roundtrip preserves legacy rows and proves exact columns, nullability, defaults, named constraints/indexes, FK actions, JSON payloads, server timestamps, cascade, and SET NULL behavior. S3: duplicate identities/versions and invalid mode/status/attempt/surface fail closed; migration has no legacy Today imports and one Alembic head. S4: packet Ruff, model GRACE lint, marker parity, and `git diff --check` pass. |
+
 ## UC-DAY-NAV · Navigate days
 
 | Modules | Gates | Scenarios |
