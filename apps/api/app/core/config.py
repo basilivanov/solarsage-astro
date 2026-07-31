@@ -161,6 +161,17 @@ class Settings(BaseSettings):
     llm_model: str = Field("openai/gpt-4.1-nano", alias="LLM_MODEL")
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
 
+    # --- Today bounded narrative (P6) ---
+    today_narrative_max_output_tokens: int = Field(
+        700, alias="TODAY_NARRATIVE_MAX_OUTPUT_TOKENS"
+    )
+    today_narrative_timeout_seconds: int = Field(
+        45, alias="TODAY_NARRATIVE_TIMEOUT_SECONDS"
+    )
+    today_narrative_prompt_version: str = Field(
+        "today-narrative-v1", alias="TODAY_NARRATIVE_PROMPT_VERSION"
+    )
+
     # OpenRouter specific settings
     openrouter_base_url: str = Field(
         "https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL"
