@@ -9,7 +9,7 @@
 //   - lib/api/today-convergence.ts
 // inputs: dateParam, snapshotId, optional AbortSignal.
 // outputs: generated TodayConvergencePayload, retry acceptance metadata, or void telemetry result.
-// dependencies: packages/contracts/today-convergence.ts, lib/log/instrumented-fetch.ts, lib/log/index.ts.
+// dependencies: generated Today and sphere-drilldown contracts, lib/log/instrumented-fetch.ts, lib/log/index.ts.
 // side_effects: credentialed GET/POST requests to /api/day/*.
 // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, day.impression_recorded, day.impression_rejected.
 // invariants: every successful day envelope is Zod-validated; impression failure never escapes the client.
@@ -21,11 +21,13 @@
 //   - TodayConvergenceApiError
 //   - fetchTodayConvergence
 //   - retryTodayConvergence
+//   - fetchSphereDrilldown
 //   - recordDayImpression
 // semantic_blocks:
 //   - ERROR_TYPES: typed network, invalid-payload, and HTTP errors.
 //   - DAY_REQUEST: GET envelope with generated schema validation.
 //   - RETRY_REQUEST: POST retry with Retry-After parsing.
+//   - SPHERE_DRILLDOWN_REQUEST: GET deterministic evidence with generated schema validation.
 //   - IMPRESSION: best-effort day impression.
 // owned_tests:
 //   - __tests__/hooks/useTodayConvergence.test.ts
@@ -34,16 +36,21 @@
 import {
   TodayConvergencePayloadWireSchema,
 } from "@/packages/contracts/today-convergence";
+import {
+  TodaySphereDrilldownPayloadWireSchema,
+} from "@/packages/contracts/today-sphere-drilldown";
 // The feature-specific contract shim is frozen outside this packet and is not
 // re-exported by the legacy root barrel yet.
 // eslint-disable-next-line grace/contracts-only-import
 import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
+import type { TodaySphereDrilldownPayload } from "@/packages/contracts";
 import { logEvent } from "@/lib/log";
 import { instrumentedFetch } from "@/lib/log/instrumented-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export type { TodayConvergencePayload };
+export type { TodaySphereDrilldownPayload };
 
 export type TodayConvergenceErrorKind = "network" | "invalid" | "http";
 
@@ -174,6 +181,33 @@ async function parsePayload(response: Response): Promise<TodayConvergencePayload
   return parsed.data;
 }
 
+async function parseDrilldownPayload(
+  response: Response,
+): Promise<TodaySphereDrilldownPayload> {
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new TodayConvergenceApiError(
+      "Ответ drilldown имеет неверный формат",
+      "invalid",
+      502,
+      "SCHEMA_VALIDATION_ERROR",
+    );
+  }
+
+  const parsed = TodaySphereDrilldownPayloadWireSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new TodayConvergenceApiError(
+      "Ответ drilldown имеет неверный формат",
+      "invalid",
+      502,
+      "SCHEMA_VALIDATION_ERROR",
+    );
+  }
+  return parsed.data;
+}
+
 function parseRetryAfter(value: string | null): number | undefined {
   if (!value) return undefined;
   const seconds = Number.parseInt(value, 10);
@@ -230,6 +264,35 @@ export async function retryTodayConvergence(
   return { payload: await parsePayload(response) };
 }
 // END_BLOCK: RETRY_REQUEST
+
+// START_BLOCK: SPHERE_DRILLDOWN_REQUEST
+export async function fetchSphereDrilldown(
+  snapshotId: string,
+  sphereKey: string,
+  signal?: AbortSignal,
+): Promise<TodaySphereDrilldownPayload> {
+  // START_FUNCTION_CONTRACT: F-M-API-CLIENT-TODAY-CONVERGENCE.fetchSphereDrilldown
+  // purpose: Fetch and validate deterministic evidence for one published snapshot sphere.
+  // inputs: snapshotId — opaque snapshot identifier; sphereKey — canonical sphere key; signal — optional cancellation signal.
+  // returns: generated TodaySphereDrilldownPayload.
+  // side_effects: credentialed GET /api/day/snapshots/{snapshotId}/spheres/{sphereKey}.
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
+  // error_behavior: throws typed network, HTTP (including 403/404), or invalid-payload error.
+  // END_FUNCTION_CONTRACT: F-M-API-CLIENT-TODAY-CONVERGENCE.fetchSphereDrilldown
+  const safeSnapshotId = encodeURIComponent(snapshotId);
+  const safeSphereKey = encodeURIComponent(sphereKey);
+  const response = await request(
+    "GET",
+    `/api/day/snapshots/${safeSnapshotId}/spheres/${safeSphereKey}`,
+    {
+      signal,
+      routeTemplate: "GET /api/day/snapshots/{snapshotId}/spheres/{key}",
+    },
+  );
+  if (!response.ok) return throwHttpError(response, "Не удалось загрузить drilldown");
+  return parseDrilldownPayload(response);
+}
+// END_BLOCK: SPHERE_DRILLDOWN_REQUEST
 
 // START_BLOCK: IMPRESSION
 export async function recordDayImpression(

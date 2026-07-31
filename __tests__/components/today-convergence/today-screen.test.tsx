@@ -281,7 +281,10 @@ describe("Today Convergence public time and access projections", () => {
     expect(tiles).toHaveLength(12);
     expect(screen.getByTestId("sphere-tile-work").getAttribute("data-has-today")).toBe("true");
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("data-has-today")).toBe("false");
-    expect(screen.getByTestId("sphere-tile-work").getAttribute("href")).toBe("/day/spheres/work");
+    expect(screen.getByTestId("sphere-tile-work").getAttribute("href")).toBe(
+      `/day/snapshots/${encodeURIComponent(heroSupportive.snapshotId!)}/spheres/work`,
+    );
+    expect(screen.getByTestId("sphere-tile-shopping").getAttribute("href")).toBe("/day/spheres/shopping");
   });
 
   it("renders general-sky marker only for personal=false", () => {

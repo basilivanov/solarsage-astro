@@ -8,7 +8,7 @@
 // owns:
 //   - components/today-convergence/sphere-navigator.tsx
 // inputs: generated TodayConvergencePayload.
-// outputs: nav, 12 tile selectors, and /day/spheres/{key} links.
+// outputs: nav, 12 tile selectors, snapshot drilldown links for marked tiles, and static sphere links otherwise.
 // dependencies: lib/display/sphere-labels, packages/contracts/today-convergence.ts.
 // side_effects: browser navigation through ordinary links only.
 // emitted_logs: none.
@@ -66,7 +66,11 @@ export function SphereNavigator({ payload }: Props) {
           return (
             <li key={sphere.key}>
               <a
-                href={`/day/spheres/${sphere.key}`}
+                href={
+                  hasToday && payload.snapshotId
+                    ? `/day/snapshots/${encodeURIComponent(payload.snapshotId)}/spheres/${sphere.key}`
+                    : `/day/spheres/${sphere.key}`
+                }
                 data-testid={`sphere-tile-${sphere.key}`}
                 data-has-today={String(hasToday)}
                 aria-label={sphere.label}

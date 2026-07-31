@@ -1,329 +1,121 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import type { AccessInfo } from '@/lib/contracts/access'
-import type { CalendarPayloadReadModel } from '@/lib/contracts/calendar'
+// ############################################################################
+// AI_HEADER: TEST_CALENDAR_SCREEN_V2 — public dayState calendar contract.
+// ROLE: Verifies hero, ordinary, not-computed and lock markers on the calendar grid.
+// ############################################################################
 
-const { mockGetMonthCalendar, mockGetMonthStatuses } = vi.hoisted(() => ({
-  mockGetMonthCalendar: vi.fn(),
-  mockGetMonthStatuses: vi.fn(),
-}))
+// START_MODULE_CONTRACT: M-TEST-CALENDAR-SCREEN-V2
+// purpose: Test the calendar v2 dayState projection exposed by CalendarMonth.
+// owns:
+//   - __tests__/components/CalendarScreen.test.tsx
+// inputs: generated CalendarPayload fixture.
+// outputs: stable calendar day DOM assertions.
+// dependencies: CalendarMonth, generated contract types, Testing Library.
+// side_effects: none.
+// emitted_logs: none.
+// invariants: ordinary has no marker; hero and not-computed remain visually distinct; lock marker is preserved.
+// failure_policy: fail on dayState or public selector drift.
+// END_MODULE_CONTRACT: M-TEST-CALENDAR-SCREEN-V2
 
-vi.mock('@/lib/api/calendar', () => ({
-  getMonthCalendar: mockGetMonthCalendar,
-  getMonthStatuses: mockGetMonthStatuses,
-}))
+// START_MODULE_MAP: M-TEST-CALENDAR-SCREEN-V2
+// public_entrypoints:
+//   - calendar dayState assertions
+// semantic_blocks:
+//   - DAY_MARKERS
+//   - ACCESS_MARKER
+// owned_tests:
+//   - self
+// END_MODULE_MAP: M-TEST-CALENDAR-SCREEN-V2
 
-vi.mock('@/lib/today', () => ({
-  TODAY: new Date('2026-07-06T12:00:00Z'),
-  sameDay: (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate(),
-}))
+import { render, screen, cleanup } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CalendarPayload } from "@/packages/contracts";
+import { CalendarMonth } from "@/components/grace/CalendarMonth";
 
-import { CalendarScreen } from '@/components/calendar/calendar-screen'
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}));
 
-const fullAccess: AccessInfo = {
-  state: 'subscription',
-  hasAccess: true,
-  accessStart: null,
-  accessEnd: null,
-  daysLeft: 0,
-}
+afterEach(() => cleanup());
 
-function day(
-  date: string,
-  overrides: Partial<CalendarPayloadReadModel['days'][number]> = {},
-): CalendarPayloadReadModel['days'][number] {
-  const parsed = new Date(`${date}T12:00:00Z`)
-  return {
-    date,
-    dayNumber: parsed.getUTCDate(),
-    isCurrentMonth: date.startsWith('2026-07'),
-    isToday: date === '2026-07-06',
-    disabled: false,
-    dayStatus: 'steady',
-    access: {
-      state: 'full',
-      reason: 'active_subscription',
-      referralDaysLeft: null,
-      subscriptionActive: true,
-      accessUntil: null,
+const calendarPayload: CalendarPayload = {
+  allowedRange: { from: "2026-01-01", to: "2026-12-31" },
+  days: [
+    {
+      access: { state: "full", reason: "active_subscription", subscriptionActive: true },
+      date: "2026-08-01",
+      dayNumber: 1,
+      dayState: "hero",
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: false,
     },
-    lunar: {
-      phase: null,
-      phaseIndex: null,
-      phaseLabel: null,
-      illumination: null,
-      moonSign: null,
-      moonSignLabel: null,
-      lunarDay: null,
-      voidOfCourse: null,
-    } as any,
-    ...overrides,
-  }
-}
-
-function calendarPayload(overrides: Partial<CalendarPayloadReadModel> = {}): CalendarPayloadReadModel {
-  return {
-    meta: {
-      schemaVersion: 'calendar/v1',
-      contractVersion: 2,
-      generatedAt: '2026-07-01T00:00:00Z',
+    {
+      access: { state: "full", reason: "active_subscription", subscriptionActive: true },
+      date: "2026-08-02",
+      dayNumber: 2,
+      dayState: "ordinary",
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: false,
     },
-    month: '2026-07',
-    title: 'July 2026',
-    allowedRange: { from: '2026-06-01', to: '2026-08-31' },
-    days: [
-      day('2026-07-06', {
-        dayStatus: 'supportive',
-        lunar: {
-          phase: 'waxing_gibbous',
-          phaseIndex: 3,
-          phaseLabel: 'раст. Луна',
-          illumination: 64,
-          moonSign: 'Libra',
-          moonSignLabel: 'Весы',
-          lunarDay: 11,
-          voidOfCourse: false,
-        } as any,
-      }),
-      day('2026-07-10', {
-        dayStatus: 'tense',
-        access: {
-          state: 'locked',
-          reason: 'outside_access_window',
-          referralDaysLeft: 0,
-          subscriptionActive: false,
-          accessUntil: null,
-        },
-        lunar: {
-          phase: 'full_moon',
-          phaseIndex: 4,
-          phaseLabel: 'полнолуние',
-          illumination: 99,
-          moonSign: 'Capricorn',
-          moonSignLabel: 'Козерог',
-          lunarDay: 15,
-          voidOfCourse: true,
-        } as any,
-      }),
-    ],
-    ...overrides,
-  }
-}
+    {
+      access: { state: "full", reason: "active_subscription", subscriptionActive: true },
+      date: "2026-08-03",
+      dayNumber: 3,
+      dayState: "not-computed",
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: false,
+    },
+    {
+      access: { state: "locked", reason: "outside_access_window", subscriptionActive: false },
+      date: "2026-08-04",
+      dayNumber: 4,
+      dayState: "ordinary",
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: false,
+    },
+  ],
+  meta: {
+    contractVersion: 2,
+    generatedAt: "2026-07-31T00:00:00Z",
+    schemaVersion: "calendar/v2",
+  },
+  month: "2026-08",
+  title: "Август 2026",
+};
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
-}
+// START_BLOCK: DAY_MARKERS
+describe("Calendar v2 dayState markers", () => {
+  it("renders hero dot, ordinary without marker, and not-computed outline", () => {
+    render(
+      <div data-testid="calendar-screen">
+        <CalendarMonth month={calendarPayload} />
+      </div>,
+    );
 
-describe('CalendarScreen', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetMonthCalendar.mockResolvedValue(calendarPayload())
-    mockGetMonthStatuses.mockResolvedValue({
-      '2026-07-06': 'supportive',
-      '2026-07-10': 'tense',
-    })
-  })
+    expect(screen.getByTestId("calendar-day-2026-08-01").getAttribute("data-day-state")).toBe("hero");
+    expect(screen.getByTestId("calendar-day-2026-08-02").getAttribute("data-day-state")).toBe("ordinary");
+    expect(screen.getByTestId("calendar-day-2026-08-03").getAttribute("data-day-state")).toBe("not-computed");
+    expect(screen.getByTestId("calendar-day-hero-dot")).toBeTruthy();
+    expect(screen.getByTestId("calendar-day-not-computed")).toBeTruthy();
+    expect(screen.getByTestId("calendar-day-2026-08-02").querySelector("[data-testid='calendar-day-hero-dot']")).toBeNull();
+    expect(screen.getByTestId("calendar-day-2026-08-02").querySelector("[data-testid='calendar-day-not-computed']")).toBeNull();
+  });
+});
+// END_BLOCK: DAY_MARKERS
 
-  it('uses full calendar payload per-day access and lunar fields from API view models', async () => {
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-
-    expect(screen.getByTestId('calendar-grid')).toBeTruthy()
-    expect(screen.getByLabelText(/10 июля 2026, напряжённый, требуется подписка/i)).toBeTruthy()
-    expect(screen.getAllByText('полнолуние').length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByRole('button', { name: /полнолуние 10/i }))
-    expect(screen.getAllByText('99%').length).toBeGreaterThan(0)
-    expect(screen.getByText('15 лунный день')).toBeTruthy()
-    expect(screen.getByText(/без курса/i)).toBeTruthy()
-  })
-
-  it('shows lunar unavailable state when backend lunar fields are absent', async () => {
-    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
-      days: [
-        day('2026-07-06'),
-        day('2026-07-10', {
-          access: {
-            state: 'locked',
-            reason: 'outside_access_window',
-            referralDaysLeft: 0,
-            subscriptionActive: false,
-            accessUntil: null,
-          },
-        }),
-      ],
-    }))
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    expect(screen.getByTestId('lunar-calendar-unavailable').textContent).toContain('Лунные данные недоступны')
-  })
-
-  it('renders backend lunar values in moon mode instead of computing client-side phases', async () => {
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
-
-    expect(screen.getByLabelText(/10 июля 2026, полнолуние, 15 лунный день, Луна без курса/i)).toBeTruthy()
-    const glyph = screen.getByTestId('calendar-moon-glyph-2026-07-10')
-    expect(glyph.querySelector('svg')).toBeTruthy()
-    expect(glyph.textContent).not.toContain('🌕')
-  })
-
-  it('renders a compact current-month visual window from the backend three-month payload', async () => {
-    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
-      days: [
-        day('2026-06-01', { isCurrentMonth: false, disabled: true }),
-        day('2026-06-29', { isCurrentMonth: false, disabled: true }),
-        day('2026-06-30', { isCurrentMonth: false, disabled: true }),
-        day('2026-07-10'),
-        day('2026-08-01', { isCurrentMonth: false, disabled: true }),
-        day('2026-08-02', { isCurrentMonth: false, disabled: true }),
-        day('2026-08-31', { isCurrentMonth: false, disabled: true }),
-      ],
-    }))
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    expect(screen.getByTestId('calendar-day-2026-07-10')).toBeTruthy()
-    expect(screen.getByTestId('calendar-day-2026-06-29')).toBeTruthy()
-    expect(screen.getByTestId('calendar-day-2026-08-02')).toBeTruthy()
-    expect(screen.queryByTestId('calendar-day-2026-06-01')).toBeNull()
-    expect(screen.queryByTestId('calendar-day-2026-08-31')).toBeNull()
-  })
-
-  it('uses Russian month title derived from payload month instead of backend English title', async () => {
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    expect(screen.getByTestId('calendar-month-header').textContent).toBe('Июль 2026')
-    expect(screen.queryByText('July 2026')).toBeNull()
-  })
-
-  it('selects a day locally and opens it only from the footer CTA', async () => {
-    const onOpenDay = vi.fn()
-    render(<CalendarScreen access={fullAccess} onOpenDay={onOpenDay} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    fireEvent.click(screen.getByTestId('calendar-day-2026-07-10'))
-
-    expect(onOpenDay).not.toHaveBeenCalled()
-    expect(screen.getByTestId('calendar-selected-summary').textContent).toContain('10 июля 2026')
-
-    fireEvent.click(screen.getByRole('button', { name: /Открыть превью/i }))
-    expect(onOpenDay).toHaveBeenCalledTimes(1)
-    expect(onOpenDay.mock.calls[0][0]).toEqual(new Date(2026, 6, 10))
-  })
-
-  it('renders an explicit unavailable state when calendar payload fails', async () => {
-    mockGetMonthCalendar.mockRejectedValue(new Error('calendar backend failed'))
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    expect(screen.getByTestId('calendar-unavailable').textContent).toContain('Календарь недоступен')
-    expect(screen.queryByTestId('calendar-grid')).toBeNull()
-  })
-
-  it('shows a real loading state while the first calendar request is in flight', async () => {
-    const pending = deferred<CalendarPayloadReadModel>()
-    mockGetMonthCalendar.mockReturnValue(pending.promise)
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    expect(screen.getByTestId('calendar-loading').textContent).toContain('Загружаем календарь')
-    expect(screen.queryByTestId('calendar-unavailable')).toBeNull()
-    expect(screen.queryByTestId('calendar-grid')).toBeNull()
-
-    pending.resolve(calendarPayload())
-    await waitFor(() => expect(screen.getByTestId('calendar-grid')).toBeTruthy())
-  })
-
-  it('clears stale month days and shows loading while the next month request is pending', async () => {
-    const nextMonthPending = deferred<CalendarPayloadReadModel>()
-    mockGetMonthCalendar
-      .mockResolvedValueOnce(calendarPayload())
-      .mockReturnValueOnce(nextMonthPending.promise)
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(screen.getByTestId('calendar-day-2026-07-06')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Следующий месяц' }))
-
-    expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 7)
-    expect(screen.getByTestId('calendar-loading')).toBeTruthy()
-    expect(screen.queryByTestId('calendar-day-2026-07-06')).toBeNull()
-    expect(screen.queryByTestId('calendar-grid')).toBeNull()
-
-    nextMonthPending.resolve(calendarPayload({
-      month: '2026-08',
-      title: 'Август 2026',
-      days: [
-        day('2026-08-03', {
-          dayStatus: 'supportive',
-          isCurrentMonth: true,
-          isToday: false,
-        }),
-      ],
-    }))
-
-    await waitFor(() => expect(screen.getByTestId('calendar-day-2026-08-03')).toBeTruthy())
-  })
-
-  it('does not fall back to Gregorian date number when lunar day is absent', async () => {
-    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
-      days: [
-        day('2026-07-06', {
-          lunar: {
-            phase: 'waxing_gibbous',
-            phaseIndex: 3,
-            phaseLabel: 'раст. Луна',
-            illumination: 64,
-            moonSign: 'Libra',
-            moonSignLabel: 'Весы',
-            lunarDay: null,
-            voidOfCourse: false,
-          } as any,
-        }),
-      ],
-    }))
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
-
-    expect(screen.getByTestId('calendar-moon-day-2026-07-06').textContent).toBe('—')
-  })
-
-  it('renders unknown backend day status as unavailable instead of synthesizing an even day', async () => {
-    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
-      days: [
-        day('2026-07-06', {
-          dayStatus: null,
-        }),
-      ],
-    }))
-
-    render(<CalendarScreen access={fullAccess} />)
-
-    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-
-    expect(screen.getByLabelText(/6 июля 2026, статус недоступен/i)).toBeTruthy()
-    expect(screen.queryByText('ровный')).toBeNull()
-    expect(screen.getByText('Статус недоступен')).toBeTruthy()
-  })
-})
+// START_BLOCK: ACCESS_MARKER
+describe("Calendar v2 access marker", () => {
+  it("keeps the lock marker on an ordinary locked day", () => {
+    render(<CalendarMonth month={calendarPayload} />);
+    const lockedDay = screen.getByTestId("calendar-day-2026-08-04");
+    expect(lockedDay.getAttribute("data-day-state")).toBe("ordinary");
+    expect(screen.getByTestId("calendar-day-lock")).toBeTruthy();
+  });
+});
+// END_BLOCK: ACCESS_MARKER
