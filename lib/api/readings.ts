@@ -40,7 +40,7 @@
 // END_MODULE_MAP: M-FRONTEND-API-READINGS
 
 import type { ReadingsCatalog } from "@/lib/readings"
-import type { DayHistoryItem, DayHistoryPayload } from "@/packages/contracts/day-history"
+import type { DayHistoryItem, DayHistoryPayload } from "@/packages/contracts"
 // The generated DayHistory schema is not re-exported by the frozen runtime barrel yet.
 // eslint-disable-next-line grace/contracts-only-import
 import { DayHistoryPayload as DayHistoryPayloadWireSchema } from "@/packages/contracts/_generated.zod"
