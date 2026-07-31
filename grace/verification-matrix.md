@@ -85,6 +85,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Pure immutable direct-star groups use only shared target/theme links; public members are evidence-eligible and non-background; distinct drivers determine group validity; C1 requires a rare target-eligible anchor plus a direct independent confirmer; spheres project once per physical group with majority/anchor/canonical tie-break and at most one secondary. Tone, presentation, and adapters remain out of scope. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py -q`. S2: direct-star bridge-negative, background/ineligible exclusion, producer dedup, distinct-driver, hero fast/lot/direct-confirmation negatives, and immutable deterministic records. S3: per-group sphere majority, tie-break, secondary threshold/cap, input permutation, stable group IDs, duplicate-ledger-ID typed error. S4: packet Ruff, `grace_lint`, markers, and `git diff --check` pass. |
 
+## UC-TODAY-CONVERGENCE-W2-TONE · frozen unit/group/day tone policy
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-TONE → M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-CANON | Strict canon exposes the exact `tone-candidate-0.1` block; unit/group coefficients are canon-driven; day tone uses aware IANA local-date freshness, distinct drivers, and selected-only legacy audit; no selector, wire, or adapter behavior. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py tests/test_today_convergence_tone.py -q`. S2: timezone boundary, supporting context, fast/mixed sparse regressions, hero/two-driver thresholds, weighted supportive+tense mixed balance, and selection-independent day tone. S3: malformed tone canon and foreign/duplicate references fail closed; output and trigger order are permutation-deterministic; internal `steady` group polarity is not wire behavior. S4: packet Ruff, `grace_lint`, markers, and `git diff --check` pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days

@@ -79,6 +79,7 @@
     <module id="M-TODAY-CONVERGENCE-UNITS" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_units.py" />
     <module id="M-TODAY-CONVERGENCE-LEDGER" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_ledger.py" />
     <module id="M-TODAY-CONVERGENCE-GROUPS" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_groups.py" />
+    <module id="M-TODAY-CONVERGENCE-TONE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_tone.py" />
     <module id="M-TODAY-CONVERGENCE-THEMES" slice="SLICE-BACKEND-SERVICES" layer="shared" path="grace/canon/today_convergence_themes.v1.yml" />
     <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
     <module id="M-SIDECAR-CALCULATION" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/, apps/api/calculations/" />
@@ -114,6 +115,9 @@
     <edge from="M-TODAY-CONVERGENCE-LEDGER" to="M-TODAY-CONVERGENCE-CANON" via="producer-precedence-and-daydelta" />
     <edge from="M-TODAY-CONVERGENCE-GROUPS" to="M-TODAY-CONVERGENCE-LEDGER" via="canonical-ledger-input" />
     <edge from="M-TODAY-CONVERGENCE-GROUPS" to="M-TODAY-CONVERGENCE-CANON" via="direct-star-and-sphere-policy" />
+    <edge from="M-TODAY-CONVERGENCE-TONE" to="M-TODAY-CONVERGENCE-GROUPS" via="canonical-group-tone" />
+    <edge from="M-TODAY-CONVERGENCE-TONE" to="M-TODAY-CONVERGENCE-LEDGER" via="canonical-ledger-tone-input" />
+    <edge from="M-TODAY-CONVERGENCE-TONE" to="M-TODAY-CONVERGENCE-CANON" via="strict-tone-policy" />
     <edge from="M-TODAY-CONVERGENCE-CANON" to="M-TODAY-CONVERGENCE-THEMES" via="strict-yaml-load" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />

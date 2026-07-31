@@ -8,9 +8,9 @@
 # owns:
 #   - apps/api/app/services/today_convergence_canon.py
 # inputs: Today convergence, aspect-rules, and versioned narrow-theme YAML canons.
-# outputs: immutable TodayConvergenceCanon and pure mapping/significance/eligibility helpers.
+# outputs: immutable TodayConvergenceCanon/TonePolicyCanon and pure mapping/significance/eligibility helpers.
 # dependencies: PyYAML and Python standard library only.
-# side_effects: reads two YAML files; never writes or emits runtime logs.
+# side_effects: reads three YAML files; never writes or emits runtime logs.
 # emitted_logs: none.
 # invariants: frozen versions are exact; unknown mappings and normative values fail closed; no defaults/fallbacks.
 # failure_policy: TodayConvergenceCanonError for missing, malformed, or unknown canon values.
@@ -19,6 +19,7 @@
 # START_MODULE_MAP: M-TODAY-CONVERGENCE-CANON
 # public_entrypoints:
 #   - TodayConvergenceCanon
+#   - TonePolicyCanon
 #   - TodayConvergenceCanonError
 #   - load_today_convergence_canon
 #   - map_factor_to_product_spheres
@@ -60,6 +61,30 @@ _RARE_TRANSIT_SOURCES = frozenset({"JUPITER", "SATURN", "URANUS", "NEPTUNE", "PL
 
 
 @dataclass(frozen=True)
+class TonePolicyCanon:
+    """Immutable owner-approved tone policy extracted from the frozen YAML."""
+
+    status: str
+    version: str
+    layers: tuple[str, ...]
+    unit_polarities: tuple[str, ...]
+    neutral_maps_to: str
+    role_weights: Mapping[str, float]
+    independence: str
+    min_side_weight: float
+    mixed_margin: float
+    day_tones: tuple[str, ...]
+    fresh_predicate: tuple[str, ...]
+    ongoing_roles_are_context: tuple[str, ...]
+    fast_sources_detail_only: frozenset[str]
+    high_confidence_strength: float
+    min_independent_tense_units: int
+    min_independent_supportive_units: int
+    mixed_requires_fresh_support_and_tense: bool
+    audit_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class TodayConvergenceCanon:
     schema_version: str
     status: str
@@ -89,6 +114,7 @@ class TodayConvergenceCanon:
     theme_canonical_order: tuple[str, ...]
     technical_sphere_themes: Mapping[str, tuple[str, ...]]
     target_planet_themes: Mapping[str, tuple[str, ...]]
+    tone_policy: TonePolicyCanon
 
 
 def _fail(reason: str) -> None:
@@ -135,6 +161,12 @@ def _bounded_number(value: Any, reason: str) -> float:
     if not 0.0 <= number <= 1.0:
         _fail(reason)
     return number
+
+
+def _exact_int(value: Any, expected: int, reason: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+        _fail(reason)
+    return value
 
 
 def _string_tuple(value: Any, reason: str) -> tuple[str, ...]:
@@ -288,6 +320,119 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
     if today.get("formula_version") != "today-convergence-2":
         _fail("formula_version")
 
+    tone_policy_raw = _require_mapping(today["tone_policy"], "tone_policy_mapping")
+    _require_keys(
+        tone_policy_raw,
+        {
+            "status", "version", "layers", "unit_polarity", "neutral_maps_to", "weights",
+            "group_balance", "day_tone", "audit_fields",
+        },
+        "tone_policy_keys",
+    )
+    if tone_policy_raw["status"] != "frozen_w1":
+        _fail("tone_policy_status")
+    if tone_policy_raw["version"] != "tone-candidate-0.1":
+        _fail("tone_policy_version")
+    tone_layers = _string_tuple(tone_policy_raw["layers"], "tone_policy_layers")
+    if tone_layers != ("unit_polarity", "group_polarity", "day_tone"):
+        _fail("tone_policy_layers")
+    unit_polarities = _string_tuple(tone_policy_raw["unit_polarity"], "tone_policy_unit_polarity")
+    if unit_polarities != ("supportive", "tense", "mixed", "steady"):
+        _fail("tone_policy_unit_polarity")
+    if tone_policy_raw["neutral_maps_to"] != "steady":
+        _fail("tone_policy_neutral_maps_to")
+
+    weights_raw = _require_mapping(tone_policy_raw["weights"], "tone_policy_role_weights")
+    _require_keys(
+        weights_raw,
+        {"anchor_today", "supporting_context", "background", "mixed_split"},
+        "tone_policy_role_weights",
+    )
+    role_weights = {key: _bounded_number(weights_raw[key], "tone_policy_role_weights") for key in weights_raw}
+    if role_weights != {
+        "anchor_today": 1.0,
+        "supporting_context": 0.5,
+        "background": 0.0,
+        "mixed_split": 0.5,
+    }:
+        _fail("tone_policy_role_weights")
+
+    group_balance = _require_mapping(tone_policy_raw["group_balance"], "tone_policy_group_balance")
+    _require_keys(group_balance, {"independence", "min_side_weight", "mixed_margin"}, "tone_policy_group_balance")
+    if group_balance["independence"] != "distinct_driver":
+        _fail("tone_policy_group_balance")
+    min_side_weight = _bounded_number(group_balance["min_side_weight"], "tone_policy_group_balance")
+    mixed_margin = _bounded_number(group_balance["mixed_margin"], "tone_policy_group_balance")
+    if min_side_weight != 0.25 or mixed_margin != 0.25:
+        _fail("tone_policy_group_balance")
+
+    day_tone = _require_mapping(tone_policy_raw["day_tone"], "tone_policy_day_tone")
+    _require_keys(
+        day_tone,
+        {
+            "values", "fresh_predicate", "ongoing_roles_are_context", "fast_sources_detail_only",
+            "high_confidence_strength", "min_independent_tense_units", "min_independent_supportive_units",
+            "mixed_requires_fresh_support_and_tense",
+        },
+        "tone_policy_day_tone_keys",
+    )
+    day_tones = _string_tuple(day_tone["values"], "tone_policy_day_tones")
+    if day_tones != ("supportive", "tense", "mixed", "steady"):
+        _fail("tone_policy_day_tones")
+    fresh_predicate = _string_tuple(day_tone["fresh_predicate"], "tone_policy_fresh_predicate")
+    if fresh_predicate != ("temporal_role == anchor_today", "exact_at local_date == target_date"):
+        _fail("tone_policy_fresh_predicate")
+    ongoing_roles = _string_tuple(day_tone["ongoing_roles_are_context"], "tone_policy_ongoing_roles")
+    if ongoing_roles != ("supporting", "background"):
+        _fail("tone_policy_ongoing_roles")
+    fast_sources_detail_only = frozenset(
+        _normal_source(value) for value in _string_tuple(day_tone["fast_sources_detail_only"], "tone_policy_fast_sources")
+    )
+    if None in fast_sources_detail_only:
+        _fail("tone_policy_fast_sources")
+    high_confidence_strength = _bounded_number(
+        day_tone["high_confidence_strength"], "tone_policy_high_confidence_strength"
+    )
+    if high_confidence_strength != 0.75:
+        _fail("tone_policy_high_confidence_strength")
+    min_independent_tense_units = _exact_int(
+        day_tone["min_independent_tense_units"], 2, "tone_policy_tense_threshold"
+    )
+    min_independent_supportive_units = _exact_int(
+        day_tone["min_independent_supportive_units"], 2, "tone_policy_supportive_threshold"
+    )
+    if not isinstance(day_tone["mixed_requires_fresh_support_and_tense"], bool):
+        _fail("tone_policy_mixed_requirement")
+    mixed_requires_fresh_support_and_tense = day_tone["mixed_requires_fresh_support_and_tense"]
+    if mixed_requires_fresh_support_and_tense is not True:
+        _fail("tone_policy_mixed_requirement")
+    audit_fields = _string_tuple(tone_policy_raw["audit_fields"], "tone_policy_audit_fields")
+    if audit_fields != (
+        "unit_polarity_counts", "group_polarity_counts", "day_tone", "tone_scores",
+        "tone_trigger_keys", "legacy_any_selected_tense",
+    ):
+        _fail("tone_policy_audit_fields")
+    tone_policy = TonePolicyCanon(
+        status="frozen_w1",
+        version="tone-candidate-0.1",
+        layers=tone_layers,
+        unit_polarities=unit_polarities,
+        neutral_maps_to="steady",
+        role_weights=MappingProxyType(role_weights),
+        independence="distinct_driver",
+        min_side_weight=min_side_weight,
+        mixed_margin=mixed_margin,
+        day_tones=day_tones,
+        fresh_predicate=fresh_predicate,
+        ongoing_roles_are_context=ongoing_roles,
+        fast_sources_detail_only=frozenset(fast_sources_detail_only),
+        high_confidence_strength=high_confidence_strength,
+        min_independent_tense_units=min_independent_tense_units,
+        min_independent_supportive_units=min_independent_supportive_units,
+        mixed_requires_fresh_support_and_tense=mixed_requires_fresh_support_and_tense,
+        audit_fields=audit_fields,
+    )
+
     canonical_event = _require_mapping(today["canonical_event"], "canonical_event")
     _require_keys(
         canonical_event,
@@ -328,6 +473,8 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
     fast_sources = frozenset(_normal_source(value) for value in _string_tuple(eligibility["fast_sources"], "fast_sources"))
     if None in fast_sources:
         _fail("fast_sources")
+    if tone_policy.fast_sources_detail_only != fast_sources:
+        _fail("tone_policy_fast_sources")
     fast_policy_raw = _require_mapping(eligibility["fast"], "fast_policy")
     slow_policy_raw = _require_mapping(eligibility["slow"], "slow_policy")
     _require_keys(fast_policy_raw, {"impulse", "evidence", "rare_anchor", "hero_confirmation"}, "fast_policy_keys")
@@ -479,6 +626,7 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         theme_canonical_order=theme_canonical_order,
         technical_sphere_themes=MappingProxyType(technical_sphere_themes),
         target_planet_themes=MappingProxyType(target_planet_themes),
+        tone_policy=tone_policy,
     )
 # END_BLOCK: CANON_LOADER
 
@@ -662,6 +810,7 @@ def hero_confirmation_policy(
 __all__ = [
     "TodayConvergenceCanon",
     "TodayConvergenceCanonError",
+    "TonePolicyCanon",
     "load_today_convergence_canon",
     "map_factor_to_product_spheres",
     "map_factor_to_theme_keys",

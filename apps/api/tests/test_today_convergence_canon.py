@@ -89,6 +89,40 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
         "creativity_visibility",
         "change_innovation",
     )
+    assert canon.tone_policy.status == "frozen_w1"
+    assert canon.tone_policy.version == "tone-candidate-0.1"
+    assert canon.tone_policy.layers == ("unit_polarity", "group_polarity", "day_tone")
+    assert canon.tone_policy.unit_polarities == ("supportive", "tense", "mixed", "steady")
+    assert canon.tone_policy.neutral_maps_to == "steady"
+    assert dict(canon.tone_policy.role_weights) == {
+        "anchor_today": 1.0,
+        "supporting_context": 0.5,
+        "background": 0.0,
+        "mixed_split": 0.5,
+    }
+    assert canon.tone_policy.independence == "distinct_driver"
+    assert canon.tone_policy.min_side_weight == 0.25
+    assert canon.tone_policy.mixed_margin == 0.25
+    assert canon.tone_policy.fresh_predicate == (
+        "temporal_role == anchor_today",
+        "exact_at local_date == target_date",
+    )
+    assert canon.tone_policy.ongoing_roles_are_context == ("supporting", "background")
+    assert canon.tone_policy.fast_sources_detail_only == frozenset({"MOON", "MERCURY", "VENUS"})
+    assert canon.tone_policy.high_confidence_strength == 0.75
+    assert canon.tone_policy.min_independent_tense_units == 2
+    assert canon.tone_policy.min_independent_supportive_units == 2
+    assert canon.tone_policy.mixed_requires_fresh_support_and_tense is True
+    assert canon.tone_policy.audit_fields == (
+        "unit_polarity_counts",
+        "group_polarity_counts",
+        "day_tone",
+        "tone_scores",
+        "tone_trigger_keys",
+        "legacy_any_selected_tense",
+    )
+    with pytest.raises(TypeError):
+        canon.tone_policy.role_weights["anchor_today"] = 0.0  # type: ignore[index]
 
 
 @pytest.mark.parametrize(
@@ -120,6 +154,24 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
         (lambda data, aspect: aspect["orb_profile_default"].pop("JUPITER"), "rare_transit_sources"),
         (lambda data, aspect: data["eligibility"]["fast"].update(rare_anchor=True), "fast_policy_truth_table"),
         (lambda data, aspect: data["eligibility"]["slow"].update(hero_confirmation=False), "slow_policy_truth_table"),
+        (lambda data, aspect: data["tone_policy"].update(status="draft"), "tone_policy_status"),
+        (lambda data, aspect: data["tone_policy"].update(version="other"), "tone_policy_version"),
+        (lambda data, aspect: data["tone_policy"].update(layers=["unit_polarity"]), "tone_policy_layers"),
+        (lambda data, aspect: data["tone_policy"].update(unit_polarity=["supportive"]), "tone_policy_unit_polarity"),
+        (lambda data, aspect: data["tone_policy"].update(neutral_maps_to="tense"), "tone_policy_neutral_maps_to"),
+        (lambda data, aspect: data["tone_policy"]["weights"].update(anchor_today=0.5), "tone_policy_role_weights"),
+        (lambda data, aspect: data["tone_policy"]["group_balance"].update(independence="raw_units"), "tone_policy_group_balance"),
+        (lambda data, aspect: data["tone_policy"]["group_balance"].update(mixed_margin=0.5), "tone_policy_group_balance"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(fresh_predicate=["date prefix"]), "tone_policy_fresh_predicate"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(ongoing_roles_are_context=["supporting"]), "tone_policy_ongoing_roles"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(fast_sources_detail_only=["MOON"]), "tone_policy_fast_sources"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(high_confidence_strength="0.75"), "tone_policy_high_confidence_strength"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(min_independent_tense_units=1), "tone_policy_tense_threshold"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(min_independent_supportive_units=1), "tone_policy_supportive_threshold"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(mixed_requires_fresh_support_and_tense=False), "tone_policy_mixed_requirement"),
+        (lambda data, aspect: data["tone_policy"]["day_tone"].update(values=["supportive", "tense"]), "tone_policy_day_tones"),
+        (lambda data, aspect: data["tone_policy"].update(audit_fields=["day_tone"]), "tone_policy_audit_fields"),
+        (lambda data, aspect: data["tone_policy"].update(extra_key=True), "tone_policy_keys"),
     ],
 )
 def test_malformed_canon_copy_fails_closed(tmp_path: Path, mutation, reason: str) -> None:
