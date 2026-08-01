@@ -36,6 +36,8 @@
 
 "use client"
 
+import { usePathname } from "next/navigation"
+
 import { TabBar } from "@/components/today/tab-bar"
 import { useOnboarded } from "@/hooks/use-onboarded"
 import { logger } from "@/lib/log"
@@ -50,12 +52,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // error_behavior: none
   // END_FUNCTION_CONTRACT: F-M-COMPONENTS-APP-SHELL.AppShell
   const { onboarded } = useOnboarded()
+  const pathname = usePathname()
+  // Day screens implement the 03_W7 desktop grid (main 640 + rail 400, gap 32),
+  // so the shell widens to the canonical 1120px canvas on lg; other screens
+  // keep the phone-width column.
+  const wideCanvas = pathname?.startsWith("/day") ?? false
 
   logger.debug('[AppShell] Render', { extra: { onboarded } })
 
   return (
     <main className="h-[var(--app-height)] overflow-hidden bg-background">
-      <div className="mx-auto flex h-full max-w-md flex-col border-x border-border/50 bg-background">
+      <div className={`mx-auto flex h-full max-w-md flex-col border-x border-border/50 bg-background ${wideCanvas ? "lg:max-w-[1120px]" : ""}`}>
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
