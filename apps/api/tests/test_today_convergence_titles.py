@@ -19,6 +19,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.services.today_convergence_titles import build_today_convergence_event_title
 
 
@@ -46,3 +48,32 @@ def test_generic_activation_has_no_fabricated_title() -> None:
             "aspect_type": None,
         }
     ) is None
+
+
+@pytest.mark.parametrize(
+    ("target_key", "aspect_type", "expected"),
+    [
+        ("ASC", "trine", "Солнце в гармонии с твоим Асцендентом"),
+        ("ASC", "opposition", "Солнце напротив твоего Асцендента"),
+        ("MC", "trine", "Солнце в гармонии с твоим Меридианом"),
+        ("IC", "trine", "Солнце в гармонии с твоим Надиром"),
+        ("DESC", "trine", "Солнце в гармонии с твоим Десцендентом"),
+        ("DSC", "trine", "Солнце в гармонии с твоим Десцендентом"),
+    ],
+)
+def test_real_angle_aspect_units_get_localized_public_titles(
+    target_key: str,
+    aspect_type: str,
+    expected: str,
+) -> None:
+    title = build_today_convergence_event_title(
+        {
+            "factor_id": f"sig:aspect:SUN:{aspect_type.upper()}:{target_key}",
+            "source_key": "SUN",
+            "target_key": target_key,
+            "target_type": "angle",
+            "aspect_type": aspect_type,
+        }
+    )
+
+    assert title == expected

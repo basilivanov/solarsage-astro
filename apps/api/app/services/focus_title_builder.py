@@ -5,7 +5,7 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-FOCUS-TITLE-BUILDER
-# purpose: Build deterministic human titles ("Марс напротив твоего Нептуна") and technical titles without raw prefixes or machine keys (§2 of C2 TZ).
+# purpose: Build deterministic human titles ("Марс напротив твоего Нептуна") and technical titles without raw prefixes or machine keys (§2 of C2 TZ), including correctly declined angles.
 # owns:
 #   - apps/api/app/services/focus_title_builder.py
 # inputs: factor (TodayFactor | dict | Any)
@@ -86,10 +86,18 @@ ASPECT_LABELS_RU: dict[str, str] = {
 
 ANGLE_LABELS_RU: dict[str, str] = {
     "ASC": "Асцендента",
-    "MC": "Меридиана (MC)",
-    "IC": "Надира (IC)",
+    "MC": "Меридиана",
+    "IC": "Надира",
     "DESC": "Десцендента",
     "DSC": "Десцендента",
+}
+
+ANGLE_INSTRUMENTAL_RU: dict[str, str] = {
+    "ASC": "Асцендентом",
+    "MC": "Меридианом",
+    "IC": "Надиром",
+    "DESC": "Десцендентом",
+    "DSC": "Десцендентом",
 }
 
 LOT_LABELS_RU: dict[str, str] = {
@@ -141,8 +149,8 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
         tgt_inst = lot_nom or "жребием"
         tgt_gen = lot_nom or "жребия"
     else:
-        tgt_inst = PLANET_INSTRUMENTAL_RU.get(tgt_clean, tgt_clean)
-        tgt_gen = PLANET_GENITIVE_RU.get(tgt_clean, tgt_clean)
+        tgt_inst = ANGLE_INSTRUMENTAL_RU.get(tgt_clean) or PLANET_INSTRUMENTAL_RU.get(tgt_clean, tgt_clean)
+        tgt_gen = ANGLE_LABELS_RU.get(tgt_clean) or PLANET_GENITIVE_RU.get(tgt_clean, tgt_clean)
 
     # 1. Slow layers (firdar / profection / return)
     if tech_family == "firdar" or technique == "firdar":
