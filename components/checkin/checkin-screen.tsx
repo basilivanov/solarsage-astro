@@ -79,7 +79,7 @@ function ForecastRecap({ recap }: { recap: YesterdayCheckinResponse["forecastRec
   return (
     <section
       data-testid="yesterday-forecast-recap"
-      className="rounded-2xl border border-border/60 bg-card p-4 text-left"
+      className="rounded-2xl border border-border/60 bg-card/70 p-4 text-left shadow-sm"
     >
       <h3 className="text-[13px] font-medium text-foreground">Что было в прогнозе</h3>
       <p className="mt-2 text-[13px] text-muted-foreground">
@@ -109,7 +109,7 @@ function ObservedSpheresField({
           return (
             <label
               key={sphere.key}
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/70 bg-card px-3 text-[12px] text-foreground"
+              className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-card px-3 text-[12px] text-foreground transition hover:border-primary/50 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15 motion-reduce:transition-none"
             >
               <input
                 type="checkbox"
@@ -250,8 +250,10 @@ export function CheckinScreen({
 
   return (
     <div
-      className="mx-auto w-full max-w-md px-5 pb-10 pt-8"
+      className="mx-auto w-full max-w-[640px] px-5 pb-10 pt-8"
       data-testid="checkin-screen"
+      data-state={loadingExisting ? "loading" : readError ? "error" : "ready"}
+      aria-busy={loadingExisting || loading ? true : undefined}
     >
       {loadingExisting ? (
         <p role="status" className="text-[13px] text-muted-foreground">
@@ -270,7 +272,7 @@ export function CheckinScreen({
 
       {/* Post-submit confirmation screen */}
       {!loadingExisting && !readError && submittedResult ? (
-        <section className="space-y-6 text-center py-4" data-testid="checkin-post-submit" data-state="submitted">
+        <section className="space-y-6 py-4 text-center" data-testid="checkin-post-submit" data-state="submitted">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf5f0] text-[#43806d] dark:bg-[#1c2b25] dark:text-[#63a893]">
             <Check className="h-8 w-8" />
           </div>
@@ -284,12 +286,12 @@ export function CheckinScreen({
             </h2>
           </div>
 
-          <div className="rounded-[22px] border border-[#e8e0e8] bg-card p-5 space-y-2 shadow-sm">
-            <div className="text-[32px] font-bold text-[#3e3347] dark:text-[#f1e9f4] flex items-center justify-center gap-2">
+          <div className="space-y-2 rounded-[22px] border border-border/60 bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-center gap-2 text-[32px] font-bold text-foreground">
               <span>🔥</span>
               <span>{streak} {pluralDays(streak)} подряд</span>
             </div>
-            <p className="text-[13px] text-[#7d7284] dark:text-muted-foreground m-0">
+            <p className="m-0 text-[13px] text-muted-foreground">
               {hitMilestone
                 ? `Рубеж в ${streak} ${pluralDays(streak)} достигнут! 🎉`
                 : nextMilestone
@@ -306,7 +308,7 @@ export function CheckinScreen({
             onClick={() => {
               onComplete?.(submittedResult)
             }}
-            className="w-full h-[50px] rounded-[17px] bg-[#3e3347] text-white font-[760] text-[16px] flex items-center justify-center transition active:scale-[0.99]"
+            className="flex h-[50px] w-full items-center justify-center rounded-[17px] bg-foreground text-[16px] font-[760] text-background transition active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             Понятно
           </button>

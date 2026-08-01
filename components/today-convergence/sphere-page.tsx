@@ -95,13 +95,13 @@ function RetryState({
   onRetry?: () => void;
 }) {
   return (
-    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card p-5">
+    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
       <h1 className="font-serif text-[24px] leading-tight">{title}</h1>
       <p className="mt-2 text-[14px] leading-6 text-muted-foreground">{description}</p>
       <button
         type="button"
         onClick={() => onRetry?.()}
-        className="mt-5 min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-5 min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
       >
         Повторить
       </button>
@@ -123,16 +123,16 @@ function TransportContent({
         aria-label="Загружаем страницу сферы"
         className="space-y-3"
       >
-        <span aria-hidden className="block h-8 w-3/5 animate-pulse rounded bg-muted" />
-        <span aria-hidden className="block h-28 w-full animate-pulse rounded-[24px] bg-muted" />
-        <span aria-hidden className="block h-24 w-full animate-pulse rounded-[24px] bg-muted" />
+        <span aria-hidden className="block h-8 w-3/5 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        <span aria-hidden className="block h-28 w-full animate-pulse rounded-[24px] bg-muted motion-reduce:animate-none" />
+        <span aria-hidden className="block h-24 w-full animate-pulse rounded-[24px] bg-muted motion-reduce:animate-none" />
       </div>
     );
   }
 
   if (errorStatus === 403) {
     return (
-      <section data-testid="sphere-page-access" className="space-y-4">
+      <section data-testid="sphere-page-access" className="space-y-4 rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
         <h1 className="font-serif text-[24px] leading-tight">Нужен полный доступ</h1>
         <p className="text-[14px] leading-6 text-muted-foreground">
           Полный разбор сферы доступен по подписке.
@@ -178,7 +178,7 @@ function NatalLayer({ payload }: { payload: TodaySpherePagePayload }) {
       data-testid="sphere-natal"
       data-state={hasNatalText ? "ready" : "empty"}
       data-content-state={hasNatalText ? "ready" : "unavailable"}
-      className="rounded-[24px] border border-border/60 bg-card p-5"
+      className="rounded-[24px] border border-border/60 bg-card p-5 shadow-sm"
     >
       <h2 className="font-serif text-[22px] leading-tight">В твоей карте</h2>
       {hasNatalText ? (
@@ -202,7 +202,7 @@ function NatalLayer({ payload }: { payload: TodaySpherePagePayload }) {
           Разбор сферы готовится
         </p>
       )}
-      {!payload.housesAvailable ? (
+      {payload.birthTimeMode !== "exact" || !payload.housesAvailable ? (
         <p
           data-testid="sphere-houses-unavailable"
           className="mt-4 rounded-2xl bg-secondary/60 px-4 py-3 text-[13px] leading-5 text-muted-foreground"
@@ -226,7 +226,7 @@ function PeriodLayer({ payload }: { payload: TodaySpherePagePayload }) {
       data-state={hasPeriods ? "ready" : "empty"}
       data-content-state={hasPeriods ? "ready" : periodUnavailable ? "unavailable" : "empty"}
       data-period-identity={payload.periodIdentity}
-      className="rounded-[24px] border border-border/60 bg-card p-5"
+      className="rounded-[24px] border border-border/60 bg-card p-5 shadow-sm"
     >
       <h2 className="font-serif text-[22px] leading-tight">Сейчас действует</h2>
       {hasPeriods ? (
@@ -237,7 +237,7 @@ function PeriodLayer({ payload }: { payload: TodaySpherePagePayload }) {
               data-testid={`sphere-period-${item.id}`}
               data-technique={item.technique}
               data-active-until={item.activeUntil}
-              className="rounded-2xl border border-border/60 px-4 py-3"
+              className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
             >
               <p className="text-[15px] leading-6 text-foreground">{item.title}</p>
               <time
@@ -303,7 +303,7 @@ export function SpherePage({
       aria-label="Страница сферы"
       className="min-h-full bg-background text-foreground"
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-6">
+      <div className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-5 py-8">
         {renderedScreenState !== "ready" ? (
           <TransportContent
             screenState={renderedScreenState}
@@ -317,7 +317,7 @@ export function SpherePage({
               <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 Страница сферы
               </p>
-              <h1 className="mt-2 font-serif text-[28px] leading-tight">{sphereLabel(payload.sphere)}</h1>
+              <h1 className="mt-2 font-serif text-[30px] leading-tight">{sphereLabel(payload.sphere)}</h1>
             </header>
             <NatalLayer payload={payload} />
             <PeriodLayer payload={payload} />

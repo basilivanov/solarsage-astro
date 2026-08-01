@@ -101,9 +101,9 @@ function PreviewTeaser({ payload }: { payload: TodayConvergencePayload }) {
 function TransportLoading() {
   return (
     <div data-testid="today-loading-skeleton" role="status" aria-live="polite" aria-label="Загружаем разбор дня" className="space-y-3">
-      <span aria-hidden className="block h-6 w-2/5 animate-pulse rounded bg-muted" />
-      <span aria-hidden className="block h-32 w-full animate-pulse rounded-[24px] bg-muted" />
-      <span aria-hidden className="block h-20 w-full animate-pulse rounded-2xl bg-muted" />
+      <span aria-hidden className="block h-6 w-2/5 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+      <span aria-hidden className="block h-32 w-full animate-pulse rounded-[24px] bg-muted motion-reduce:animate-none" />
+      <span aria-hidden className="block h-20 w-full animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />
     </div>
   );
 }
@@ -138,56 +138,64 @@ function ReadyContent({
   const isFullCalculation = payload.access.state === "full" && !isUnavailable;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 py-5">
-      <BirthTimeBanner
-        birthTime={payload.birthTime}
-        dismissed={birthTimeDismissed}
-        onDismiss={onBirthTimeDismiss}
-      />
-      {payload.personal === false ? <DayGeneralSky /> : null}
-
-      {isUnavailable ? <TodayUnavailable onRetry={onRetry} /> : null}
-
-      {isLocked ? (
-        <Paywall
-          compact
-          title="Открой полный разбор дня"
-          description="Персональные события и их объяснение доступны после открытия доступа."
+    <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-6 px-5 py-5 lg:grid-cols-[minmax(0,640px)_minmax(0,400px)] lg:gap-8">
+      <div data-testid="today-main-column" className="min-w-0 space-y-4">
+        <BirthTimeBanner
+          birthTime={payload.birthTime}
+          dismissed={birthTimeDismissed}
+          onDismiss={onBirthTimeDismiss}
         />
-      ) : null}
+        {payload.personal === false ? <DayGeneralSky /> : null}
 
-      {isPreview ? (
-        <>
-          <PreviewTeaser payload={payload} />
+        {isUnavailable ? <TodayUnavailable onRetry={onRetry} /> : null}
+
+        {isLocked ? (
           <Paywall
             compact
             title="Открой полный разбор дня"
-            description="Полный порядок событий, времена и объяснения появятся после открытия доступа."
+            description="Персональные события и их объяснение доступны после открытия доступа."
           />
-        </>
-      ) : null}
+        ) : null}
 
-      {!isUnavailable && !isLocked && !isPreview && payload.state === "convergence_today" ? (
-        <ConvergenceHero
-          groups={payload.convergences}
-          dayTone={payload.dayTone}
-          contentState={payload.contentState}
-          onRetry={onRetry}
-        />
-      ) : null}
+        {isPreview ? (
+          <>
+            <PreviewTeaser payload={payload} />
+            <Paywall
+              compact
+              title="Открой полный разбор дня"
+              description="Полный порядок событий, времена и объяснения появятся после открытия доступа."
+            />
+          </>
+        ) : null}
 
-      {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
-        <>
-          {payload.mainEvent ? <MainEvent event={payload.mainEvent} /> : null}
-          <ImpulsesList impulses={payload.impulses} />
-          <TodayNarrative state={payload.contentState} claims={claims} onRetry={onRetry} />
-          {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
-          {payload.lookahead ? <TodayLookahead lookahead={payload.lookahead} /> : null}
-        </>
-      ) : null}
+        {!isUnavailable && !isLocked && !isPreview && payload.state === "convergence_today" ? (
+          <ConvergenceHero
+            groups={payload.convergences}
+            dayTone={payload.dayTone}
+            contentState={payload.contentState}
+            onRetry={onRetry}
+          />
+        ) : null}
 
-      <SphereNavigator payload={payload} />
-      {isFullCalculation ? <HowCalculated /> : null}
+        {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
+          <>
+            {payload.mainEvent ? <MainEvent event={payload.mainEvent} /> : null}
+            <ImpulsesList impulses={payload.impulses} />
+            <TodayNarrative state={payload.contentState} claims={claims} onRetry={onRetry} />
+            {payload.lookahead ? <TodayLookahead lookahead={payload.lookahead} /> : null}
+          </>
+        ) : null}
+      </div>
+
+      <aside
+        data-testid="today-layout-rail"
+        aria-label="Дополнительный контекст дня"
+        className="min-w-0 space-y-4 lg:sticky lg:top-5 lg:self-start"
+      >
+        {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
+        <SphereNavigator payload={payload} rail />
+        {isFullCalculation ? <HowCalculated /> : null}
+      </aside>
     </div>
   );
 }

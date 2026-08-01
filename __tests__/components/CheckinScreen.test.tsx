@@ -58,6 +58,8 @@ describe("CheckinScreen", () => {
     )
 
     await screen.findByTestId("mood-5")
+    expect(screen.getByTestId("checkin-screen").getAttribute("data-state")).toBe("ready")
+    expect(screen.getAllByRole("checkbox")).toHaveLength(12)
     fireEvent.click(screen.getByTestId("mood-5"))
     fireEvent.click(screen.getByTestId("energy-4"))
     fireEvent.click(screen.getByTestId("accuracy-3"))
@@ -76,6 +78,7 @@ describe("CheckinScreen", () => {
     // Post-submit confirmation screen displayed
     const postSubmit = await screen.findByTestId("checkin-post-submit")
     expect(postSubmit).toBeDefined()
+    expect(screen.getByTestId("checkin-screen").getAttribute("data-state")).toBe("ready")
     expect(screen.getByText("Спасибо за отклик!")).toBeDefined()
     expect(screen.getByText(/3 дня подряд/i)).toBeDefined()
 

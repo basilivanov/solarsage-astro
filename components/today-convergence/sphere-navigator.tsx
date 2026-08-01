@@ -27,8 +27,12 @@
 
 import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels";
 import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
+import { SphereIcon } from "./sphere-icons";
 
-type Props = { payload: TodayConvergencePayload };
+type Props = {
+  payload: TodayConvergencePayload;
+  rail?: boolean;
+};
 
 function selectedSpheres(payload: TodayConvergencePayload): Set<string> {
   const result = new Set<string>();
@@ -44,7 +48,7 @@ function selectedSpheres(payload: TodayConvergencePayload): Set<string> {
 }
 
 // START_BLOCK: NAVIGATOR
-export function SphereNavigator({ payload }: Props) {
+export function SphereNavigator({ payload, rail = false }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR.SphereNavigator
   // purpose: Render all twelve canonical sphere links and selected-sphere markers.
   // inputs: payload — generated Today Convergence envelope.
@@ -60,7 +64,11 @@ export function SphereNavigator({ payload }: Props) {
       <h2 className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         Сферы жизни
       </h2>
-      <ul className="grid grid-cols-3 gap-2">
+      <ul
+        className={`grid min-w-0 grid-cols-3 gap-2 sm:grid-cols-4 ${
+          rail ? "lg:grid-cols-3" : "lg:grid-cols-6"
+        }`}
+      >
         {CANONICAL_PRODUCT_ORDER.map((sphere) => {
           const hasToday = spheres.has(sphere.key);
           return (
@@ -74,10 +82,10 @@ export function SphereNavigator({ payload }: Props) {
                 data-testid={`sphere-tile-${sphere.key}`}
                 data-has-today={String(hasToday)}
                 aria-label={sphere.label}
-                className="relative flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-2 text-center text-[13px] text-foreground transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="relative flex h-[88px] min-w-0 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/60 bg-card/60 px-1.5 text-center text-[13px] leading-4 text-foreground transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
               >
-                <span aria-hidden className="text-lg leading-none">{sphere.label.slice(0, 1)}</span>
-                <span>{sphere.label}</span>
+                <SphereIcon sphere={sphere.key} className="h-6 w-6 shrink-0" />
+                <span className="max-w-full whitespace-nowrap">{sphere.label}</span>
                 <span
                   aria-hidden
                   className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground"

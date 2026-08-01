@@ -70,13 +70,13 @@ function RetryState({
   onRetry?: () => void;
 }) {
   return (
-    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card p-5">
+    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
       <h1 className="font-serif text-[24px] leading-tight">{title}</h1>
       <p className="mt-2 text-[14px] leading-6 text-muted-foreground">{description}</p>
       <button
         type="button"
         onClick={() => onRetry?.()}
-        className="mt-5 min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-5 min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
       >
         Повторить
       </button>
@@ -93,16 +93,16 @@ function TransportContent({
   if (screenState === "loading") {
     return (
       <div data-testid="sphere-drilldown-loading" role="status" aria-label="Загружаем объяснение сферы" className="space-y-3">
-        <span aria-hidden className="block h-8 w-3/5 animate-pulse rounded bg-muted" />
-        <span aria-hidden className="block h-28 w-full animate-pulse rounded-[24px] bg-muted" />
-        <span aria-hidden className="block h-20 w-full animate-pulse rounded-2xl bg-muted" />
+        <span aria-hidden className="block h-8 w-3/5 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        <span aria-hidden className="block h-28 w-full animate-pulse rounded-[24px] bg-muted motion-reduce:animate-none" />
+        <span aria-hidden className="block h-20 w-full animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />
       </div>
     );
   }
 
   if (errorStatus === 403) {
     return (
-      <section data-testid="sphere-drilldown-access" className="space-y-4">
+      <section data-testid="sphere-drilldown-access" className="space-y-4 rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
         <h1 className="font-serif text-[24px] leading-tight">Нужен полный доступ</h1>
         <p className="text-[14px] leading-6 text-muted-foreground">
           Доказательная цепочка доступна в полном разборе дня.
@@ -151,7 +151,8 @@ function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
             key={event.id}
             data-testid={`drilldown-event-${event.id}`}
             data-polarity={event.polarity}
-            className="rounded-[20px] border border-border/60 bg-card p-4"
+            data-event-kind={event.kind}
+            className="rounded-[20px] border border-border/60 bg-card p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
               <span aria-hidden className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-secondary text-[13px] font-medium">
@@ -161,8 +162,12 @@ function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
                 <p className="text-[14px] font-medium text-foreground">
                   {eventKindLabel(event.kind)} · {sphereLabel(event.sphere)}
                 </p>
-                <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-                  {formatEventTime(event.time)} · {getPolarityLabel(event.polarity)}
+                <p className="mt-1 text-[13px] leading-5 text-muted-foreground tabular-nums">
+                  <span data-testid={`drilldown-event-time-${event.id}`}>{formatEventTime(event.time)}</span>
+                  {" · "}
+                  <span data-testid={`drilldown-event-polarity-${event.id}`}>
+                    {getPolarityLabel(event.polarity)}
+                  </span>
                 </p>
                 <p className="mt-2 text-[13px] leading-5 text-foreground/85">
                   Это событие несёт смысл «{getPolarityLabel(event.polarity)}» для сферы «{sphereLabel(event.sphere)}».
@@ -188,7 +193,7 @@ function ConvergenceContext({ payload }: { payload: TodaySphereDrilldownPayload 
         <section
           data-testid="drilldown-convergence"
           data-polarity={convergence.polarity}
-          className="rounded-[20px] border border-border/60 bg-card p-4"
+          className="rounded-[20px] border border-border/60 bg-card p-4 shadow-sm"
         >
           <h2 className="text-[14px] font-medium">Основание связи</h2>
           <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
@@ -201,7 +206,7 @@ function ConvergenceContext({ payload }: { payload: TodaySphereDrilldownPayload 
         </section>
       ) : null}
 
-      <section data-testid="drilldown-context" className="rounded-[20px] border border-border/60 bg-card/70 p-4">
+      <section data-testid="drilldown-context" className="rounded-[20px] border border-border/60 bg-card/70 p-4 shadow-sm">
         <h2 className="text-[14px] font-medium">Контекст сферы</h2>
         <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
           Цепочка относится к опубликованному snapshot и не заменяет исходные события расчёта.
@@ -235,13 +240,22 @@ export function SphereDrilldown({
     : screenState === "ready"
       ? "error"
       : screenState;
+  const dataState = renderedScreenState === "loading"
+    ? "loading"
+    : renderedScreenState === "ready"
+      ? payload?.state
+      : errorStatus === 403
+        ? "locked"
+        : errorStatus === 404
+          ? "empty"
+          : "error";
 
   return (
     <main
       data-testid="sphere-drilldown"
       data-sphere={resolvedSphere}
       data-screen-state={renderedScreenState}
-      data-state={ready ? payload.state : undefined}
+      data-state={dataState}
       data-day-tone={ready ? payload.dayTone : undefined}
       data-birth-time-mode={ready ? payload.birthTimeMode : undefined}
       role={renderedScreenState === "error" ? "alert" : undefined}
@@ -249,7 +263,7 @@ export function SphereDrilldown({
       aria-label="Объяснение сферы"
       className="min-h-full bg-background text-foreground"
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-6">
+      <div className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-5 py-8">
         {renderedScreenState !== "ready" ? (
           <TransportContent screenState={renderedScreenState} errorStatus={errorStatus} onRetry={onRetry} />
         ) : null}
