@@ -22,7 +22,7 @@
 // semantic_blocks:
 //   - TRANSPORT: loading and error/access projections.
 //   - EVIDENCE_CHAIN: numbered event chain with timing and polarity.
-//   - CONVERGENCE_CONTEXT: deterministic relationship and sphere context.
+//   - CONVERGENCE_CONTEXT: deterministic relationship context when present.
 // owned_tests:
 //   - __tests__/components/today-convergence/sphere-drilldown.test.tsx
 // END_MODULE_MAP: M-SPHERE-DRILLDOWN
@@ -36,6 +36,7 @@ import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels";
 import {
   formatEventTime,
   getPolarityLabel,
+  getPolarityToneClasses,
 } from "@/components/today-convergence/today-formatters";
 
 export type SphereDrilldownScreenState = "loading" | "ready" | "error";
@@ -50,12 +51,6 @@ export type SphereDrilldownProps = {
 
 function sphereLabel(key: string | undefined): string {
   return CANONICAL_PRODUCT_ORDER.find((sphere) => sphere.key === key)?.label ?? "Сфера";
-}
-
-function eventKindLabel(kind: string): string {
-  if (kind === "aspect") return "Аспект";
-  if (kind === "structural") return "Структурное событие";
-  return "Событие";
 }
 
 function RetryState({
@@ -159,18 +154,23 @@ function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
                 {index + 1}
               </span>
               <div className="min-w-0">
-                <p className="text-[14px] font-medium text-foreground">
-                  {eventKindLabel(event.kind)} · {sphereLabel(event.sphere)}
-                </p>
+                {event.title ? (
+                  <p
+                    data-testid={`drilldown-event-title-${event.id}`}
+                    className="text-[14px] font-medium leading-5 text-foreground"
+                  >
+                    {event.title}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-[13px] leading-5 text-muted-foreground tabular-nums">
                   <span data-testid={`drilldown-event-time-${event.id}`}>{formatEventTime(event.time)}</span>
                   {" · "}
-                  <span data-testid={`drilldown-event-polarity-${event.id}`}>
+                  <span
+                    data-testid={`drilldown-event-polarity-${event.id}`}
+                    className={`inline-flex rounded-full px-2 py-0.5 font-medium ${getPolarityToneClasses(event.polarity)}`}
+                  >
                     {getPolarityLabel(event.polarity)}
                   </span>
-                </p>
-                <p className="mt-2 text-[13px] leading-5 text-foreground/85">
-                  Это событие несёт смысл «{getPolarityLabel(event.polarity)}» для сферы «{sphereLabel(event.sphere)}».
                 </p>
               </div>
             </div>
@@ -206,12 +206,6 @@ function ConvergenceContext({ payload }: { payload: TodaySphereDrilldownPayload 
         </section>
       ) : null}
 
-      <section data-testid="drilldown-context" className="rounded-[20px] border border-border/60 bg-card/70 p-4 shadow-sm">
-        <h2 className="text-[14px] font-medium">Контекст сферы</h2>
-        <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
-          Цепочка относится к опубликованному snapshot и не заменяет исходные события расчёта.
-        </p>
-      </section>
     </>
   );
 }

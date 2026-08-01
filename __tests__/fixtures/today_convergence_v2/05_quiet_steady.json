@@ -97,6 +97,7 @@
   "events": [
     {
       "id": "evt_v1_00000000000000000000000000000051",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "work",
       "polarity": "supportive",
@@ -112,6 +113,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000052",
+      "title": "Марс в фокусе",
       "kind": "lunar",
       "sphere": "relationships",
       "polarity": "supportive",
@@ -127,6 +129,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000053",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "health",
       "polarity": "mixed",

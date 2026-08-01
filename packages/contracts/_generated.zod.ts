@@ -862,6 +862,7 @@ export const TodayConvergenceEvent = z.object({
     "shopping",
   ]),
   time: TodayConvergenceEventTime,
+  title: z.union([z.string(), z.null()]),
 });
 export const TodayConvergenceImpulse = z.object({
   action: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),

@@ -115,6 +115,7 @@ const drilldownPayload: TodaySphereDrilldownPayload = {
       kind: "aspect",
       polarity: "supportive",
       sphere: "work",
+      title: "Луна в гармонии с твоим Сатурном",
       time: { mode: "exact", peak: "15:40", start: "13:00", end: "18:00", partOfDay: null },
     },
     {
@@ -123,6 +124,7 @@ const drilldownPayload: TodaySphereDrilldownPayload = {
       kind: "structural",
       polarity: "tense",
       sphere: "communication",
+      title: null,
       time: { mode: "partofday", partOfDay: "evening", peak: null, start: null, end: null },
     },
   ],

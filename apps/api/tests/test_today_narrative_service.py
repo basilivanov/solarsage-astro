@@ -411,6 +411,29 @@ async def test_invalid_json_or_shape_is_schema_invalid(raw_response: str) -> Non
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "text",
+    [
+        "Transit_Mars нельзя показывать.",
+        "Natal_Moon нельзя показывать.",
+        "Служебный список M, Mars не является текстом.",
+        "Natal, Planet, Moon — это не описание.",
+    ],
+)
+async def test_machine_driver_text_never_enters_today_narrative_response(text: str) -> None:
+    snapshot = _quiet_snapshot()
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=FakeLLM(json.dumps(_quiet_content(snapshot, text=text), ensure_ascii=False)),
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+    assert not hasattr(result, "content_json")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     ("mode", "text", "capabilities"),
     [
         ("bucket", "Проверь дом и ASC.", None),

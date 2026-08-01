@@ -82,6 +82,9 @@ def _factor(
     *,
     event_class: str = "aspect",
     source_key: str | None = None,
+    target_key: str | None = None,
+    target_type: str = "",
+    aspect_type: str | None = None,
     polarity: str = "tense",
     exact_at: str | None = "2026-07-31T15:40:00+03:00",
     active_from: str | None = "2026-07-31T13:00:00+03:00",
@@ -92,6 +95,9 @@ def _factor(
         "event_class": event_class,
         "technique_horizon": "today",
         "source_key": source_key or f"activation-{event_id}",
+        "target_key": target_key or "",
+        "target_type": target_type,
+        "aspect_type": aspect_type,
         "semantic_key": f"semantic-{event_id}",
         "driver_key": f"driver-{event_id}",
         "product_spheres": ["work"],
@@ -126,6 +132,45 @@ def _hero_result() -> dict[str, Any]:
             "selected_spheres": ["work", "documents"],
         },
     }
+
+
+def test_projection_adds_localized_title_and_null_for_unnameable_unit() -> None:
+    snapshot = _snapshot(
+        _hero_result(),
+        [
+            _factor(
+                "evt-1",
+                source_key="TRANSIT_MOON",
+                target_key="NATAL_SATURN",
+                target_type="natal_planet",
+                aspect_type="square",
+            ),
+            _factor("evt-2"),
+        ],
+    )
+
+    payload = project_snapshot_payload(snapshot, None, _access("full"))
+
+    assert payload.events[0].title == "Луна в напряжении с твоим Сатурном"
+    assert payload.events[1].title is None
+
+
+def test_projection_does_not_publish_machine_driver_narrative() -> None:
+    snapshot = _snapshot(
+        _hero_result(),
+        [_factor("evt-1"), _factor("evt-2", event_class="structural")],
+    )
+    narrative = _hero_narrative(snapshot)
+    narrative.content_json["convergences"]["cvg-hero"]["summary"]["text"] = (
+        "Transit_Mars и Natal_Moon не должны попасть в ответ."
+    )
+
+    payload = project_snapshot_payload(snapshot, narrative, _access("full"))
+    serialized = json.dumps(payload.model_dump(mode="json"), ensure_ascii=False)
+
+    assert payload.content_state == "unavailable"
+    assert "Transit_Mars" not in serialized
+    assert "Natal_Moon" not in serialized
 
 
 def _quiet_result(*, with_main_and_impulses: bool = True) -> dict[str, Any]:

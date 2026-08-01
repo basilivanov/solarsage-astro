@@ -126,7 +126,7 @@ def test_preview_projection_requires_published_teaser_and_not_needed_content() -
     invalid(payload, "preview_content_state")
 
     payload = fixture("today-convergence-preview.json")
-    payload["events"] = [{"id": "hidden", "kind": "aspect", "sphere": "work", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "date", "peak": None, "start": None, "end": None, "partOfDay": None}, "sourceIds": []}]
+    payload["events"] = [{"id": "hidden", "title": None, "kind": "aspect", "sphere": "work", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "date", "peak": None, "start": None, "end": None, "partOfDay": None}, "sourceIds": []}]
     invalid(payload, "preview_hidden_events")
 
 
@@ -211,6 +211,7 @@ def _max_quiet_composition() -> dict:
     payload["events"] = [
         {
             "id": "evt-main",
+            "title": None,
             "kind": "structural",
             "sphere": "work",
             "polarity": "supportive",
@@ -220,6 +221,7 @@ def _max_quiet_composition() -> dict:
         },
         {
             "id": "evt-impulse-1",
+            "title": None,
             "kind": "aspect",
             "sphere": "work",
             "polarity": "supportive",
@@ -229,6 +231,7 @@ def _max_quiet_composition() -> dict:
         },
         {
             "id": "evt-impulse-2",
+            "title": None,
             "kind": "aspect",
             "sphere": "documents",
             "polarity": "tense",
@@ -238,6 +241,7 @@ def _max_quiet_composition() -> dict:
         },
         {
             "id": "evt-impulse-3",
+            "title": None,
             "kind": "aspect",
             "sphere": "relationships",
             "polarity": "mixed",
@@ -279,7 +283,7 @@ def test_content_without_narrative_is_fail_closed() -> None:
     payload = fixture("today-convergence-full-quiet-not-needed.json")
     payload["contentState"] = "pending"
     payload["periodContext"] = None
-    payload["events"] = [{"id": "evt-quiet", "kind": "aspect", "sphere": "work", "polarity": "supportive", "evidenceLevel": "medium", "time": {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": "day"}, "sourceIds": []}]
+    payload["events"] = [{"id": "evt-quiet", "title": None, "kind": "aspect", "sphere": "work", "polarity": "supportive", "evidenceLevel": "medium", "time": {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": "day"}, "sourceIds": []}]
     payload["mainEvent"] = {
         "id": "main-quiet",
         "eventId": "evt-quiet",
@@ -318,8 +322,8 @@ def test_sphere_projection_is_closed_and_capped() -> None:
 
     payload = fixture("today-convergence-full-hero-ready.json")
     payload["events"].extend([
-        {"id": "evt-3", "kind": "aspect", "sphere": "documents", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "16:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []},
-        {"id": "evt-4", "kind": "aspect", "sphere": "relationships", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "17:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []},
+        {"id": "evt-3", "title": None, "kind": "aspect", "sphere": "documents", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "16:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []},
+        {"id": "evt-4", "title": None, "kind": "aspect", "sphere": "relationships", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "17:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []},
     ])
     payload["convergences"].append({
         "id": "cvg-2",
@@ -371,7 +375,7 @@ def test_event_time_modes_and_birth_precision_are_restricted() -> None:
         TodayConvergenceEventTime.model_validate({"mode": "exact", "peak": "24:00", "start": None, "end": None, "partOfDay": None})
 
     payload = fixture("today-convergence-unavailable.json")
-    payload["events"] = [{"id": "evt-bucket", "kind": "aspect", "sphere": "work", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "12:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []}]
+    payload["events"] = [{"id": "evt-bucket", "title": None, "kind": "aspect", "sphere": "work", "polarity": "tense", "evidenceLevel": "high", "time": {"mode": "exact", "peak": "12:00", "start": None, "end": None, "partOfDay": None}, "sourceIds": []}]
     payload["periodContext"] = {"id": "period-1", "kind": "active_period", "sphere": "work", "title": "Period", "activeFrom": "2026-07-01", "activeUntil": "2026-08-01", "eventIds": ["evt-bucket"]}
     payload["state"] = "quiet_day"
     payload["dayTone"] = "steady"

@@ -538,6 +538,8 @@ def test_today_service_pure_builders_cover_empty_and_fallback_branches() -> None
     assert TodayService._build_top_flag(unknown_aspect) is None
     assert TodayService._build_top_flag(ignored) is None
     assert TodayService._planet_label("") == "Планета"
+    assert TodayService._planet_label("TRANSIT_MOON") == "Луна"
+    assert TodayService._planet_label("NATAL_SATURN") == "Сатурн"
     assert TodayService._top_flag_aspect_summary("quincunx").startswith("Заметный аспект")
 
     assert TodayService._build_day_chart({}, {}, []) is None

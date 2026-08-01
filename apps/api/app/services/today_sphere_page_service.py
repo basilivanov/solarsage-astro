@@ -111,6 +111,7 @@ from app.schemas.today_sphere_page import (
 from app.services.access_service import AccessService
 from app.services.astro_utils import strip_prefix
 from app.services.natal_context_service import NatalContextService
+from app.services.narrative_sanitizer import sanitize_narrative_text
 from app.services.today_convergence_canon import TodayConvergenceCanon, load_today_convergence_canon
 from app.services.user_local_date import UserLocalDateError, resolve_user_local_date
 
@@ -569,7 +570,10 @@ def build_sphere_natal_prompt(
 фатализма и без прогноза по календарной дате. Не добавляй новые планеты,
 дома, аспекты или специальные точки. Не используй слова «сегодня» и
 «завтра», точное время формата HH:MM или неподтверждённые Хирон, Селену,
-Лилит. Если упоминаешь факт, привяжи абзац к одному или нескольким его id.
+Лилит. Не используй Transit_, Natal_, слово Planet или перечисления вида
+«M, Mars»/«M, <Planet>»; называй планеты только обычными русскими словами.
+Если факт нельзя так назвать, верни другой абзац или не включай его.
+Если упоминаешь факт, привяжи абзац к одному или нескольким его id.
 
 Верни только JSON строго такой формы, не добавляй markdown:
 {{"paragraphs":[{{"text":"...","sourceFactIds":["natal:planet:SUN"]}}]}}
@@ -685,7 +689,9 @@ def _validate_natal_provider_response(
             raise _NatalNarrativeError("claim_binding")
         if len(source_ids) != len(set(source_ids)) or not set(source_ids).issubset(allowed_fact_ids):
             raise _NatalNarrativeError("claim_binding")
-        clean_text = text_value.strip()
+        clean_text = sanitize_narrative_text(text_value)
+        if clean_text is None:
+            raise _NatalNarrativeError("schema_invalid")
         if _CLOCK_TEXT_RE.search(clean_text) or _RELATIVE_DAY_RE.search(clean_text):
             raise _NatalNarrativeError("capability_violation")
         if _SPECIAL_POINT_RE.search(clean_text):
@@ -939,7 +945,13 @@ class TodaySpherePageService:
         if row is None or row.content_json is None:
             return None
         try:
-            return TodaySphereNatalContent.model_validate(row.content_json)
+            content = TodaySphereNatalContent.model_validate(row.content_json)
+            if any(
+                sanitize_narrative_text(paragraph.text) is None
+                for paragraph in content.paragraphs
+            ):
+                return None
+            return content
         except Exception:
             return None
 

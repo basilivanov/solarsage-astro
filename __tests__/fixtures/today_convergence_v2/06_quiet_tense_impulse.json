@@ -58,6 +58,7 @@
   "events": [
     {
       "id": "evt_v1_00000000000000000000000000000061",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "communication",
       "polarity": "tense",

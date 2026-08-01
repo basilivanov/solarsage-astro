@@ -66,6 +66,7 @@ from app.core.logging import (
     log_event,
 )
 from app.services.llm_service import LLMService
+from app.services.narrative_sanitizer import sanitize_narrative_text
 
 
 _MISSING = object()
@@ -593,6 +594,9 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 - Тексты должны быть на русском, практичными, короткими и без категоричных
   предсказаний. Если для блока нечего добавить, верни null.
 - Учитывай mode и capabilities: не упоминай недоступные детали расчёта.
+- Никогда не пиши служебные имена или шаблоны: Transit_, Natal_, Planet,
+  «M, Mars» и любые перечисления вида «M, <Planet>». Если факт нельзя
+  назвать обычными русскими словами, верни null для этого claim.
 
 Верни строго один JSON-объект без markdown и без дополнительных ключей.
 КАЖДЫЙ ненулевой claim — это ОБЪЕКТ вида {{"text":"...","sourceEventIds":["..."]}},
@@ -747,13 +751,16 @@ def _claim(value: object, allowed_event_ids: frozenset[str]) -> dict[str, Any] |
     source_ids = value["sourceEventIds"]
     if not isinstance(text, str) or not text.strip():
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+    clean_text = sanitize_narrative_text(text)
+    if clean_text is None:
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
     if not isinstance(source_ids, list) or not source_ids:
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
     if any(not isinstance(event_id, str) or not event_id.strip() for event_id in source_ids):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
     if len(source_ids) != len(set(source_ids)) or not set(source_ids).issubset(allowed_event_ids):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
-    return {"text": text, "sourceEventIds": list(source_ids)}
+    return {"text": clean_text, "sourceEventIds": list(source_ids)}
 
 
 def _block_content(

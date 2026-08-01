@@ -22,7 +22,7 @@
 #   - none (pure functions)
 # invariants:
 #   - find_house handles wraparound correctly
-#   - strip_prefix removes Transit_/Natal_ prefix
+#   - strip_prefix removes Transit_/Natal_ prefix case-insensitively
 # failure_policy:
 #   - returns None if houses list is empty
 #   - returns "" if name is None
@@ -83,7 +83,7 @@ def find_house(longitude: float, houses: list[dict[str, Any]]) -> int | None:
 
 def strip_prefix(name: str | None) -> str:
     # START_FUNCTION_CONTRACT: F-M-ASTRO-UTILS.strip_prefix
-    # purpose: Strip Transit_/Natal_ prefix from planet name.
+    # purpose: Strip Transit_/Natal_ prefix from planet name, regardless of prefix casing.
     # inputs: name (str | None)
     # returns: str with prefix removed, or "" if name is None
     # side_effects: none (pure function)
@@ -94,6 +94,6 @@ def strip_prefix(name: str | None) -> str:
     if not name:
         return ""
     for prefix in ("Transit_", "Natal_"):
-        if name.startswith(prefix):
+        if name.casefold().startswith(prefix.casefold()):
             return name[len(prefix):]
     return name

@@ -203,7 +203,8 @@ async def test_owner_full_drilldown_matches_today_projection_without_llm_fields(
         "eventIds": ["evt-1", "evt-2"],
     }
     assert set(data) == {"snapshotId", "sphere", "state", "dayTone", "birthTimeMode", "events", "convergence"}
-    assert all(set(event) == {"id", "kind", "sphere", "polarity", "evidenceLevel", "time", "sourceIds"} for event in data["events"])
+    assert all(set(event) == {"id", "kind", "title", "sphere", "polarity", "evidenceLevel", "time", "sourceIds"} for event in data["events"])
+    assert all(event["title"] is None for event in data["events"])
     assert not any(key in data for key in ("summary", "meaning", "action", "narrative", "llm"))
 # END_BLOCK: HAPPY_PATH
 

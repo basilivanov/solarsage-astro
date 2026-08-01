@@ -5164,11 +5164,23 @@
           },
           "time": {
             "$ref": "#/components/schemas/TodayConvergenceEventTime"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "required": [
           "id",
           "kind",
+          "title",
           "sphere",
           "polarity",
           "evidenceLevel",
