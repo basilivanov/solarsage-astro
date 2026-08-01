@@ -291,13 +291,32 @@ describe("Today Convergence public time and access projections", () => {
     renderToday(heroSupportive);
     const navigator = screen.getByTestId("sphere-navigator");
     const tiles = navigator.querySelectorAll("a[data-testid^='sphere-tile-']");
+    const icons = navigator.querySelectorAll("svg[data-testid^='sphere-icon-']");
     expect(tiles).toHaveLength(12);
+    expect(icons).toHaveLength(12);
+    for (const icon of icons) {
+      expect(icon.getAttribute("width")).toBe("24");
+      expect(icon.getAttribute("height")).toBe("24");
+      expect(icon.getAttribute("fill")).toBe("none");
+      expect(icon.getAttribute("stroke")).toBe("currentColor");
+      expect(icon.getAttribute("stroke-width")).toBe("1.5");
+    }
     expect(screen.getByTestId("sphere-tile-work").getAttribute("data-has-today")).toBe("true");
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("data-has-today")).toBe("false");
     expect(screen.getByTestId("sphere-tile-work").getAttribute("href")).toBe(
       `/day/snapshots/${encodeURIComponent(heroSupportive.snapshotId!)}/spheres/work`,
     );
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("href")).toBe("/day/spheres/shopping");
+  });
+
+  it("keeps period context, spheres, and calculation disclosure in rail order", () => {
+    renderToday(quietZeroImpulses);
+    const rail = screen.getByTestId("today-layout-rail");
+    expect(Array.from(rail.children).map((child) => child.getAttribute("data-testid"))).toEqual([
+      "period-context",
+      "sphere-navigator",
+      "how-calculated",
+    ]);
   });
 
   it("renders general-sky marker only for personal=false", () => {
