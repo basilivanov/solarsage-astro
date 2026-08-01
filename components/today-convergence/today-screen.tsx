@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SCREEN
-// purpose: Render Today transport, access, calculation, content, time, and navigation states without legacy payload fields.
+// purpose: Render Today transport, access, calculation, target-date copy, content, time, and navigation states without legacy payload fields.
 // owns:
 //   - components/today-convergence/today-screen.tsx
 // inputs: generated TodayConvergencePayload and parent-owned transport/profile callbacks.
@@ -13,7 +13,7 @@
 // dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall.
 // side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, and timezone-aware child formatting.
 // emitted_logs: none.
-// invariants: nullable root attributes are omitted; preview/locked never render hidden evidence; state=unavailable has no facts.
+// invariants: nullable root attributes are omitted; target-date copy comes only from payload.targetDate; preview/locked never render hidden evidence; state=unavailable has no facts.
 // failure_policy: transport error and calculation unavailable are separate accessible states.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SCREEN
 
@@ -46,7 +46,7 @@ import { SphereNavigator } from "./sphere-navigator";
 import { TodayLookahead } from "./today-lookahead";
 import { TodayNarrative } from "./today-narrative";
 import { TodayUnavailable } from "./today-unavailable";
-import { getTodaySphereLabel } from "./today-formatters";
+import { formatTargetDateRu, getTodaySphereLabel } from "./today-formatters";
 
 export type TodayScreenState = "loading" | "ready" | "error";
 
@@ -87,9 +87,10 @@ function narrativeClaims(payload: TodayConvergencePayload): TodayConvergenceNarr
 
 function PreviewTeaser({ payload }: { payload: TodayConvergencePayload }) {
   const spheres = payload.previewTeaser?.spheres ?? [];
+  const targetDateLabel = formatTargetDateRu(payload.targetDate);
   return (
     <section data-testid="today-preview-teaser" className="rounded-[24px] border border-border/60 bg-card p-5">
-      <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Сегодня в фокусе</p>
+      <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">В фокусе {targetDateLabel}</p>
       <ul className="mt-3 flex flex-wrap gap-2">
         {spheres.map((sphere) => (
           <li key={sphere} className="rounded-full border border-border/70 px-3 py-1.5 text-[13px]">
@@ -179,6 +180,7 @@ function ReadyContent({
         {!isUnavailable && !isLocked && !isPreview && payload.state === "convergence_today" ? (
           <ConvergenceHero
             groups={payload.convergences}
+            targetDate={payload.targetDate}
             dayTone={payload.dayTone}
             contentState={payload.contentState}
             onRetry={onRetry}

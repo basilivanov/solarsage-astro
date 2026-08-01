@@ -7,12 +7,12 @@
 // purpose: Render one hero and secondary convergence rows from generated groups.
 // owns:
 //   - components/today-convergence/convergence-hero.tsx
-// inputs: generated groups, dayTone, contentState, and optional retry callback.
+// inputs: generated groups, targetDate, dayTone, contentState, and optional retry callback.
 // outputs: convergence hero and public sphere/polarity selectors.
 // dependencies: today-formatters, today-narrative, packages/contracts/today-convergence.ts.
 // side_effects: sphere links navigate to the static sphere path; retry is delegated.
 // emitted_logs: none.
-// invariants: the “сошлось” copy exists only in this component; one hero group precedes secondary rows.
+// invariants: the “сошлось” copy exists only in this component and is derived from targetDate; one hero group precedes secondary rows.
 // failure_policy: no hero is rendered when the caller supplies an empty group list.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HERO
 
@@ -34,12 +34,14 @@ import {
   getDayToneBackgroundClass,
   getPolarityLabel,
   getPolarityToneClasses,
+  formatTargetDateRu,
   getTodaySphereLabel,
 } from "./today-formatters";
 import { TodayNarrative } from "./today-narrative";
 
 type Props = {
   groups: readonly TodayConvergenceGroup[];
+  targetDate: TodayConvergencePayload["targetDate"];
   dayTone: TodayConvergencePayload["dayTone"];
   contentState: TodayConvergencePayload["contentState"];
   onRetry?: () => void;
@@ -74,10 +76,10 @@ function SphereLink({
 }
 
 // START_BLOCK: HERO
-export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Props) {
+export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onRetry }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-HERO.ConvergenceHero
   // purpose: Render the primary convergence group, secondary rows, and bound LLM zone.
-  // inputs: groups — selected generated convergence groups; dayTone/contentState — root axes; onRetry — LLM retry.
+  // inputs: groups — selected generated convergence groups; targetDate — payload date for exact copy; dayTone/contentState — root axes; onRetry — LLM retry.
   // returns: hero DOM or null for an empty group list.
   // side_effects: link navigation and delegated retry callback.
   // emitted_logs: none.
@@ -89,6 +91,7 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
   const secondaryGroups = groups.slice(1);
   const claims = groups.flatMap(groupClaims);
   const toneBackgroundClass = getDayToneBackgroundClass(dayTone);
+  const targetDateLabel = formatTargetDateRu(targetDate);
 
   return (
     <section
@@ -98,7 +101,7 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
       className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${toneBackgroundClass || "bg-card"} p-5 shadow-sm`}
     >
       <h2 className="font-serif text-[28px] leading-[34px] text-foreground">
-        Что сошлось сегодня
+        Что сошлось {targetDateLabel}
       </h2>
       <div className="mt-4 flex flex-col items-start gap-1">
         <SphereLink sphere={hero.primarySphere} polarity={hero.polarity} />
@@ -110,7 +113,7 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
       {secondaryGroups.length > 0 ? (
         <div className="mt-5 space-y-2">
           <p className="text-[13px] font-medium uppercase leading-[18px] tracking-[0.14em] text-muted-foreground">
-            Также сегодня
+            Также {targetDateLabel}
           </p>
           {secondaryGroups.map((group) => (
             <div

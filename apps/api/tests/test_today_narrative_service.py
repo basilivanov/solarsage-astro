@@ -14,7 +14,8 @@
 # side_effects: No network or database calls; logging is intercepted in tests.
 # emitted_logs: day.narrative_generation_started,
 #   day.narrative_generation_completed, day.narrative_generation_failed.
-# invariants: Tests never use a real provider and never accept partial narrative.
+# invariants: Tests never use a real provider and never accept partial narrative;
+#   convergence overlap is validated as a per-group prompt union.
 # failure_policy: pytest failure on prompt leakage, invalid acceptance, or log guard failure.
 # END_MODULE_CONTRACT: M-TEST-TODAY-NARRATIVE
 
@@ -136,6 +137,7 @@ def _snapshot(
     mode: str = "exact",
     capabilities: dict[str, bool] | None = None,
     snapshot_id: UUID = SNAPSHOT_ID,
+    target_date: date = TARGET_DATE,
 ) -> TodaySnapshot:
     selected_ids = [
         event_id
@@ -145,6 +147,7 @@ def _snapshot(
     if main_event is not None:
         selected_ids.append(main_event["event_id"])  # type: ignore[arg-type]
     selected_ids.extend(impulse["event_id"] for impulse in impulses)  # type: ignore[index]
+    selected_ids = list(dict.fromkeys(selected_ids))
     selected_spheres = [
         group["primary_sphere"]  # type: ignore[index]
         for group in convergences
@@ -186,7 +189,7 @@ def _snapshot(
     return TodaySnapshot(
         id=snapshot_id,
         user_id=USER_ID,
-        target_date=TARGET_DATE,
+        target_date=target_date,
         timezone="Europe/Moscow",
         profile_hash="profile-hash",
         input_hash="input-hash",
@@ -221,6 +224,42 @@ def _convergence_snapshot(*, extra_factors: int = 0) -> TodaySnapshot:
         main_event=None,
         impulses=[],
         factors=factors,
+    )
+
+
+def _shared_convergence_snapshot() -> TodaySnapshot:
+    first = _group("cvg-shared-first", ["evt_v1_shared", "evt_v1_first"], sphere="work")
+    second = _group("cvg-shared-second", ["evt_v1_shared", "evt_v1_second"], sphere="money")
+    second["polarity"] = "supportive"
+    second["evidence_level"] = "medium"
+    factors = [
+        _factor(
+            "evt_v1_shared",
+            exact_at="2026-08-03T15:40:00+03:00",
+            active_from="2026-08-03T13:00:00+03:00",
+            active_until="2026-08-03T18:00:00+03:00",
+        ),
+        _factor(
+            "evt_v1_first",
+            exact_at="2026-08-03T10:20:00+03:00",
+            active_from="2026-08-03T09:00:00+03:00",
+            active_until="2026-08-03T12:00:00+03:00",
+        ),
+        _factor(
+            "evt_v1_second",
+            exact_at="2026-08-03T18:20:00+03:00",
+            active_from="2026-08-03T17:00:00+03:00",
+            active_until="2026-08-03T20:00:00+03:00",
+        ),
+    ]
+    return _snapshot(
+        state="convergence_today",
+        convergences=[first, second],
+        main_event=None,
+        impulses=[],
+        factors=factors,
+        snapshot_id=UUID("77777777-7777-4777-8777-777777777777"),
+        target_date=date(2026, 8, 3),
     )
 
 
@@ -375,6 +414,44 @@ async def test_convergence_today_three_groups_accepts_bound_claims() -> None:
     assert prompt.index("\nВход:\n") < prompt.index("\nТочный JSON-шаблон ответа для этого snapshot:\n")
 
 
+def test_shared_convergence_evidence_keeps_both_group_keys_and_pairs_in_prompt() -> None:
+    snapshot = _shared_convergence_snapshot()
+
+    prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
+
+    assert '"groupId":"cvg-shared-first"' in prompt
+    assert '"evidenceEventIds":["evt_v1_shared","evt_v1_first"]' in prompt
+    assert '"groupId":"cvg-shared-second"' in prompt
+    assert '"evidenceEventIds":["evt_v1_shared","evt_v1_second"]' in prompt
+
+
+@pytest.mark.asyncio
+async def test_shared_convergence_evidence_calls_provider_and_accepts_group_claims() -> None:
+    snapshot = _shared_convergence_snapshot()
+    before_result = copy.deepcopy(snapshot.deterministic_result_json)
+    before_input = copy.deepcopy(snapshot.canonical_input_json)
+    fake = FakeLLM(json.dumps(_convergence_content(snapshot), ensure_ascii=False))
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    assert len(fake.calls) == 1
+    assert result.content_json["convergences"]["cvg-shared-first"]["summary"]["sourceEventIds"] == [
+        "evt_v1_shared",
+        "evt_v1_first",
+    ]  # type: ignore[index]
+    assert result.content_json["convergences"]["cvg-shared-second"]["summary"]["sourceEventIds"] == [
+        "evt_v1_shared",
+        "evt_v1_second",
+    ]  # type: ignore[index]
+    assert snapshot.deterministic_result_json == before_result
+    assert snapshot.canonical_input_json == before_input
+
+
 @pytest.mark.asyncio
 async def test_quiet_day_main_event_and_three_impulses_accepts_bound_claims() -> None:
     snapshot = _quiet_snapshot()
@@ -465,6 +542,86 @@ async def test_claim_binding_rejects_foreign_empty_and_duplicate_ids(source_ids:
     assert isinstance(result, TodayNarrativeFailure)
     assert result.error_code == "claim_binding"
     assert result.latency_ms >= 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("block", ["main", "impulse"])
+async def test_convergence_overlap_with_main_or_impulse_is_schema_invalid(block: str) -> None:
+    snapshot = _shared_convergence_snapshot()
+    selected = copy.deepcopy(snapshot.deterministic_result_json["selected"])  # type: ignore[index]
+    if block == "main":
+        selected["main_event"] = _single("evt_v1_shared", sphere="work")
+    else:
+        selected["impulses"] = [_single("evt_v1_shared", sphere="work")]
+    snapshot.deterministic_result_json["selected"] = selected  # type: ignore[index]
+    fake = FakeLLM()
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+    assert fake.calls == []
+
+
+@pytest.mark.asyncio
+async def test_duplicate_convergence_group_id_is_schema_invalid() -> None:
+    snapshot = _shared_convergence_snapshot()
+    selected = copy.deepcopy(snapshot.deterministic_result_json["selected"])  # type: ignore[index]
+    selected["convergences"][1]["group_id"] = "cvg-shared-first"  # type: ignore[index]
+    snapshot.deterministic_result_json["selected"] = selected  # type: ignore[index]
+    fake = FakeLLM()
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+    assert fake.calls == []
+
+
+@pytest.mark.asyncio
+async def test_duplicate_evidence_pair_is_schema_invalid() -> None:
+    snapshot = _shared_convergence_snapshot()
+    selected = copy.deepcopy(snapshot.deterministic_result_json["selected"])  # type: ignore[index]
+    selected["convergences"][0]["evidence_event_ids"] = ["evt_v1_shared", "evt_v1_shared"]  # type: ignore[index]
+    snapshot.deterministic_result_json["selected"] = selected  # type: ignore[index]
+    fake = FakeLLM()
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+    assert fake.calls == []
+
+
+@pytest.mark.asyncio
+async def test_selected_unit_ids_must_equal_convergence_union() -> None:
+    snapshot = _shared_convergence_snapshot()
+    selected = copy.deepcopy(snapshot.deterministic_result_json["selected"])  # type: ignore[index]
+    selected["selected_unit_ids"] = ["evt_v1_shared", "evt_v1_first"]  # type: ignore[index]
+    snapshot.deterministic_result_json["selected"] = selected  # type: ignore[index]
+    fake = FakeLLM()
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+    assert fake.calls == []
 
 
 @pytest.mark.asyncio

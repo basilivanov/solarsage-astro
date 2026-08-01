@@ -21,6 +21,8 @@
 #   day.narrative_generation_completed, day.narrative_generation_failed.
 # invariants: only selected public units enter the prompt; date-aware EventTime
 #   instants use the same local timezone semantics as the public projection;
+#   convergence evidence may overlap between groups and remains present in each
+#   group; selected IDs validate the union while main/impulse IDs stay disjoint;
 #   content is accepted atomically; claims bind to selected event IDs;
 #   unavailable is honest on any provider, schema, claim, capability, or
 #   deadline failure.
@@ -232,6 +234,14 @@ def _id_list(value: object, reason: str) -> tuple[str, ...]:
         raise _NarrativeInputError(f"duplicate_{reason}")
     if not result:
         raise _NarrativeInputError(reason)
+    return result
+
+
+def _evidence_pair(value: object) -> tuple[str, str]:
+    values = _sequence(value, "evidence_event_ids")
+    result = tuple(_text(item, "evidence_event_id") for item in values)
+    if len(result) != 2 or len(set(result)) != 2:
+        raise _NarrativeInputError("evidence_pair")
     return result
 
 
@@ -454,7 +464,7 @@ def _group_events(
     timezone: ZoneInfo,
 ) -> _NarrativeBlock:
     group_id = _text(_value(group, "group_id", "groupId"), "group_id")
-    event_ids = _id_list(_value(group, "evidence_event_ids", "evidenceEventIds"), "evidence_event_ids")
+    event_ids = _evidence_pair(_value(group, "evidence_event_ids", "evidenceEventIds"))
     primary_sphere = _text(_value(group, "primary_sphere", "primarySphere"), "selected_sphere")
     secondary_sphere = _optional_text(
         _value(group, "secondary_sphere", "secondarySphere", default=None),
@@ -547,14 +557,25 @@ def _snapshot_context(snapshot: object) -> _SnapshotContext:
         _single_event_block(_mapping(value, "impulse"), units, birth_mode, timezone)
         for value in raw_impulses
     )
-    all_event_ids = [event_id for group in groups for event_id in group.event_ids]
+    convergence_event_ids = {
+        event_id
+        for group in groups
+        for event_id in group.event_ids
+    }
+    non_convergence_event_ids: list[str] = []
     if main_event is not None:
-        all_event_ids.extend(main_event.event_ids)
-    all_event_ids.extend(event_id for impulse in impulses for event_id in impulse.event_ids)
-    if len(all_event_ids) != len(set(all_event_ids)):
+        non_convergence_event_ids.extend(main_event.event_ids)
+    non_convergence_event_ids.extend(
+        event_id for impulse in impulses for event_id in impulse.event_ids
+    )
+    if (
+        len(non_convergence_event_ids) != len(set(non_convergence_event_ids))
+        or convergence_event_ids.intersection(non_convergence_event_ids)
+    ):
         raise _NarrativeInputError("duplicate_selected_event_id")
     selected_ids = _id_list(_value(selected, "selected_unit_ids", "selectedUnitIds"), "selected_unit_ids")
-    if set(selected_ids) != set(all_event_ids):
+    expected_event_ids = convergence_event_ids.union(non_convergence_event_ids)
+    if set(selected_ids) != expected_event_ids:
         raise _NarrativeInputError("selected_unit_ids")
     return _SnapshotContext(
         snapshot_id=_snapshot_id(snapshot),

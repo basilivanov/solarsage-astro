@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
-// purpose: Verify every Today fixture, grouped event-first impulse presentation, lazy sphere modal, time formatting, disclosure, and accessibility contract.
+// purpose: Verify every Today fixture, target-date copy, grouped event-first impulse presentation, lazy sphere modal, time formatting, disclosure, and accessibility contract.
 // owns:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // inputs: 16 generated TodayConvergencePayload fixtures and TodayScreen props.
@@ -12,7 +12,7 @@
 // dependencies: @testing-library/react, packages/contracts/today-convergence.ts, sphere page client mock, Today component suite.
 // side_effects: local callbacks and mocked lazy sphere requests only.
 // emitted_logs: none.
-// invariants: tests never inspect CSS classes, React internals, or legacy payload fields; event titles come from the payload ledger; modal context cannot hide Today facts; period title/date and explanation copy stay visible.
+// invariants: tests never inspect CSS classes, React internals, or legacy payload fields; target-date labels come from the payload; relative browser-clock copy is forbidden; event titles come from the payload ledger; modal context cannot hide Today facts; period title/date and explanation copy stay visible.
 // failure_policy: fail with the public DOM contract mismatch.
 // END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
 
@@ -57,6 +57,7 @@ import {
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import {
   formatEventTime,
+  formatTargetDateRu,
   type HumanFirstEventTime,
 } from "@/components/today-convergence/today-formatters";
 import { getPeriodTechniqueCopy } from "@/components/today-convergence/period-technique-copy";
@@ -179,11 +180,27 @@ describe("Today Convergence screen fixture matrix", () => {
     cleanup();
     renderToday(heroThreeSpheres);
     expect(screen.getAllByTestId("convergence-secondary")).toHaveLength(2);
-    expect(screen.getByTestId("convergence-hero").textContent).toContain("Что сошлось сегодня");
+    expect(screen.getByTestId("convergence-hero").textContent).toContain("Что сошлось 1 августа");
     expect(screen.getByTestId("today-screen").textContent).toContain(
       heroThreeSpheres.convergences[0].summary?.text ?? "",
     );
     expect(screen.getByTestId("convergence-hero").getAttribute("data-evidence-level")).toBe("high");
+  });
+
+  it("uses the payload target date for hero, secondary, and preview copy", () => {
+    const targetDate = "2026-08-03";
+    expect(formatTargetDateRu(targetDate)).toBe("3 августа");
+
+    renderToday({ ...heroThreeSpheres, targetDate });
+    expect(screen.getByRole("heading", { name: "Что сошлось 3 августа" })).toBeTruthy();
+    expect(screen.getByText("Также 3 августа", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Что сошлось сегодня")).toBeNull();
+    expect(screen.queryByText("Также сегодня")).toBeNull();
+
+    cleanup();
+    renderToday({ ...accessPreview, targetDate });
+    expect(screen.getByText("В фокусе 3 августа", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Сегодня в фокусе")).toBeNull();
   });
 
   it("renders quiet main event, impulses, context, and lookahead from deterministic blocks", () => {

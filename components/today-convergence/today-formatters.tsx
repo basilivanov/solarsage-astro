@@ -4,15 +4,15 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-FORMATTERS
-// purpose: Convert canonical sphere, polarity, and EventTime values into stable human-first UI strings.
+// purpose: Convert canonical sphere, polarity, target-date, and EventTime values into stable human-first UI strings.
 // owns:
 //   - components/today-convergence/today-formatters.tsx
 // inputs: generated Today Convergence nested wire values.
-// outputs: Russian labels, product time strings, and semantic tone classes used by Today components.
+// outputs: Russian labels, target-date copy, product time strings, and semantic tone classes used by Today components.
 // dependencies: packages/contracts/today-convergence.ts.
 // side_effects: none.
 // emitted_logs: none.
-// invariants: exact clocks appear only for EventTime.mode=exact; absolute instants are preferred when present; no LLM or legacy fields are read.
+// invariants: exact clocks appear only for EventTime.mode=exact; absolute instants are preferred when present; target dates are parsed as strings without browser timezone conversion; no LLM or legacy fields are read.
 // failure_policy: use a deterministic neutral label for incomplete optional time fields.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-FORMATTERS
 
@@ -22,6 +22,7 @@
 //   - getPolarityLabel
 //   - getPolarityToneClasses
 //   - getDayToneBackgroundClass
+//   - formatTargetDateRu
 //   - formatEventTime
 //   - getEventTimeDateTime
 // semantic_blocks:
@@ -91,6 +92,27 @@ const MONTHS_RU_GEN = [
   "ноября",
   "декабря",
 ] as const;
+
+// START_BLOCK: TARGET_DATE
+export function formatTargetDateRu(targetDate: string): string {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatTargetDateRu
+  // purpose: Format a canonical YYYY-MM-DD payload date as Russian day/month copy without timezone conversion.
+  // inputs: targetDate — generated Today target date string.
+  // returns: day and Russian genitive month, or the original value when its shape is invalid.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: malformed dates remain deterministic and unmodified.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatTargetDateRu
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(targetDate);
+  if (!match) return targetDate;
+
+  const month = MONTHS_RU_GEN[Number(match[2]) - 1];
+  const day = Number(match[3]);
+  if (!month || day < 1 || day > 31) return targetDate;
+
+  return `${day} ${month}`;
+}
+// END_BLOCK: TARGET_DATE
 
 const POLARITY_TONE_CLASSES: Record<TodayPolarity, string> = {
   supportive: "text-(--tone-supportive-fg) bg-(--tone-supportive-bg)",
