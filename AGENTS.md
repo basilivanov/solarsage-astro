@@ -322,6 +322,36 @@ python3 scripts/generate-telegram-test-initdata.py
 | InitData генератор | `scripts/generate-telegram-test-initdata.py` |
 | Prod error loop (triage/fix runner) | `scripts/prod-errors/` (`.env` gitignored, см. `.env.example`) |
 
+## Публикация отчётов и скриншотов (CF tunnel)
+
+Когда владельцу нужно посмотреть артефакты (visual baseline PNG, e2e-скриншоты,
+HTML-отчёты) — выкладываем их через **Cloudflare quick tunnel**, а не
+скриншотами в чат и не на внешний хостинг.
+
+Канонический способ:
+
+```bash
+# 1. собрать витрину (png + index.html с сеткой) во временный каталог
+mkdir -p /tmp/artifact-showcase && cp <артефакты> /tmp/artifact-showcase/
+# 2. static server на свободном loopback-порту
+cd /tmp/artifact-showcase && nohup python3 -m http.server 18923 --bind 127.0.0.1 &
+# 3. quick tunnel (без аккаунта; URL живёт, пока жив процесс)
+nohup cloudflared tunnel --url http://127.0.0.1:18923 --no-autoupdate > tunnel.log 2>&1 &
+# URL: grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" tunnel.log | head -1
+```
+
+- `cloudflared` лежит в `/tmp/cloudflared` (linux-amd64 binary из официальных
+  GitHub releases; переустановка — скачать заново тем же способом).
+- Quick tunnel — временный (до рестарта процесса/хоста). Если нужен
+  постоянный URL — named tunnel через аккаунт Cloudflare (отдельное решение
+  владельца).
+- Выкладываются ТОЛЬКО публично безопасные артефакты: masked visual
+  baselines, screenshots, aggregated reports. Никаких логов с user ids,
+  env, дампов или fixture'ов с персональными данными.
+
+Активная витрина (visual baseline Today Convergence, 2026-07-31):
+`/tmp/baseline-showcase/` (20 PNG + index.html), server :18923.
+
 ## Известные баги / технический долг
 
 | # | Баг | Где | Суть |
