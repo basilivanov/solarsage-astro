@@ -1,6 +1,6 @@
 // ############################################################################
 // AI_HEADER: MODULE_E2E_MOCK_VISUAL_CALENDAR_V2_SPEC — calendar/v2 contract and visual gate.
-// ROLE: Verifies the active /calendar route against a generated CalendarPayload with three dayState markers.
+// ROLE: Verifies the restored active /calendar route against a generated CalendarPayload with dayState markers and lunar toggle.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
@@ -8,7 +8,7 @@
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
 // inputs: generated CalendarPayload fixture, access fixture, and E2E_BASE_URL.
-// outputs: public DOM assertions for ready/error states and PNG baseline for hero/ordinary/not-computed cells.
+// outputs: public DOM assertions for ready/error states, day/moon modes, and PNG baseline for hero/ordinary/not-computed cells.
 // dependencies: @playwright/test; route-interception; calendar-2026-07 fixture; screenshot preparation.
 // side_effects: none outside Playwright snapshots.
 // emitted_logs: none.
@@ -21,7 +21,7 @@
 
 // START_MODULE_MAP: M-E2E-MOCK-VISUAL-CALENDAR-V2-SPEC
 // public_entrypoints:
-//   - calendar/v2 ready-state and marker assertions
+//   - calendar/v2 ready-state, marker, and day/moon assertions
 //   - calendar/v2 visual baseline
 // semantic_blocks:
 //   - FIXTURE_SETUP: deterministic auth/runtime and strict route map.
@@ -120,7 +120,17 @@ test.describe("Mock Visual — active /calendar calendar/v2", () => {
     const ordinary = page.getByTestId("calendar-day-2026-07-06")
     await expect(ordinary.getByTestId("calendar-day-hero-dot")).toHaveCount(0)
     await expect(ordinary.getByTestId("calendar-day-not-computed")).toHaveCount(0)
-    await expect(page.getByTestId(`calendar-day-${HERO_DATE}`)).toHaveAttribute("href", `/day/${HERO_DATE}`)
+    await expect(page.getByTestId("calendar-view-day")).toHaveAttribute("aria-pressed", "true")
+
+    await page.getByTestId("calendar-view-moon").click()
+    await expect(page.getByTestId("calendar-view-moon")).toHaveAttribute("aria-pressed", "true")
+    await expect(page.getByTestId("lunar-calendar-strip")).toBeVisible()
+    await expect(page.getByTestId(`calendar-moon-glyph-${HERO_DATE}`)).toBeVisible()
+
+    await page.getByTestId("calendar-view-day").click()
+    await page.getByTestId(`calendar-day-${HERO_DATE}`).click()
+    await expect(page.getByTestId("calendar-selected-summary")).toContainText("5 июля 2026")
+    await expect(page.getByRole("button", { name: "Открыть день" })).toBeVisible()
 
     await expectNoMissingApiFixtures(page, tracker)
   })
