@@ -349,7 +349,7 @@ nohup cloudflared tunnel --url http://127.0.0.1:18923 --no-autoupdate > tunnel.l
   baselines, screenshots, aggregated reports. Никаких логов с user ids,
   env, дампов или fixture'ов с персональными данными.
 
-Активная витрина (visual baseline Today Convergence, 2026-08-01, tone+рейл+иконки):
+Активная витрина (приёмка Today Convergence, 2026-08-01 раунд 2: импульсы, drilldown-драйверы, календарь):
 `/tmp/baseline-showcase/` (30 PNG + index.html), server :18923,
 quick tunnel `https://knee-modes-essential-drivers.trycloudflare.com` (живёт, пока жив процесс).
 
@@ -357,5 +357,5 @@ quick tunnel `https://knee-modes-essential-drivers.trycloudflare.com` (живё�
 
 | # | Баг | Где | Суть |
 |---|-----|-----|------|
-| 1 | `Transit_` / `Natal_` в UI | `today_service.py:209` — построение `TopFlag` | Имена сигналов приходят из нормализации с префиксом `Transit_Planet`. При построении `topFlags` используется сырое `signal.planet` без стриппинга. В результате в JSON-ответе: `"title": "Transit_Moon square Saturn"`. LLM-промпт просит не использовать Transit_, но сигналы попадают в UI независимо от LLM. **Fix:** стриппить префикс в `today_service.py` при построении `TopFlag`, либо в `NormalizationService` на этапе создания сигналов. |
+| ~~1~~ | ~~`Transit_` / `Natal_` в UI~~ | FIXED 2026-08-01 (27c18f71) | Стриппинг + локализация в `today_service.py`/`astro_utils.strip_prefix`, плюс fail-closed `narrative_sanitizer.py` на всех narrative-ответах. |
 | 2 | SolarSage не отдаёт `planet.house` | `normalization_service.py:60` — `_planets_in_houses()` | SolarSage возвращает `houses: [{number, cusp}]` отдельно от планет. `NormalizationService` вынужден вручную маппить `planet.longitude → house` через `_find_house()`. Это лишняя работа на стороне API. **Fix:** добавить в SolarSage выдачу `planet.house` сразу при расчёте транзитов и натала. |
