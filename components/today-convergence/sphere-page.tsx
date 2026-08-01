@@ -8,11 +8,11 @@
 // owns:
 //   - components/today-convergence/sphere-page.tsx
 // inputs: generated TodaySpherePagePayload, route sphere key, and transport state.
-// outputs: sphere-page root, natal paragraphs, period items, birth-time notice, and error/access states.
+// outputs: sphere-page root, natal paragraphs, period items with deterministic technique explanations, birth-time notice, and error/access states.
 // dependencies: generated sphere page contract, canonical sphere labels, Paywall.
 // side_effects: delegates retry and paywall actions; no calculations or network calls.
 // emitted_logs: none.
-// invariants: daily verdict language is absent; houses are never invented when unavailable; date labels are date-only.
+// invariants: daily verdict language is absent; houses are never invented when unavailable; date labels are date-only; period titles and dates remain source values.
 // failure_policy: natal unavailable is an honest no-retry content state; transport failures expose retry except 403 paywall.
 // END_MODULE_CONTRACT: M-SPHERE-PAGE
 
@@ -22,7 +22,7 @@
 // semantic_blocks:
 //   - TRANSPORT: loading, access, unavailable, and retryable error states.
 //   - NATAL_LAYER: paragraph-bound natal copy and house availability notice.
-//   - PERIOD_LAYER: active long-lived themes with date-only end labels.
+//   - PERIOD_LAYER: active long-lived themes, date-only end labels, and technique explanations.
 // owned_tests:
 //   - __tests__/components/today-convergence/sphere-page.test.tsx
 // END_MODULE_MAP: M-SPHERE-PAGE
@@ -32,6 +32,7 @@
 import { Paywall } from "@/components/paywall";
 import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels";
 import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
+import { getPeriodTechniqueCopy } from "./period-technique-copy";
 
 export type SpherePageScreenState = "loading" | "ready" | "error";
 
@@ -231,23 +232,56 @@ function PeriodLayer({ payload }: { payload: TodaySpherePagePayload }) {
       <h2 className="font-serif text-[22px] leading-tight">Сейчас действует</h2>
       {hasPeriods ? (
         <ol className="mt-4 space-y-3">
-          {payload.period.map((item) => (
-            <li
-              key={item.id}
-              data-testid={`sphere-period-${item.id}`}
-              data-technique={item.technique}
-              data-active-until={item.activeUntil}
-              className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
-            >
-              <p className="text-[15px] leading-6 text-foreground">{item.title}</p>
-              <time
-                dateTime={item.activeUntil}
-                className="mt-1 block text-[13px] leading-5 text-muted-foreground"
+          {payload.period.map((item) => {
+            const copy = getPeriodTechniqueCopy(item.technique);
+            return (
+              <li
+                key={item.id}
+                data-testid={`sphere-period-${item.id}`}
+                data-technique={item.technique ?? "unknown"}
+                data-active-until={item.activeUntil}
+                className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
               >
-                до {formatDateOnly(item.activeUntil)}
-              </time>
-            </li>
-          ))}
+                <p
+                  data-testid={`sphere-period-title-${item.id}`}
+                  className="text-[15px] leading-6 text-foreground"
+                >
+                  {item.title}
+                </p>
+                <time
+                  dateTime={item.activeUntil}
+                  className="mt-1 block text-[13px] leading-5 text-muted-foreground"
+                >
+                  до {formatDateOnly(item.activeUntil)}
+                </time>
+                <section
+                  data-testid={`sphere-period-technique-copy-${item.id}`}
+                  data-technique={item.technique ?? "unknown"}
+                  className="mt-4 border-t border-border/50 pt-3"
+                >
+                  <h3 className="text-[13px] font-medium text-foreground">{copy.label}</h3>
+                  <dl className="mt-2 space-y-2 text-[13px] leading-5 text-muted-foreground">
+                    <div data-technique-part="what-it-is">
+                      <dt className="font-medium text-foreground">Что это</dt>
+                      <dd data-testid={`sphere-period-what-it-is-${item.id}`}>{copy.whatItIs}</dd>
+                    </div>
+                    <div data-technique-part="how-it-affects-now">
+                      <dt className="font-medium text-foreground">Как влияет сейчас</dt>
+                      <dd data-testid={`sphere-period-how-it-affects-now-${item.id}`}>
+                        {copy.howItAffectsNow}
+                      </dd>
+                    </div>
+                    <div data-technique-part="what-you-may-notice">
+                      <dt className="font-medium text-foreground">Что можно заметить</dt>
+                      <dd data-testid={`sphere-period-what-you-may-notice-${item.id}`}>
+                        {copy.whatYouMayNotice}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              </li>
+            );
+          })}
         </ol>
       ) : (
         <p data-testid="sphere-period-empty" className="mt-4 text-[15px] leading-7 text-muted-foreground">

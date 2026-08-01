@@ -29,8 +29,7 @@
 
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TodaySphereDrilldownPayload } from "@/packages/contracts";
-import { SphereDrilldown } from "@/components/today-convergence/sphere-drilldown";
+import { SphereDrilldown, type SphereDrilldownPayload } from "@/components/today-convergence/sphere-drilldown";
 
 vi.mock("@/components/paywall", () => ({
   Paywall: ({ title }: { title?: string }) => <section data-testid="paywall">{title}</section>,
@@ -38,7 +37,7 @@ vi.mock("@/components/paywall", () => ({
 
 afterEach(() => cleanup());
 
-const payload: TodaySphereDrilldownPayload = {
+const payload: SphereDrilldownPayload = {
   birthTimeMode: "exact",
   convergence: {
     eventIds: ["evt-drill-1", "evt-drill-2"],
@@ -57,7 +56,16 @@ const payload: TodaySphereDrilldownPayload = {
       polarity: "supportive",
       sphere: "work",
       title: "Луна в гармонии с твоим Сатурном",
-      time: { mode: "exact", peak: "15:40", start: "13:00", end: "18:00", partOfDay: null },
+      time: {
+        mode: "exact",
+        peak: "15:40",
+        start: "13:00",
+        end: "18:00",
+        peakAt: "2026-08-01T15:40:00Z",
+        startAt: "2026-08-01T13:00:00Z",
+        endAt: "2026-08-01T18:00:00Z",
+        partOfDay: null,
+      },
     },
     {
       evidenceLevel: "medium",
@@ -72,6 +80,7 @@ const payload: TodaySphereDrilldownPayload = {
   snapshotId: "snap-drill-1",
   sphere: "work",
   state: "convergence_today",
+  timezone: "Europe/Moscow",
 };
 
 // START_BLOCK: READY_EVIDENCE
@@ -89,6 +98,9 @@ describe("SphereDrilldown ready evidence", () => {
     expect(screen.getByTestId("drilldown-event-evt-drill-1").textContent).toContain("поддержка");
     expect(screen.getByTestId("drilldown-event-title-evt-drill-1").textContent).toBe(
       "Луна в гармонии с твоим Сатурном",
+    );
+    expect(screen.getByTestId("drilldown-event-time-evt-drill-1").textContent).toContain(
+      "пик 1 августа, 18:40, окно: с 1 августа, 16:00 до 1 августа, 21:00",
     );
     expect(screen.getByTestId("drilldown-event-polarity-evt-drill-1").className).toContain(
       "bg-(--tone-supportive-bg)",
@@ -109,6 +121,11 @@ describe("SphereDrilldown ready evidence", () => {
     expect(disclosure.getAttribute("aria-controls")).toBe("today-calculation-details");
     fireEvent.click(disclosure);
     expect(disclosure.getAttribute("aria-expanded")).toBe("true");
+    const copy = screen.getByText("День считается относительно твоей натальной карты и текущего положения планет.")
+      .parentElement?.textContent ?? "";
+    expect(copy).toContain("Пик — точный момент");
+    expect(copy).toContain("Возможное проявление — ориентир");
+    expect(copy).not.toMatch(/Swiss Ephemeris|snapshot|LLM/iu);
   });
 });
 // END_BLOCK: READY_EVIDENCE

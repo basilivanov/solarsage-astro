@@ -2728,6 +2728,8 @@ export interface components {
         TodayConvergenceEventTime: {
             /** End */
             end?: string | null;
+            /** Endat */
+            endAt?: string | null;
             /**
              * Mode
              * @enum {string}
@@ -2737,8 +2739,12 @@ export interface components {
             partOfDay?: ("night" | "morning" | "day" | "evening") | null;
             /** Peak */
             peak?: string | null;
+            /** Peakat */
+            peakAt?: string | null;
             /** Start */
             start?: string | null;
+            /** Startat */
+            startAt?: string | null;
         };
         /** TodayConvergenceGroup */
         TodayConvergenceGroup: {

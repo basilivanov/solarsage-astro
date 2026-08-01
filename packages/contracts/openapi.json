@@ -5203,6 +5203,18 @@
             ],
             "title": "End"
           },
+          "endAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endat"
+          },
           "mode": {
             "enum": [
               "exact",
@@ -5240,6 +5252,18 @@
             ],
             "title": "Peak"
           },
+          "peakAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peakat"
+          },
           "start": {
             "anyOf": [
               {
@@ -5250,6 +5274,18 @@
               }
             ],
             "title": "Start"
+          },
+          "startAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startat"
           }
         },
         "required": [

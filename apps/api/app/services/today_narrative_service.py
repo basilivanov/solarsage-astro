@@ -19,9 +19,11 @@
 #   log events; no database writes, lease transitions, or template fallback.
 # emitted_logs: day.narrative_generation_started,
 #   day.narrative_generation_completed, day.narrative_generation_failed.
-# invariants: only selected public units enter the prompt; content is accepted
-#   atomically; claims bind to selected event IDs; unavailable is honest on any
-#   provider, schema, claim, capability, or deadline failure.
+# invariants: only selected public units enter the prompt; date-aware EventTime
+#   instants use the same local timezone semantics as the public projection;
+#   content is accepted atomically; claims bind to selected event IDs;
+#   unavailable is honest on any provider, schema, claim, capability, or
+#   deadline failure.
 # failure_policy: return TodayNarrativeFailure; never return partial content or
 #   generated template text; cancellation is propagated to the caller.
 # END_MODULE_CONTRACT: M-TODAY-NARRATIVE
@@ -35,6 +37,7 @@
 #   - generate_today_narrative
 # semantic_blocks:
 #   - PROMPT: selected-unit and capability-bounded prompt construction.
+#   - EVENT_TIME: clock and absolute instant projection for prompt evidence.
 #   - CALL: injectable provider invocation and existing provider adapter.
 #   - VALIDATE: exact response shape and claim binding.
 #   - CAPABILITY: deterministic text restrictions by birth-time capability.
@@ -53,7 +56,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone as dt_timezone
 from enum import StrEnum
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -272,7 +275,11 @@ def _part_of_day(hour: int) -> str:
 
 
 def _midpoint(first: datetime, second: datetime) -> datetime:
-    return first + (second - first) / 2
+    """Return the absolute-window midpoint in the first instant's timezone."""
+
+    first_utc = first.astimezone(dt_timezone.utc)
+    second_utc = second.astimezone(dt_timezone.utc)
+    return (first_utc + (second_utc - first_utc) / 2).astimezone(first.tzinfo)
 
 
 # START_BLOCK: EVENT_TIME
@@ -305,6 +312,9 @@ def _event_time(unit: Mapping[str, Any], birth_mode: str, timezone: ZoneInfo) ->
             "peak": peak.strftime("%H:%M"),
             "start": None if local_start is None else local_start.strftime("%H:%M"),
             "end": None if local_end is None else local_end.strftime("%H:%M"),
+            "peakAt": peak.isoformat(),
+            "startAt": None if local_start is None else local_start.isoformat(),
+            "endAt": None if local_end is None else local_end.isoformat(),
             "partOfDay": None,
         }
 
@@ -317,7 +327,16 @@ def _event_time(unit: Mapping[str, Any], birth_mode: str, timezone: ZoneInfo) ->
             )
         if peak is None:
             raise _NarrativeInputError("event_time_bucket_missing")
-        return {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": _part_of_day(peak.hour)}
+        return {
+            "mode": "partofday",
+            "peak": None,
+            "start": None,
+            "end": None,
+            "peakAt": None,
+            "startAt": None,
+            "endAt": None,
+            "partOfDay": _part_of_day(peak.hour),
+        }
 
     if isinstance(exact_at, datetime):
         local_exact = _local_time(exact_at, timezone, "event_time_unknown")
@@ -326,10 +345,22 @@ def _event_time(unit: Mapping[str, Any], birth_mode: str, timezone: ZoneInfo) ->
             "peak": None,
             "start": None,
             "end": None,
+            "peakAt": None,
+            "startAt": None,
+            "endAt": None,
             "partOfDay": _part_of_day(local_exact.hour),
         }
     if isinstance(exact_at, date):
-        return {"mode": "date", "peak": None, "start": None, "end": None, "partOfDay": None}
+        return {
+            "mode": "date",
+            "peak": None,
+            "start": None,
+            "end": None,
+            "peakAt": None,
+            "startAt": None,
+            "endAt": None,
+            "partOfDay": None,
+        }
     if isinstance(active_from, datetime) and isinstance(active_until, datetime):
         midpoint = _midpoint(
             _local_time(active_from, timezone, "event_time_unknown_window"),
@@ -340,10 +371,22 @@ def _event_time(unit: Mapping[str, Any], birth_mode: str, timezone: ZoneInfo) ->
             "peak": None,
             "start": None,
             "end": None,
+            "peakAt": None,
+            "startAt": None,
+            "endAt": None,
             "partOfDay": _part_of_day(midpoint.hour),
         }
     if isinstance(active_from, date) or isinstance(active_until, date):
-        return {"mode": "date", "peak": None, "start": None, "end": None, "partOfDay": None}
+        return {
+            "mode": "date",
+            "peak": None,
+            "start": None,
+            "end": None,
+            "peakAt": None,
+            "startAt": None,
+            "endAt": None,
+            "partOfDay": None,
+        }
     raise _NarrativeInputError("event_time_unknown_missing")
 
 

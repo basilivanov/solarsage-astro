@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-SPHERE-PAGE
-// purpose: Exercise the public DOM contract of the static sphere page.
+// purpose: Exercise the public DOM contract of the static sphere page and its deterministic period technique explanations.
 // owns:
 //   - __tests__/components/today-convergence/sphere-page.test.tsx
 // inputs: inline generated TodaySpherePagePayload fixtures and transport props.
@@ -18,11 +18,12 @@
 
 // START_MODULE_MAP: M-TEST-SPHERE-PAGE
 // public_entrypoints:
-//   - ready layer tests
+//   - ready layer and technique-copy tests
 //   - unavailable and bucket tests
 //   - transport state tests
 // semantic_blocks:
 //   - CONTENT_LAYERS
+//   - TECHNIQUE_COPY
 //   - TIME_AND_LANGUAGE_GATES
 //   - TRANSPORT_AND_ACCESS
 // owned_tests:
@@ -33,6 +34,12 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
 import { SpherePage } from "@/components/today-convergence/sphere-page";
+import {
+  PERIOD_TECHNIQUE_COPY,
+  PERIOD_TECHNIQUE_FALLBACK,
+  PERIOD_TECHNIQUE_KEYS,
+  getPeriodTechniqueCopy,
+} from "@/components/today-convergence/period-technique-copy";
 
 vi.mock("@/components/paywall", () => ({
   Paywall: ({ title }: { title?: string }) => <section data-testid="paywall">{title}</section>,
@@ -111,6 +118,56 @@ describe("SpherePage content layers", () => {
       "Периодический контекст пока недоступен",
     );
     expect(within(screen.getByTestId("sphere-natal")).queryByRole("button")).toBeNull();
+  });
+
+  it("renders the three static explanation parts for every supported period technique", () => {
+    const periods = PERIOD_TECHNIQUE_KEYS.map((technique, index) => ({
+      ...readyPayload.period[0],
+      id: `period-${technique}`,
+      technique,
+      title: `${getPeriodTechniqueCopy(technique).label}: исходное название ${index + 1}`,
+      activeUntil: "2026-12-31",
+    }));
+
+    render(<SpherePage payload={{ ...readyPayload, period: periods }} sphereKey="work" />);
+
+    for (const technique of PERIOD_TECHNIQUE_KEYS) {
+      const period = periods.find((item) => item.technique === technique);
+      if (!period) throw new Error(`missing period fixture for ${technique}`);
+      const copy = PERIOD_TECHNIQUE_COPY[technique];
+      const item = screen.getByTestId(`sphere-period-${period.id}`);
+
+      expect(item.getAttribute("data-technique")).toBe(technique);
+      expect(screen.getByTestId(`sphere-period-title-${period.id}`).textContent).toContain(period.title);
+      expect(item.textContent).toContain("до 31 декабря 2026 г.");
+      expect(screen.getByTestId(`sphere-period-technique-copy-${period.id}`).textContent).toContain(copy.label);
+      expect(screen.getByTestId(`sphere-period-what-it-is-${period.id}`).textContent).toBe(copy.whatItIs);
+      expect(screen.getByTestId(`sphere-period-how-it-affects-now-${period.id}`).textContent).toBe(copy.howItAffectsNow);
+      expect(screen.getByTestId(`sphere-period-what-you-may-notice-${period.id}`).textContent).toBe(copy.whatYouMayNotice);
+    }
+  });
+
+  it("uses neutral technique copy for an absent or future runtime enum", () => {
+    const futureTechnique = "future_period_technique";
+    const payload = {
+      ...readyPayload,
+      period: [
+        {
+          ...readyPayload.period[0],
+          technique: futureTechnique as TodaySpherePagePayload["period"][number]["technique"],
+        },
+      ],
+    };
+
+    render(<SpherePage payload={payload} sphereKey="work" />);
+
+    const explanation = screen.getByTestId("sphere-period-technique-copy-period-work-1");
+    expect(explanation.getAttribute("data-technique")).toBe(futureTechnique);
+    expect(explanation.textContent).toContain(PERIOD_TECHNIQUE_FALLBACK.label);
+    expect(screen.getByTestId("sphere-period-what-it-is-period-work-1").textContent).toBe(
+      PERIOD_TECHNIQUE_FALLBACK.whatItIs,
+    );
+    expect(getPeriodTechniqueCopy(undefined)).toBe(PERIOD_TECHNIQUE_FALLBACK);
   });
 });
 // END_BLOCK: CONTENT_LAYERS

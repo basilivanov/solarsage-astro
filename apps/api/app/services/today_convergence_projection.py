@@ -16,6 +16,7 @@
 # emitted_logs: none.
 # invariants: Deterministic fields are copied from published JSON, narrative is
 #   accepted atomically, event references resolve to the snapshot factor ledger,
+#   exact EventTime windows preserve timezone-aware local instants alongside clocks,
 #   and input rows are never mutated.
 # failure_policy: TodayConvergenceProjectionError with a stable prefixed reason;
 #   invalid narrative content falls back atomically to unavailable LLM content.
@@ -29,7 +30,7 @@
 # semantic_blocks:
 #   - MATRIX: access validation, birth-time wire, and selection parsing.
 #   - LEDGER: deterministic selected blocks and factor-unit event union.
-#   - EVENT_TIME: timezone-aware exact, bucket, and unknown precision mapping.
+#   - EVENT_TIME: date-aware timezone-aware exact, bucket, and unknown precision mapping.
 #   - NARRATIVE: atomic claim validation and content-state projection.
 #   - ASSEMBLY: wire root assembly and final schema validation.
 #   - ENTRYPOINTS: public projection facades.
@@ -41,7 +42,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone as dt_timezone
 from typing import Any, NoReturn, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -189,7 +190,11 @@ def _part_of_day(hour: int) -> str:
 
 
 def _midpoint(first: datetime, second: datetime) -> datetime:
-    return first + (second - first) / 2
+    """Return the absolute-window midpoint in the first instant's timezone."""
+
+    first_utc = first.astimezone(dt_timezone.utc)
+    second_utc = second.astimezone(dt_timezone.utc)
+    return (first_utc + (second_utc - first_utc) / 2).astimezone(first.tzinfo)
 
 
 def _source_datetime(
@@ -550,6 +555,9 @@ def _event_time(unit: Mapping[str, Any], birth_mode: object, timezone: ZoneInfo)
             "peak": _clock(exact_peak),
             "start": _clock(active_from) if isinstance(active_from, datetime) else None,
             "end": _clock(active_until) if isinstance(active_until, datetime) else None,
+            "peak_at": exact_peak,
+            "start_at": active_from if isinstance(active_from, datetime) else None,
+            "end_at": active_until if isinstance(active_until, datetime) else None,
             "part_of_day": None,
         }
 
@@ -564,6 +572,9 @@ def _event_time(unit: Mapping[str, Any], birth_mode: object, timezone: ZoneInfo)
             "peak": None,
             "start": None,
             "end": None,
+            "peak_at": None,
+            "start_at": None,
+            "end_at": None,
             "part_of_day": _part_of_day(bucket_peak.hour),
         }
 
@@ -574,10 +585,22 @@ def _event_time(unit: Mapping[str, Any], birth_mode: object, timezone: ZoneInfo)
             "peak": None,
             "start": None,
             "end": None,
+            "peak_at": None,
+            "start_at": None,
+            "end_at": None,
             "part_of_day": _part_of_day(date_only.hour),
         }
     if isinstance(date_only, date):
-        return {"mode": "date", "peak": None, "start": None, "end": None, "part_of_day": None}
+        return {
+            "mode": "date",
+            "peak": None,
+            "start": None,
+            "end": None,
+            "peak_at": None,
+            "start_at": None,
+            "end_at": None,
+            "part_of_day": None,
+        }
     midpoint = (
         _midpoint(active_from, active_until)
         if isinstance(active_from, datetime) and isinstance(active_until, datetime)
@@ -589,10 +612,22 @@ def _event_time(unit: Mapping[str, Any], birth_mode: object, timezone: ZoneInfo)
             "peak": None,
             "start": None,
             "end": None,
+            "peak_at": None,
+            "start_at": None,
+            "end_at": None,
             "part_of_day": _part_of_day(midpoint.hour),
         }
     if isinstance(active_from, date) or isinstance(active_until, date):
-        return {"mode": "date", "peak": None, "start": None, "end": None, "part_of_day": None}
+        return {
+            "mode": "date",
+            "peak": None,
+            "start": None,
+            "end": None,
+            "peak_at": None,
+            "start_at": None,
+            "end_at": None,
+            "part_of_day": None,
+        }
     _fail("event_time_unknown_missing")
 
 

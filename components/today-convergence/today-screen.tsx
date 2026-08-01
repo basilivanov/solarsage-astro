@@ -10,7 +10,7 @@
 // inputs: generated TodayConvergencePayload and parent-owned transport/profile callbacks.
 // outputs: today-screen root and composed public Today block selectors.
 // dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall.
-// side_effects: delegates retry/dismiss callbacks and ordinary sphere link navigation.
+// side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, and timezone-aware child formatting.
 // emitted_logs: none.
 // invariants: nullable root attributes are omitted; preview/locked never render hidden evidence; state=unavailable has no facts.
 // failure_policy: transport error and calculation unavailable are separate accessible states.
@@ -22,7 +22,7 @@
 // semantic_blocks:
 //   - TRANSPORT: loading, ready, and error root projections.
 //   - ACCESS_AND_STATE: full, preview, locked, and unavailable projections.
-//   - READY_COMPOSITION: hero/main/impulses/context/navigation composition.
+//   - READY_COMPOSITION: hero/main/grouped impulses/context/navigation composition with bounded desktop width.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-SCREEN
@@ -141,7 +141,7 @@ function ReadyContent({
   const isFullCalculation = payload.access.state === "full" && !isUnavailable;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-6 px-5 py-5 lg:grid-cols-[minmax(0,640px)_minmax(0,400px)] lg:gap-8">
+    <div className="mx-auto grid w-full max-w-[960px] grid-cols-1 items-start gap-6 px-5 py-5 lg:grid-cols-[minmax(0,620px)_minmax(0,280px)] lg:gap-6">
       <div data-testid="today-main-column" className="min-w-0 space-y-4">
         <BirthTimeBanner
           birthTime={payload.birthTime}
@@ -182,8 +182,19 @@ function ReadyContent({
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
           <>
-            {payload.mainEvent ? <MainEvent event={payload.mainEvent} snapshotId={payload.snapshotId} /> : null}
-            <ImpulsesList impulses={payload.impulses} snapshotId={payload.snapshotId} />
+            {payload.mainEvent ? (
+              <MainEvent
+                event={payload.mainEvent}
+                snapshotId={payload.snapshotId}
+                timezone={payload.timezone}
+              />
+            ) : null}
+            <ImpulsesList
+              impulses={payload.impulses}
+              snapshotId={payload.snapshotId}
+              targetDate={payload.targetDate}
+              timezone={payload.timezone}
+            />
             <TodayNarrative state={payload.contentState} claims={claims} onRetry={onRetry} />
             {payload.lookahead ? <TodayLookahead lookahead={payload.lookahead} /> : null}
           </>

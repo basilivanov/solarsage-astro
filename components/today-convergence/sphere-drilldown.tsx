@@ -1,18 +1,18 @@
 // ############################################################################
 // AI_HEADER: MODULE_TODAY_CONVERGENCE_SPHERE_DRILLDOWN — deterministic sphere evidence view.
-// ROLE: Projects one published snapshot sphere into an accessible evidence chain with explicit timing and polarity.
+// ROLE: Projects one published sphere into an accessible evidence chain with explicit timing, timezone, and polarity.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-SPHERE-DRILLDOWN
 // purpose: Render loading, honest error/access states, or the deterministic drilldown for one snapshot sphere.
 // owns:
 //   - components/today-convergence/sphere-drilldown.tsx
-// inputs: generated TodaySphereDrilldownPayload, route sphere key, transport state, and retry callback.
+// inputs: generated TodaySphereDrilldownPayload, optional payload/prop timezone, route sphere key, transport state, and retry callback.
 // outputs: sphere-drilldown root, numbered evidence events, convergence reason, and calculation disclosure.
 // dependencies: generated contracts, Today formatters, Paywall, HowCalculated.
 // side_effects: delegates retry and paywall actions; local disclosure state lives in HowCalculated.
 // emitted_logs: none.
-// invariants: evidence is rendered only from the generated payload; polarity is textual as well as structural; no LLM fields are read.
+// invariants: evidence is rendered only from the generated payload; absolute times use the payload timezone when present; polarity is textual as well as structural.
 // failure_policy: 403 renders access/paywall, 404 renders unavailable, other failures render retryable transport error.
 // END_MODULE_CONTRACT: M-SPHERE-DRILLDOWN
 
@@ -35,15 +35,21 @@ import type { TodaySphereDrilldownPayload } from "@/packages/contracts";
 import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels";
 import {
   formatEventTime,
+  getEventTimeDateTime,
   getPolarityLabel,
   getPolarityToneClasses,
 } from "@/components/today-convergence/today-formatters";
 
 export type SphereDrilldownScreenState = "loading" | "ready" | "error";
 
+export type SphereDrilldownPayload = TodaySphereDrilldownPayload & {
+  timezone?: string | null;
+};
+
 export type SphereDrilldownProps = {
-  payload?: TodaySphereDrilldownPayload;
+  payload?: SphereDrilldownPayload;
   sphereKey?: string;
+  timezone?: string | null;
   screenState?: SphereDrilldownScreenState;
   errorStatus?: number;
   onRetry?: () => void;
@@ -134,7 +140,13 @@ function TransportContent({
 // END_BLOCK: TRANSPORT
 
 // START_BLOCK: EVIDENCE_CHAIN
-function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
+function EvidenceChain({
+  payload,
+  timezone,
+}: {
+  payload: SphereDrilldownPayload;
+  timezone?: string | null;
+}) {
   return (
     <section data-testid="drilldown-evidence" className="space-y-3">
       <h2 className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -147,6 +159,7 @@ function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
             data-testid={`drilldown-event-${event.id}`}
             data-polarity={event.polarity}
             data-event-kind={event.kind}
+            data-time-mode={event.time.mode}
             className="rounded-[20px] border border-border/60 bg-card p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
@@ -163,7 +176,12 @@ function EvidenceChain({ payload }: { payload: TodaySphereDrilldownPayload }) {
                   </p>
                 ) : null}
                 <p className="mt-1 text-[13px] leading-5 text-muted-foreground tabular-nums">
-                  <span data-testid={`drilldown-event-time-${event.id}`}>{formatEventTime(event.time)}</span>
+                  <time
+                    data-testid={`drilldown-event-time-${event.id}`}
+                    dateTime={getEventTimeDateTime(event.time)}
+                  >
+                    {formatEventTime(event.time, timezone)}
+                  </time>
                   {" · "}
                   <span
                     data-testid={`drilldown-event-polarity-${event.id}`}
@@ -215,19 +233,21 @@ function ConvergenceContext({ payload }: { payload: TodaySphereDrilldownPayload 
 export function SphereDrilldown({
   payload,
   sphereKey,
+  timezone,
   screenState = "ready",
   errorStatus,
   onRetry,
 }: SphereDrilldownProps) {
   // START_FUNCTION_CONTRACT: F-M-SPHERE-DRILLDOWN.SphereDrilldown
   // purpose: Render the transport state or deterministic evidence chain for one sphere.
-  // inputs: payload — generated drilldown envelope; sphereKey — route key; screenState/errorStatus — transport projection; onRetry — retry callback.
+  // inputs: payload — generated drilldown envelope; timezone — optional display timezone (payload value wins when prop is absent); sphereKey — route key; screenState/errorStatus — transport projection; onRetry — retry callback.
   // returns: accessible sphere drilldown root.
   // side_effects: delegates retry/paywall actions and local calculation disclosure.
   // emitted_logs: none.
   // error_behavior: missing ready payload degrades to a retryable unavailable state.
   // END_FUNCTION_CONTRACT: F-M-SPHERE-DRILLDOWN.SphereDrilldown
   const resolvedSphere = sphereKey ?? payload?.sphere;
+  const resolvedTimezone = timezone ?? payload?.timezone;
   const ready = screenState === "ready" && payload !== undefined;
   const renderedScreenState: SphereDrilldownScreenState = ready
     ? "ready"
@@ -271,7 +291,7 @@ export function SphereDrilldown({
                 {sphereLabel(payload.sphere)} — сегодня
               </h1>
             </header>
-            <EvidenceChain payload={payload} />
+            <EvidenceChain payload={payload} timezone={resolvedTimezone} />
             <ConvergenceContext payload={payload} />
             <HowCalculated />
           </>

@@ -12,7 +12,8 @@
 # dependencies: Pydantic v2, schemas._base.CamelModel, schemas.access.ContentAccessState.
 # side_effects: none.
 # emitted_logs: none.
-# invariants: extra fields, legacy Today fields, invalid state projections, and dangling IDs are rejected.
+# invariants: extra fields, legacy Today fields, invalid state projections, and dangling IDs are rejected;
+#   EventTime absolute instants are optional, timezone-aware, and ordered in exact mode.
 # failure_policy: deterministic ValidationError reason tokens; no compatibility projection.
 # END_MODULE_CONTRACT: M-SCHEMAS-TODAY-CONVERGENCE
 
@@ -34,7 +35,7 @@
 #   - TodaySnapshotImpressionRequest
 # semantic_blocks:
 #   - BIRTH_TIME: birth mode, range, and calculation capabilities.
-#   - EVENT_PRESENTATION: event ledger and presentation precision.
+#   - EVENT_PRESENTATION: event ledger, clock precision, and date-aware instants.
 #   - CONTENT_BLOCKS: convergence, quiet-day, period, and narrative shapes.
 #   - ROOT_VALIDATION: access/state/content matrix and reference integrity.
 #   - SNAPSHOT_IMPRESSION_REQUEST: strict authenticated impression input.
@@ -215,11 +216,23 @@ class TodayConvergenceEventTime(CamelModel):
     peak: str | None = None
     start: str | None = None
     end: str | None = None
+    peak_at: datetime | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
     part_of_day: PartOfDay | None = None
 
     @model_validator(mode="after")
     def validate_event_time(self) -> TodayConvergenceEventTime:
         clocks = (self.peak, self.start, self.end)
+        absolute_instants = (self.peak_at, self.start_at, self.end_at)
+        for value in absolute_instants:
+            if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+                _fail("event_time_absolute_timezone")
+        if self.start_at is not None and self.peak_at is not None and self.start_at > self.peak_at:
+            _fail("event_time_absolute_order")
+        if self.peak_at is not None and self.end_at is not None and self.peak_at > self.end_at:
+            _fail("event_time_absolute_order")
+
         if self.mode == "exact":
             if self.part_of_day is not None:
                 _fail("event_time_exact_part_of_day")
@@ -231,9 +244,13 @@ class TodayConvergenceEventTime(CamelModel):
                 _fail("event_time_partofday_missing")
             if any(value is not None for value in clocks):
                 _fail("event_time_partofday_clock")
+            if any(value is not None for value in absolute_instants):
+                _fail("event_time_partofday_absolute")
         else:
             if any(value is not None for value in clocks) or self.part_of_day is not None:
                 _fail("event_time_date_fields")
+            if any(value is not None for value in absolute_instants):
+                _fail("event_time_date_absolute")
         return self
 
 

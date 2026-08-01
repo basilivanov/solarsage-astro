@@ -12,7 +12,8 @@
 # dependencies: app.schemas.today_convergence, pydantic.
 # side_effects: reads committed fixtures only.
 # emitted_logs: none.
-# invariants: reason-token assertions remain stable while prose stays implementation-free.
+# invariants: reason-token assertions remain stable while prose stays implementation-free;
+#   EventTime keeps legacy clock payloads valid and validates absolute instant shape.
 # failure_policy: pytest failure on schema drift or invariant violation.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-CONTRACT
 
@@ -384,6 +385,71 @@ def test_event_time_modes_and_birth_precision_are_restricted() -> None:
     payload["publishedAt"] = "2026-07-31T00:00:00Z"
     payload["contentState"] = "not_needed"
     invalid(payload, "birth_event_time_precision")
+
+
+def test_event_time_absolute_instants_are_optional_timezone_aware_and_ordered() -> None:
+    legacy = TodayConvergenceEventTime.model_validate(
+        {"mode": "exact", "peak": "12:00", "start": None, "end": None, "partOfDay": None}
+    )
+    assert legacy.peak_at is None
+    assert legacy.start_at is None
+    assert legacy.end_at is None
+
+    valid = TodayConvergenceEventTime.model_validate(
+        {
+            "mode": "exact",
+            "peak": "00:30",
+            "start": "23:30",
+            "end": "01:30",
+            "peakAt": "2026-08-01T00:30:00+03:00",
+            "startAt": "2026-07-31T23:30:00+03:00",
+            "endAt": "2026-08-01T01:30:00+03:00",
+            "partOfDay": None,
+        }
+    )
+    assert valid.model_dump(mode="json", by_alias=True)["peakAt"] == "2026-08-01T00:30:00+03:00"
+
+    with pytest.raises(ValidationError, match="event_time_absolute_timezone"):
+        TodayConvergenceEventTime.model_validate(
+            {
+                "mode": "exact",
+                "peak": "00:30",
+                "peakAt": "2026-08-01T00:30:00",
+            }
+        )
+    with pytest.raises(ValidationError, match="event_time_partofday_absolute"):
+        TodayConvergenceEventTime.model_validate(
+            {
+                "mode": "partofday",
+                "partOfDay": "night",
+                "peakAt": "2026-08-01T00:30:00+03:00",
+            }
+        )
+    with pytest.raises(ValidationError, match="event_time_date_absolute"):
+        TodayConvergenceEventTime.model_validate(
+            {
+                "mode": "date",
+                "peakAt": "2026-08-01T00:30:00+03:00",
+            }
+        )
+    with pytest.raises(ValidationError, match="event_time_absolute_order"):
+        TodayConvergenceEventTime.model_validate(
+            {
+                "mode": "exact",
+                "peakAt": "2026-08-01T00:30:00+03:00",
+                "startAt": "2026-08-01T01:30:00+03:00",
+                "endAt": "2026-08-01T02:30:00+03:00",
+            }
+        )
+    with pytest.raises(ValidationError, match="event_time_absolute_order"):
+        TodayConvergenceEventTime.model_validate(
+            {
+                "mode": "exact",
+                "startAt": "2026-08-01T00:30:00+03:00",
+                "peakAt": "2026-08-01T02:30:00+03:00",
+                "endAt": "2026-08-01T01:30:00+03:00",
+            }
+        )
 
 
 def test_period_context_modes_are_deterministic() -> None:

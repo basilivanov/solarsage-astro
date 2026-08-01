@@ -4,15 +4,15 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-FORMATTERS
-// purpose: Convert canonical sphere, polarity, and EventTime values into stable UI strings.
+// purpose: Convert canonical sphere, polarity, and EventTime values into stable human-first UI strings.
 // owns:
 //   - components/today-convergence/today-formatters.tsx
 // inputs: generated Today Convergence nested wire values.
-// outputs: Russian labels and time strings used by Today components.
+// outputs: Russian labels, product time strings, and semantic tone classes used by Today components.
 // dependencies: packages/contracts/today-convergence.ts.
 // side_effects: none.
 // emitted_logs: none.
-// invariants: exact clocks appear only for EventTime.mode=exact; no LLM or legacy fields are read.
+// invariants: exact clocks appear only for EventTime.mode=exact; absolute instants are preferred when present; no LLM or legacy fields are read.
 // failure_policy: use a deterministic neutral label for incomplete optional time fields.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-FORMATTERS
 
@@ -23,6 +23,7 @@
 //   - getPolarityToneClasses
 //   - getDayToneBackgroundClass
 //   - formatEventTime
+//   - getEventTimeDateTime
 // semantic_blocks:
 //   - CANONICAL_LABELS: product sphere and polarity labels/classes.
 //   - EVENT_TIME: exact, partofday, and date presentation.
@@ -65,6 +66,31 @@ const PART_OF_DAY_LABELS: Record<"night" | "morning" | "day" | "evening", string
 };
 
 type TodayPolarity = TodayConvergenceGroup["polarity"];
+
+/**
+ * The date-aware backend packet is additive. Keep the UI readable while this
+ * worktree still accepts older generated contracts that only expose clocks.
+ */
+export type HumanFirstEventTime = TodayConvergenceEventTime & {
+  peakAt?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+};
+
+const MONTHS_RU_GEN = [
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
+] as const;
 
 const POLARITY_TONE_CLASSES: Record<TodayPolarity, string> = {
   supportive: "text-(--tone-supportive-fg) bg-(--tone-supportive-bg)",
@@ -130,16 +156,94 @@ export function getDayToneBackgroundClass(dayTone: TodayConvergencePayload["dayT
 // END_BLOCK: CANONICAL_LABELS
 
 // START_BLOCK: EVENT_TIME
-export function formatEventTime(time: TodayConvergenceEventTime): string {
+function absoluteTime(time: TodayConvergenceEventTime): HumanFirstEventTime {
+  return time as HumanFirstEventTime;
+}
+
+function formatAbsoluteMoment(value: string | null | undefined, timezone?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  // An absolute wire value already carries the calculation timezone offset.
+  // Preserve that local representation when a legacy caller has no timezone
+  // field, instead of silently shifting the instant to UTC or the browser zone.
+  const formatWireLocal = () => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/u.exec(value);
+    if (!match) return null;
+    const month = MONTHS_RU_GEN[Number(match[2]) - 1];
+    if (!month) return null;
+    return `${Number(match[3])} ${month}, ${match[4]}:${match[5]}`;
+  };
+
+  if (!timezone) return formatWireLocal();
+
+  const format = (timeZone: string) => new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "long",
+    timeZone,
+  }).formatToParts(date);
+
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = format(timezone);
+  } catch {
+    return formatWireLocal();
+  }
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const day = values.day;
+  const monthIndex = MONTHS_RU_GEN.findIndex((month) => month === values.month);
+  const month = monthIndex >= 0 ? MONTHS_RU_GEN[monthIndex] : values.month;
+  if (!day || !month || !values.hour || !values.minute) return null;
+  return `${day} ${month}, ${values.hour}:${values.minute}`;
+}
+
+function formatAbsoluteWindow(
+  startAt: string | null | undefined,
+  endAt: string | null | undefined,
+  timezone?: string | null,
+): string {
+  const start = formatAbsoluteMoment(startAt, timezone);
+  const end = formatAbsoluteMoment(endAt, timezone);
+  if (start && end) return `окно: с ${start} до ${end}`;
+  if (start) return `окно: с ${start}`;
+  if (end) return `окно: до ${end}`;
+  return "";
+}
+
+export function getEventTimeDateTime(time: TodayConvergenceEventTime): string | undefined {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getEventTimeDateTime
+  // purpose: Select an absolute event instant for a semantic HTML time attribute when one exists.
+  // inputs: time — generated EventTime, optionally carrying date-aware absolute fields.
+  // returns: absolute ISO datetime string, or undefined for clock-only legacy values.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: returns undefined when no usable time value exists.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getEventTimeDateTime
+  const value = absoluteTime(time);
+  return value.peakAt ?? undefined;
+}
+
+export function formatEventTime(time: HumanFirstEventTime, timezone?: string | null): string {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTime
-  // purpose: Render EventTime according to exact, bucket, or unknown-time rules.
-  // inputs: time — generated EventTime object.
+  // purpose: Render EventTime according to exact, bucket, or unknown-time rules, preferring date-aware instants.
+  // inputs: time — generated EventTime object; timezone — payload timezone for absolute instants.
   // returns: Russian time phrase without fabricated clocks.
   // side_effects: none.
   // emitted_logs: none.
   // error_behavior: incomplete exact windows degrade to the available exact value.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTime
   if (time.mode === "exact") {
+    const absolute = absoluteTime(time);
+    const peak = formatAbsoluteMoment(absolute.peakAt, timezone);
+    const absoluteWindow = formatAbsoluteWindow(absolute.startAt, absolute.endAt, timezone);
+    if (peak) return `пик ${peak}${absoluteWindow ? `, ${absoluteWindow}` : ""}`;
+    if (absoluteWindow) return absoluteWindow;
+
     const window = time.start && time.end
       ? `, окно ${time.start}${time.start > time.end ? " → " : "–"}${time.end}`
       : "";

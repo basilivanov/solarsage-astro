@@ -1,18 +1,18 @@
 // ############################################################################
 // AI_HEADER: TEST_TODAY_CONVERGENCE_SCREEN — public DOM acceptance for the 16 Today states.
-// ROLE: Renders generated fixtures through the new component suite and checks only DOM contract surfaces.
+// ROLE: Renders generated fixtures through the Today suite and checks grouped impulses, modal context, and DOM contract surfaces.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
-// purpose: Verify every Today fixture, transport state, time presentation, disclosure, and accessibility contract.
+// purpose: Verify every Today fixture, grouped impulse presentation, lazy sphere modal, time formatting, disclosure, and accessibility contract.
 // owns:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // inputs: 16 generated TodayConvergencePayload fixtures and TodayScreen props.
 // outputs: Vitest assertions against data-testid, data-* state attributes, roles, and aria attributes.
-// dependencies: @testing-library/react, packages/contracts/today-convergence.ts, Today component suite.
-// side_effects: none; callbacks are local spies only.
+// dependencies: @testing-library/react, packages/contracts/today-convergence.ts, sphere page client mock, Today component suite.
+// side_effects: local callbacks and mocked lazy sphere requests only.
 // emitted_logs: none.
-// invariants: tests never inspect CSS classes, React internals, or legacy payload fields.
+// invariants: tests never inspect CSS classes, React internals, or legacy payload fields; modal context cannot hide Today facts; period title/date and explanation copy stay visible.
 // failure_policy: fail with the public DOM contract mismatch.
 // END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
 
@@ -20,19 +20,22 @@
 // public_entrypoints:
 //   - Today fixture matrix test
 //   - transport state tests
-//   - accessibility and formatting tests
+//   - accessibility, grouped impulse, modal, and formatting tests
 // semantic_blocks:
 //   - FIXTURE_MATRIX: all sixteen generated payload states.
 //   - TRANSPORT: loading/error root states and retry.
 //   - ACCESSIBILITY: disclosures, roles, and dismiss actions.
-//   - TIME_FORMAT: exact, partofday, and date public text.
+//   - TIME_FORMAT: exact, date-aware, partofday, and date public text.
+//   - IMPULSE_MODAL: grouping, CTA, lazy context, and close/error behavior.
+//   - TECHNIQUE_COPY: shared static period explanations in the modal.
 // owned_tests:
 //   - self
 // END_MODULE_MAP: M-TEST-TODAY-CONVERGENCE-SCREEN
 
-import { fireEvent, render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
+import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
 import {
   accessLocked,
   accessPreview,
@@ -52,7 +55,19 @@ import {
   todayConvergenceFixtures,
 } from "../../fixtures/today_convergence_v2";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
-import { formatEventTime } from "@/components/today-convergence/today-formatters";
+import {
+  formatEventTime,
+  type HumanFirstEventTime,
+} from "@/components/today-convergence/today-formatters";
+import { getPeriodTechniqueCopy } from "@/components/today-convergence/period-technique-copy";
+
+const { mockFetchSpherePage } = vi.hoisted(() => ({
+  mockFetchSpherePage: vi.fn(),
+}));
+
+vi.mock("@/lib/api/spheres", () => ({
+  fetchSpherePage: mockFetchSpherePage,
+}));
 
 vi.mock("@/components/paywall", () => ({
   Paywall: ({ title }: { title?: string }) => <section data-testid="paywall">{title}</section>,
@@ -84,11 +99,52 @@ const NAMED_FIXTURES: readonly [string, TodayConvergencePayload][] = FIXTURE_NAM
 
 afterEach(() => {
   cleanup();
+  mockFetchSpherePage.mockReset();
 });
 
 function renderToday(payload: TodayConvergencePayload, overrides?: Partial<React.ComponentProps<typeof TodayScreen>>) {
   return render(<TodayScreen payload={payload} {...overrides} />);
 }
+
+const readySpherePayload: TodaySpherePagePayload = {
+  birthTimeMode: "exact",
+  housesAvailable: true,
+  natal: {
+    state: "ready",
+    paragraphs: [
+      {
+        sourceFactIds: ["natal-work-1"],
+        text: "Натальная опора помогает удерживать рабочий ритм.",
+      },
+    ],
+  },
+  period: [
+    {
+      id: "period-work-1",
+      technique: "annual_profection",
+      title: "Годовая тема профессионального роста",
+      activeFrom: "2026-01-01",
+      activeUntil: "2026-12-31",
+    },
+  ],
+  periodIdentity: "period-work-v1",
+  periodUnavailable: false,
+  sphere: "work",
+};
+
+const groupedImpulsesPayload: TodayConvergencePayload = {
+  ...quietSteady,
+  impulses: [
+    { ...quietSteady.impulses[0], eventId: "grouped-work-1" },
+    {
+      ...quietSteady.impulses[1],
+      eventId: "grouped-work-2",
+      sphere: "work",
+      polarity: "tense",
+    },
+    { ...quietSteady.impulses[2], eventId: "grouped-health-1" },
+  ],
+};
 
 // START_BLOCK: FIXTURE_MATRIX
 describe("Today Convergence screen fixture matrix", () => {
@@ -134,6 +190,7 @@ describe("Today Convergence screen fixture matrix", () => {
     renderToday(quietMainMax);
     expect(screen.getByTestId("main-event").getAttribute("data-polarity")).toBe("mixed");
     expect(screen.getByTestId("impulses-list").getAttribute("data-count")).toBe("3");
+    expect(screen.getByTestId("impulses-list").getAttribute("data-group-count")).toBe("3");
     expect(screen.getByTestId("today-lookahead").getAttribute("data-target-date")).toBe("2026-08-02");
 
     cleanup();
@@ -216,15 +273,19 @@ describe("Today Convergence transport, access, and accessibility contract", () =
     expect(content?.hasAttribute("hidden")).toBe(false);
   });
 
-  it("expands the calculation disclosure into three static source paragraphs", () => {
+  it("expands the calculation disclosure into three static product paragraphs", () => {
     renderToday(quietZeroImpulses);
     fireEvent.click(screen.getByRole("button", { name: "Как это рассчитано" }));
 
     const content = document.getElementById("today-calculation-details");
+    const copy = content?.textContent ?? "";
     expect(content?.querySelectorAll("p")).toHaveLength(3);
-    expect(content?.textContent).toContain("Swiss Ephemeris");
-    expect(content?.textContent).toContain("неизменяемый снимок");
-    expect(content?.textContent).toContain("языковая модель");
+    expect(copy).toContain("День считается относительно твоей натальной карты");
+    expect(copy).toContain("Пик — точный момент события");
+    expect(copy).toContain("окно — период его заметного действия");
+    expect(copy).toContain("ориентир для наблюдения");
+    expect(copy).toContain("не гарантия");
+    expect(copy).not.toMatch(/Swiss Ephemeris|snapshot|LLM/iu);
   });
 
   it("dismisses the birth-time banner through the parent callback", () => {
@@ -254,18 +315,89 @@ describe("Today Convergence public time and access projections", () => {
     expect(event.getAttribute("data-time-mode")).toBe("exact");
   });
 
-  it("renders impulse summary and links it to the published snapshot sphere", () => {
+  it("groups impulses by sphere and exposes a clear drilldown CTA", () => {
     renderToday(quietSteady);
     const impulse = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
     const summary = quietSteady.impulses[0].summary?.text ?? "";
 
-    expect(impulse.tagName).toBe("A");
+    expect(impulse.tagName).toBe("LI");
     expect(impulse.getAttribute("data-has-summary")).toBe("true");
-    expect(impulse.getAttribute("href")).toBe(
+    expect(impulse.textContent).toContain(summary);
+    expect(screen.getByTestId("impulse-group-work").getAttribute("data-impulse-count")).toBe("1");
+    expect(screen.getByTestId("impulse-drilldown-trigger-work").textContent).toBe(
+      "Разобрать, как это может проявиться",
+    );
+    expect(screen.queryByTestId("today-narrative")).toBeNull();
+  });
+
+  it("keeps separate signals inside one sphere block and leaves other spheres separate", () => {
+    renderToday(groupedImpulsesPayload);
+
+    expect(screen.getByTestId("impulses-list").getAttribute("data-count")).toBe("3");
+    expect(screen.getByTestId("impulses-list").getAttribute("data-group-count")).toBe("2");
+    expect(screen.getByTestId("impulse-group-work").getAttribute("data-impulse-count")).toBe("2");
+    expect(screen.getByTestId("impulse-group-health").getAttribute("data-impulse-count")).toBe("1");
+    expect(screen.getByTestId("impulse-group-work").querySelectorAll("li[data-testid^='impulse-']")).toHaveLength(2);
+    expect(screen.getByTestId("impulse-group-work").getAttribute("data-sphere")).toBe("work");
+    expect(screen.getByTestId("impulse-group-health").getAttribute("data-sphere")).toBe("health");
+  });
+
+  it("opens a dialog lazily, shows Today facts first, and closes on Escape", async () => {
+    mockFetchSpherePage.mockResolvedValueOnce(readySpherePayload);
+    renderToday(quietSteady);
+
+    expect(mockFetchSpherePage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+
+    const dialog = screen.getByTestId("impulse-drilldown-sheet");
+    expect(dialog.getAttribute("role")).toBe("dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`)).toBeTruthy();
+    expect(dialog.textContent).toContain(quietSteady.impulses[0].summary?.text ?? "");
+    expect(mockFetchSpherePage).toHaveBeenCalledWith("work", expect.any(AbortSignal));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("impulse-drilldown-context")).toBeTruthy();
+    });
+    expect(screen.getByTestId("impulse-drilldown-natal-0").textContent).toContain("Натальная опора");
+    const period = screen.getByTestId("impulse-drilldown-period-period-work-1");
+    const periodCopy = getPeriodTechniqueCopy(readySpherePayload.period[0].technique);
+    expect(period).toBeTruthy();
+    expect(period.getAttribute("data-technique")).toBe("annual_profection");
+    expect(period.textContent).toContain(readySpherePayload.period[0].title);
+    expect(period.textContent).toContain(readySpherePayload.period[0].activeUntil);
+    expect(screen.getByTestId("impulse-drilldown-period-technique-copy-period-work-1").textContent).toContain(
+      periodCopy.label,
+    );
+    expect(screen.getByTestId("impulse-drilldown-period-what-it-is-period-work-1").textContent).toBe(
+      periodCopy.whatItIs,
+    );
+    expect(screen.getByTestId("impulse-drilldown-period-how-it-affects-now-period-work-1").textContent).toBe(
+      periodCopy.howItAffectsNow,
+    );
+    expect(screen.getByTestId("impulse-drilldown-period-what-you-may-notice-period-work-1").textContent).toBe(
+      periodCopy.whatYouMayNotice,
+    );
+    expect(screen.getByTestId("impulse-drilldown-full-link").getAttribute("href")).toBe(
       `/day/snapshots/${encodeURIComponent(quietSteady.snapshotId!)}/spheres/work`,
     );
-    expect(impulse.textContent).toContain(summary);
-    expect(screen.queryByTestId("today-narrative")).toBeNull();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
+  });
+
+  it("keeps Today facts visible when sphere context returns 403", async () => {
+    mockFetchSpherePage.mockRejectedValueOnce({ status: 403 });
+    renderToday(quietSteady);
+    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+
+    expect(screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId("impulse-drilldown-context-access")).toBeTruthy();
+    });
+    expect(screen.getByTestId("impulse-drilldown-sheet").getAttribute("data-state")).toBe("locked");
+    fireEvent.click(screen.getByTestId("impulse-drilldown-close"));
+    expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
   });
 
   it("keeps an impulse as a plain list item when summary and snapshot are absent", () => {
@@ -295,6 +427,26 @@ describe("Today Convergence public time and access projections", () => {
     expect(mainEvent.textContent).toContain(quietMainMax.mainEvent?.summary?.text ?? "");
   });
 
+  it("passes the Today timezone into main-event absolute time presentation", () => {
+    const payload: TodayConvergencePayload = {
+      ...quietMainMax,
+      mainEvent: {
+        ...quietMainMax.mainEvent!,
+        time: {
+          ...quietMainMax.mainEvent!.time,
+          peakAt: "2026-08-01T08:34:00Z",
+          startAt: "2026-07-31T17:23:00Z",
+          endAt: "2026-08-01T23:34:00Z",
+        },
+      },
+    };
+
+    renderToday(payload);
+    expect(screen.getByTestId("main-event").querySelector("time")?.textContent).toBe(
+      "пик 1 августа, 11:34, окно: с 31 июля, 20:23 до 2 августа, 02:34",
+    );
+  });
+
   it("formats overnight windows with an arrow and keeps midnight same-day", () => {
     expect(
       formatEventTime({ mode: "exact", peak: "10:06", start: "22:42", end: "21:21" }),
@@ -305,6 +457,30 @@ describe("Today Convergence public time and access projections", () => {
     expect(
       formatEventTime({ mode: "exact", peak: "00:00", start: "00:00", end: "00:00" }),
     ).toBe("пик 00:00, окно 00:00–00:00");
+  });
+
+  it("prefers absolute instants and formats dates in the payload timezone", () => {
+    const time: HumanFirstEventTime = {
+      mode: "exact",
+      peak: "11:34",
+      start: "20:23",
+      end: "02:34",
+      peakAt: "2026-08-01T08:34:00Z",
+      startAt: "2026-07-31T17:23:00Z",
+      endAt: "2026-08-01T23:34:00Z",
+    };
+
+    expect(formatEventTime(time, "Europe/Moscow")).toBe(
+      "пик 1 августа, 11:34, окно: с 31 июля, 20:23 до 2 августа, 02:34",
+    );
+    expect(
+      formatEventTime({
+        ...time,
+        peakAt: "2026-08-01T11:34:00+03:00",
+        startAt: "2026-07-31T20:23:00+03:00",
+        endAt: "2026-08-02T02:34:00+03:00",
+      }),
+    ).toBe("пик 1 августа, 11:34, окно: с 31 июля, 20:23 до 2 августа, 02:34");
   });
 
   it("formats bucket and unknown event times without exact clocks", () => {
@@ -359,6 +535,23 @@ describe("Today Convergence public time and access projections", () => {
       `/day/snapshots/${encodeURIComponent(heroSupportive.snapshotId!)}/spheres/work`,
     );
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("href")).toBe("/day/spheres/shopping");
+  });
+
+  it("shows a visible active summary for Today facts and keeps empty tiles unlabelled", () => {
+    renderToday(heroMixed);
+
+    const active = screen.getByTestId("sphere-tile-work");
+    expect(active.getAttribute("data-has-today")).toBe("true");
+    expect(active.getAttribute("data-today-count")).toBe("1");
+    expect(active.getAttribute("data-today-summary")).toBe("1 сигнал · напряжение");
+    expect(screen.getByTestId("sphere-tile-summary-work").textContent).toBe("1 сигнал · напряжение");
+    expect(active.getAttribute("aria-label")).toContain("1 сигнал · напряжение");
+
+    const empty = screen.getByTestId("sphere-tile-shopping");
+    expect(empty.getAttribute("data-has-today")).toBe("false");
+    expect(empty.hasAttribute("data-today-summary")).toBe(false);
+    expect(screen.queryByTestId("sphere-tile-summary-shopping")).toBeNull();
+    expect(empty.getAttribute("aria-label")).toBe("Покупки");
   });
 
   it("keeps period context, spheres, and calculation disclosure in rail order", () => {

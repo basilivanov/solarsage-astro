@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HOW-CALCULATED
-// purpose: Render the static multi-paragraph “Как это рассчитано” disclosure for ready Today screens.
+// purpose: Render the static product-facing “Как это рассчитано” disclosure for ready Today screens.
 // owns:
 //   - components/today-convergence/how-calculated.tsx
 // inputs: none.
@@ -12,7 +12,7 @@
 // dependencies: React state only.
 // side_effects: local disclosure state.
 // emitted_logs: none.
-// invariants: copy is static and contains no LLM or legacy fields.
+// invariants: copy is static, product-facing, and contains no implementation or provider terms.
 // failure_policy: none.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HOW-CALCULATED
 
@@ -20,7 +20,7 @@
 // public_entrypoints:
 //   - HowCalculated
 // semantic_blocks:
-//   - CALCULATION_DISCLOSURE: static source explanation.
+//   - CALCULATION_DISCLOSURE: static product explanation.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-HOW-CALCULATED
@@ -56,13 +56,13 @@ export function HowCalculated() {
       </button>
       <div id={contentId} hidden={!open} className="space-y-3 border-t border-border/50 px-4 py-3 text-[13px] leading-5 text-muted-foreground">
         <p>
-          День считается по твоей натальной карте и точному положению планет (Swiss Ephemeris); результат публикуется как неизменяемый снимок (snapshot) расчёта.
+          День считается относительно твоей натальной карты и текущего положения планет.
         </p>
         <p>
-          События и сферы отбираются детерминированными правилами из этого снимка; времена — точные моменты аспектов.
+          Пик — точный момент события; окно — период его заметного действия.
         </p>
         <p>
-          Персональный текст поверх пишет языковая модель только по фактам снимка; если текст не готов, факты дня всё равно показываются.
+          Возможное проявление — ориентир для наблюдения, а не гарантия того, что всё произойдёт именно так.
         </p>
       </div>
     </section>

@@ -834,12 +834,15 @@ export const TodayConvergenceGroup = z.object({
 });
 export const TodayConvergenceEventTime = z.object({
   end: z.union([z.string(), z.null()]).optional(),
+  endAt: z.union([z.string(), z.null()]).optional(),
   mode: z.enum(["exact", "partofday", "date"]),
   partOfDay: z
     .union([z.enum(["night", "morning", "day", "evening"]), z.null()])
     .optional(),
   peak: z.union([z.string(), z.null()]).optional(),
+  peakAt: z.union([z.string(), z.null()]).optional(),
   start: z.union([z.string(), z.null()]).optional(),
+  startAt: z.union([z.string(), z.null()]).optional(),
 });
 export const TodayConvergenceEvent = z.object({
   evidenceLevel: z.enum(["high", "medium"]),

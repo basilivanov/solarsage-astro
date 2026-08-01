@@ -13,7 +13,8 @@
 # dependencies: app.services.today_convergence_projection, Today convergence schemas.
 # side_effects: none.
 # emitted_logs: none.
-# invariants: Projection tests use stable input rows and never require HTTP/DB/LLM.
+# invariants: Projection tests use stable input rows and never require HTTP/DB/LLM;
+#   exact EventTime assertions cover date-aware absolute instants and midpoint fallback.
 # failure_policy: pytest failure on contract or atomic-fallback drift.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-PROJECTION
 
@@ -342,7 +343,54 @@ def test_full_hero_ready_projection_matches_frozen_fixture() -> None:
         (REPO_ROOT / "apps/api/tests/fixtures/contracts/today-convergence-full-hero-ready.json").read_text()
     )
 
-    assert payload.model_dump(mode="json", by_alias=True) == expected
+    actual = payload.model_dump(mode="json", by_alias=True)
+    # The committed fixture intentionally remains a legacy payload: optional
+    # date-aware fields are covered by the dedicated cross-date assertion below.
+    for event in actual["events"]:
+        for field in ("peakAt", "startAt", "endAt"):
+            event["time"].pop(field, None)
+
+    assert actual == expected
+
+
+def test_exact_event_time_exposes_cross_date_absolute_midpoint_and_bounds() -> None:
+    result = _quiet_result(with_main_and_impulses=False) | {
+        "selected": {
+            "convergences": [],
+            "main_event": {
+                "event_id": "evt-cross-date",
+                "sphere": "work",
+                "polarity": "supportive",
+                "evidence_level": "medium",
+            },
+            "impulses": [],
+            "selected_unit_ids": ["evt-cross-date"],
+            "selected_spheres": ["work"],
+        }
+    }
+    snapshot = _snapshot(
+        result,
+        [
+            _factor(
+                "evt-cross-date",
+                exact_at=None,
+                active_from="2026-07-31T20:30:00+00:00",
+                active_until="2026-07-31T22:30:00+00:00",
+            )
+        ],
+        snapshot_id="snap-cross-date-2026-07-31",
+    )
+
+    payload = project_snapshot_payload(snapshot, None, _access("full"))
+    event_time = payload.events[0].time
+    wire_time = event_time.model_dump(mode="json", by_alias=True)
+
+    assert event_time.peak == "00:30"
+    assert event_time.start == "23:30"
+    assert event_time.end == "01:30"
+    assert wire_time["peakAt"] == "2026-08-01T00:30:00+03:00"
+    assert wire_time["startAt"] == "2026-07-31T23:30:00+03:00"
+    assert wire_time["endAt"] == "2026-08-01T01:30:00+03:00"
 
 
 @pytest.mark.parametrize(
@@ -419,6 +467,8 @@ def test_quiet_day_projects_main_event_impulse_ledger_and_no_convergence() -> No
                 event_class="activation",
                 source_key="impulse-source",
                 exact_at="2026-07-31T09:10:00+03:00",
+                active_from="2026-07-31T08:00:00+03:00",
+                active_until="2026-07-31T10:00:00+03:00",
             ),
         ],
         snapshot_id="snap-quiet-2026-07-31",

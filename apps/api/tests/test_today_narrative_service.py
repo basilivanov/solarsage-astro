@@ -24,6 +24,7 @@
 # semantic_blocks:
 #   - FIXTURES: stable snapshots, factors, and fake provider.
 #   - HAPPY_PATH: convergence and quiet-day canonical content.
+#   - EVENT_TIME: date-aware absolute instants in bounded prompt evidence.
 #   - VALIDATION: schema, binding, length, block identity, and capability gates.
 #   - OPERATIONS: deadline, provider error, prompt bounds, tokens, and logs.
 # owned_tests:
@@ -527,6 +528,23 @@ async def test_prompt_is_bounded_to_selected_units_and_forwards_700_tokens() -> 
 
     direct_prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
     assert direct_prompt == prompt
+
+
+def test_prompt_event_time_uses_cross_date_absolute_instants_in_local_timezone() -> None:
+    snapshot = _quiet_snapshot()
+    factor = snapshot.canonical_input_json["factor_units"][0]  # type: ignore[index]
+    factor["exact_at"] = None  # type: ignore[index]
+    factor["active_from"] = "2026-07-31T20:30:00+00:00"  # type: ignore[index]
+    factor["active_until"] = "2026-07-31T22:30:00+00:00"  # type: ignore[index]
+
+    prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
+
+    assert '"peakAt":"2026-08-01T00:30:00+03:00"' in prompt
+    assert '"startAt":"2026-07-31T23:30:00+03:00"' in prompt
+    assert '"endAt":"2026-08-01T01:30:00+03:00"' in prompt
+    assert '"peak":"00:30"' in prompt
+    assert '"start":"23:30"' in prompt
+    assert '"end":"01:30"' in prompt
 
 
 @pytest.mark.asyncio
