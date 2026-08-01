@@ -349,8 +349,9 @@ nohup cloudflared tunnel --url http://127.0.0.1:18923 --no-autoupdate > tunnel.l
   baselines, screenshots, aggregated reports. Никаких логов с user ids,
   env, дампов или fixture'ов с персональными данными.
 
-Активная витрина (visual baseline Today Convergence, 2026-07-31):
-`/tmp/baseline-showcase/` (20 PNG + index.html), server :18923.
+Активная витрина (visual baseline Today Convergence, 2026-08-01, tone+рейл+иконки):
+`/tmp/baseline-showcase/` (30 PNG + index.html), server :18923,
+quick tunnel `https://knee-modes-essential-drivers.trycloudflare.com` (живёт, пока жив процесс).
 
 ## Известные баги / технический долг
 
