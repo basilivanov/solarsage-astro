@@ -83,9 +83,9 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
           role="status"
           aria-live="polite"
         >
-          <p>Дополнительный разбор готовится</p>
+          <p>Дополнительный разбор пока недоступен</p>
           <p className="text-[13px] leading-5 text-muted-foreground">
-            Основные факты и события уже доступны на экране.
+            Основные факты и события уже доступны на экране. Можно повторить попытку.
           </p>
           <button
             type="button"

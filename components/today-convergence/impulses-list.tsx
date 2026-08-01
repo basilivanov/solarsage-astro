@@ -8,7 +8,7 @@
 // owns:
 //   - components/today-convergence/impulses-list.tsx
 // inputs: generated TodayConvergenceImpulse array, TodayConvergenceEvent ledger, optional snapshot/date/timezone context.
-// outputs: grouped sphere cards with exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, and drilldown triggers.
+// outputs: grouped sphere cards with exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, impulse-event-meta-{eventId} and impulse-event-time-{eventId} selectors, and drilldown triggers.
 // dependencies: today-formatters, impulse-drilldown-sheet, packages/contracts/today-convergence.ts.
 // side_effects: opens the child sheet; the child lazily fetches sphere context.
 // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed from the child sheet.
@@ -20,7 +20,7 @@
 // public_entrypoints:
 //   - ImpulsesList
 // semantic_blocks:
-//   - IMPULSES: capped quiet-day rows, event-ledger title lookup, and time mode contract.
+//   - IMPULSES: capped quiet-day rows, event-ledger title lookup, responsive title/time/polarity meta, and time mode contract.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-IMPULSES
@@ -113,39 +113,51 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
             </div>
 
             <ul className="mt-4 space-y-2">
-              {group.impulses.map((impulse) => (
-                <li
-                  key={impulse.eventId}
-                  data-testid={`impulse-${impulse.eventId}`}
-                  data-polarity={impulse.polarity}
-                  data-time-mode={impulse.time.mode}
-                  data-has-summary={impulse.summary ? "true" : "false"}
-                  data-has-event-title={eventById.get(impulse.eventId)?.title ? "true" : "false"}
-                  className="rounded-xl border border-border/50 bg-background/60 p-3"
-                >
-                  {eventById.get(impulse.eventId)?.title ? (
-                    <h4
-                      data-testid={`impulse-event-title-${impulse.eventId}`}
-                      className="text-[16px] font-medium leading-[22px] text-foreground"
+              {group.impulses.map((impulse) => {
+                const eventTitle = eventById.get(impulse.eventId)?.title;
+                return (
+                  <li
+                    key={impulse.eventId}
+                    data-testid={`impulse-${impulse.eventId}`}
+                    data-polarity={impulse.polarity}
+                    data-time-mode={impulse.time.mode}
+                    data-has-summary={impulse.summary ? "true" : "false"}
+                    data-has-event-title={eventTitle ? "true" : "false"}
+                    className="min-w-0 rounded-xl border border-border/50 bg-background/60 p-3"
+                  >
+                    <div
+                      data-testid={`impulse-event-meta-${impulse.eventId}`}
+                      className="flex min-w-0 flex-col gap-1 text-[15px] leading-[22px] xl:flex-row xl:items-baseline xl:justify-between xl:gap-x-4"
                     >
-                      {eventById.get(impulse.eventId)?.title}
-                    </h4>
-                  ) : null}
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
-                    <time className="tabular-nums" dateTime={getEventTimeDateTime(impulse.time)}>
-                      {formatEventTime(impulse.time, timezone)}
-                    </time>
-                    <span className={`rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
-                      {getPolarityLabel(impulse.polarity)}
-                    </span>
-                  </div>
-                  {impulse.summary ? (
-                    <p className="mt-2 text-[15px] leading-[22px] text-pretty text-foreground/85">
-                      {impulse.summary.text}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
+                      {eventTitle ? (
+                        <h4
+                          data-testid={`impulse-event-title-${impulse.eventId}`}
+                          className="min-w-0 break-words text-[16px] font-medium leading-[22px] text-foreground xl:flex-none xl:whitespace-nowrap"
+                        >
+                          {eventTitle}
+                        </h4>
+                      ) : null}
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 xl:flex-none xl:flex-nowrap xl:whitespace-nowrap">
+                        <time
+                          data-testid={`impulse-event-time-${impulse.eventId}`}
+                          className="min-w-0 break-words tabular-nums xl:whitespace-nowrap"
+                          dateTime={getEventTimeDateTime(impulse.time)}
+                        >
+                          {formatEventTime(impulse.time, timezone)}
+                        </time>
+                        <span className={`rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
+                          {getPolarityLabel(impulse.polarity)}
+                        </span>
+                      </div>
+                    </div>
+                    {impulse.summary ? (
+                      <p className="mt-2 text-[15px] leading-[22px] text-pretty text-foreground/85">
+                        {impulse.summary.text}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
 
             <button

@@ -39,6 +39,30 @@ def test_aspect_title_localizes_and_strips_raw_prefixes() -> None:
     assert "Natal_" not in title
 
 
+@pytest.mark.parametrize(
+    ("aspect_type", "expected"),
+    [
+        ("trine", "Венера в гармонии с твоим жребием Брака"),
+        ("opposition", "Венера напротив твоего жребия Брака"),
+    ],
+)
+def test_marriage_lot_aspect_titles_keep_public_declension(
+    aspect_type: str,
+    expected: str,
+) -> None:
+    title = build_today_convergence_event_title(
+        {
+            "factor_id": f"sig:aspect:VENUS:{aspect_type.upper()}:MARRIAGE",
+            "source_key": "VENUS",
+            "target_key": "MARRIAGE",
+            "target_type": "lot",
+            "aspect_type": aspect_type,
+        }
+    )
+
+    assert title == expected
+
+
 def test_generic_activation_has_no_fabricated_title() -> None:
     assert build_today_convergence_event_title(
         {

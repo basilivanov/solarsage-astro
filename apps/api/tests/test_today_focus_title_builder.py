@@ -4,6 +4,8 @@
 # DEPENDENCIES: pytest, app.services.focus_title_builder
 # ############################################################################
 
+import pytest
+
 from app.services.focus_title_builder import build_event_title, check_public_title_eligibility
 
 
@@ -72,6 +74,55 @@ def test_aspect_title_phrasings_and_declensions():
     human, tech = build_event_title(f_conj)
     assert human == "Меркурий сошлась с твоим Марсом" or "Меркурий" in human
     assert tech == "Меркурий соединение Марс"
+
+
+@pytest.mark.parametrize(
+    ("aspect_type", "expected_human", "expected_technical"),
+    [
+        (
+            "trine",
+            "Венера в гармонии с твоим жребием Брака",
+            "Венера тригон Жребий Брака",
+        ),
+        (
+            "sextile",
+            "Венера в гармонии с твоим жребием Брака",
+            "Венера секстиль Жребий Брака",
+        ),
+        (
+            "square",
+            "Венера в напряжении с твоим жребием Брака",
+            "Венера квадратура Жребий Брака",
+        ),
+        (
+            "conjunction",
+            "Венера сошлась с твоим жребием Брака",
+            "Венера соединение Жребий Брака",
+        ),
+        (
+            "opposition",
+            "Венера напротив твоего жребия Брака",
+            "Венера оппозиция Жребий Брака",
+        ),
+    ],
+)
+def test_marriage_lot_aspect_titles_use_separate_case_forms(
+    aspect_type: str,
+    expected_human: str,
+    expected_technical: str,
+) -> None:
+    human, technical = build_event_title(
+        {
+            "factor_id": f"sig:aspect:VENUS:{aspect_type.upper()}:MARRIAGE",
+            "source_key": "VENUS",
+            "target_key": "MARRIAGE",
+            "target_type": "lot",
+            "aspect_type": aspect_type,
+        }
+    )
+
+    assert human == expected_human
+    assert technical == expected_technical
 
 
 def test_house_angle_lot_titles():

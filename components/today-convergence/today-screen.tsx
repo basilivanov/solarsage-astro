@@ -22,7 +22,7 @@
 // semantic_blocks:
 //   - TRANSPORT: loading, ready, and error root projections.
 //   - ACCESS_AND_STATE: full, preview, locked, and unavailable projections.
-//   - READY_COMPOSITION: hero/main/grouped impulses/context/navigation composition with bounded desktop width.
+//   - READY_COMPOSITION: hero/main/grouped impulses/context/navigation composition with a desktop width that preserves full event meta rows.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-SCREEN
@@ -141,8 +141,8 @@ function ReadyContent({
   const isFullCalculation = payload.access.state === "full" && !isUnavailable;
 
   return (
-    <div className="mx-auto grid w-full max-w-[960px] grid-cols-1 items-start gap-6 px-5 py-5 lg:grid-cols-[minmax(0,620px)_minmax(0,280px)] lg:gap-6">
-      <div data-testid="today-main-column" className="min-w-0 space-y-4">
+    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-6 px-5 py-5 xl:grid-cols-5 xl:gap-6">
+      <div data-testid="today-main-column" className="min-w-0 space-y-4 xl:col-span-4">
         <BirthTimeBanner
           birthTime={payload.birthTime}
           dismissed={birthTimeDismissed}
@@ -205,7 +205,7 @@ function ReadyContent({
       <aside
         data-testid="today-layout-rail"
         aria-label="Дополнительный контекст дня"
-        className="min-w-0 space-y-4 lg:sticky lg:top-5 lg:self-start"
+        className="min-w-0 space-y-4 xl:col-span-1 xl:sticky xl:top-5 xl:self-start"
       >
         {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
         <SphereNavigator payload={payload} rail />

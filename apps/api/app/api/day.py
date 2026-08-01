@@ -16,7 +16,8 @@
 #   - user: from require_session dependency, including Telegram identity
 #   - db: AsyncSession
 # outputs:
-#   - TodayConvergencePayload or 202 Retry-After response for a live retry lease
+#   - TodayConvergencePayload or 202 Retry-After response for an in-flight lease
+#     or an unavailable narrative still inside its retry cooldown
 # dependencies:
 #   - M-AUTH-TG.dependencies (require_session)
 #   - M-ACCESS (AccessService)
@@ -357,7 +358,7 @@ async def _project_full_day(
     if (
         retry_requested
         and isinstance(claim_or_skip, NarrativeLeaseSkip)
-        and claim_or_skip.status == "pending"
+        and claim_or_skip.retry_at is not None
     ):
         retry_at = claim_or_skip.retry_at
     payload = project_snapshot_payload(snapshot, narrative, access_state)
@@ -490,7 +491,12 @@ async def get_day(
 @router.post(
     "/{date_str}/retry",
     response_model=TodayConvergencePayload,
-    responses={202: {"description": "Narrative lease is still in flight", "model": TodayConvergencePayload}},
+    responses={
+        202: {
+            "description": "Narrative lease is in flight or retry cooldown is active",
+            "model": TodayConvergencePayload,
+        }
+    },
 )
 async def retry_day(
     date_str: Annotated[str, Path(description="Date in YYYY-MM-DD format or 'today'")],
@@ -502,10 +508,12 @@ async def retry_day(
     # START_FUNCTION_CONTRACT: F-M-API-DAY.retry_day
     # purpose: Retry deterministic calculation or narrative generation idempotently.
     # inputs: date_str, request, background_tasks, authenticated user, and DB session.
-    # returns: Strict envelope, or 202 with Retry-After for a live pending lease.
+    # returns: Strict envelope, or 202 with Retry-After for a live pending lease
+    #   or unavailable narrative whose retry cooldown has not elapsed.
     # side_effects: same owner/access/snapshot/lease boundary as get_day.
     # emitted_logs: same day snapshot/narrative lifecycle events as get_day.
-    # error_behavior: 401/422 use the GET boundary; live pending returns 202 without a second provider call.
+    # error_behavior: 401/422 use the GET boundary; pending/cooldown returns 202
+    #   without a second provider call.
     # END_FUNCTION_CONTRACT: F-M-API-DAY.retry_day
     payload, retry_at = await _serve_day(
         date_str,

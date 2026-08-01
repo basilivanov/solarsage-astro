@@ -625,6 +625,32 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+    def _template_block(event_ids: Sequence[str]) -> dict[str, Any]:
+        return {
+            "summary": {"text": "", "sourceEventIds": list(event_ids)},
+            "meaning": None,
+            "action": None,
+        }
+
+    response_template = {
+        "convergences": {
+            group.block_id: _template_block(group.event_ids) for group in context.convergences
+        },
+        "main_event": (
+            None
+            if context.main_event is None
+            else _template_block(context.main_event.event_ids)
+        ),
+        "impulses": {
+            impulse.block_id: _template_block(impulse.event_ids) for impulse in context.impulses
+        },
+    }
+    serialized_template = json.dumps(
+        response_template,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return f"""Ты пишешь короткий персональный текст для экрана Today на русском языке.
 
 Правила источников:
@@ -632,29 +658,33 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 - Не изменяй state, dayTone, сферы, polarity, event IDs или EventTime.
 - В каждом ненулевом claim укажи один или несколько sourceEventIds только из
   соответствующего блока. Не выдумывай IDs и не оставляй список пустым.
-- Время и окна уже принадлежат детерминированному EventTime: не пиши часы,
-  даты, длительности или временные окна в тексте claim.
-- Тексты должны быть на русском, практичными, короткими и без категоричных
-  предсказаний. Если для блока нечего добавить, верни null.
+- Текст claim никогда не должен содержать часы, даты, окна или длительности:
+  EventTime — только display-only данные для интерфейса. Формулируй текст claim
+  только общими словами по kind, sphere и polarity; не упоминай house, angle или
+  lot, если соответствующая capability не равна true.
+- Эти правила относятся к summary.text: только русский язык, не более 220
+  символов, практичный короткий текст без категоричных предсказаний. Не
+  выдумывай реальные события, чувства, исходы или неподтверждённые детали.
 - Учитывай mode и capabilities: не упоминай недоступные детали расчёта.
 - Никогда не пиши служебные имена или шаблоны: Transit_, Natal_, Planet,
   «M, Mars» и любые перечисления вида «M, <Planet>». Если факт нельзя
-  назвать обычными русскими словами, верни null для этого claim.
+  назвать обычными русскими словами, не используй этот факт; summary всё
+  равно должен опираться на остальные разрешённые evidence.
 
 Верни строго один JSON-объект без markdown и без дополнительных ключей.
-КАЖДЫЙ ненулевой claim — это ОБЪЕКТ вида {{"text":"...","sourceEventIds":["..."]}},
-а НЕ строка. Каждый блок — это объект с ключами summary/meaning/action, а НЕ
-сам claim. Пример заполненного ответа:
-{{"main_event":{{"summary":{{"text":"Спокойный день для текущих дел.","sourceEventIds":["evt_v1_abc123"]}},"meaning":null,"action":null}},"convergences":{{}},"impulses":{{"evt_v1_def456":{{"summary":{{"text":"Короткая поддержка в делах.","sourceEventIds":["evt_v1_def456"]}},"meaning":null,"action":null}}}}}}
-Ключи карт "convergences" и "impulses" — это ТОЧНЫЕ идентификаторы из входа
-(groupId вида cvg_v1_... и eventId вида evt_v1_...). Запрещено заменять их
-названиями сфер или произвольными словами: если ключ не evt_v1_/cvg_v1_ из
-входа, весь ответ отклоняется.
-Для пустых полей используй null. Текст summary — не длиннее 220 символов.
-Верхнеуровневые ключи блоков и ключи карт должны в точности соответствовать входу.
+Для каждого присутствующего блока summary — JSON-объект с ключами text и
+sourceEventIds; не возвращай строку вместо объекта. Не меняй ключи блоков,
+sourceEventIds, meaning или action. Если mainEvent во входе равен null, оставь
+main_event равным null.
 
 Вход:
 {serialized_input}
+
+Точный JSON-шаблон ответа для этого snapshot:
+{serialized_template}
+Замени только пустые значения summary.text на текст и верни этот JSON. Сохрани
+все ключи, идентификаторы и массивы sourceEventIds; не добавляй и не удаляй
+поля. В каждом присутствующем блоке summary.text обязателен.
 """
 
 

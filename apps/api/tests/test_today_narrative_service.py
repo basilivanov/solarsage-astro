@@ -253,6 +253,14 @@ def _empty_block() -> dict[str, object]:
     return {"summary": None, "meaning": None, "action": None}
 
 
+def _filled_template_block(event_ids: list[str]) -> dict[str, object]:
+    return {
+        "summary": {"text": "", "sourceEventIds": list(event_ids)},
+        "meaning": None,
+        "action": None,
+    }
+
+
 def _convergence_content(snapshot: TodaySnapshot) -> dict[str, object]:
     selected = snapshot.deterministic_result_json["selected"]  # type: ignore[index]
     return {
@@ -308,6 +316,27 @@ async def test_convergence_today_three_groups_accepts_bound_claims() -> None:
     assert set(result.content_json["convergences"]) == {"cvg-1", "cvg-2", "cvg-3"}
     assert result.content_json["main_event"] is None
     assert fake.calls[0]["max_output_tokens"] == 700
+    expected_template = json.dumps(
+        {
+            "convergences": {
+                "cvg-1": _filled_template_block(["evt_v1_1", "evt_v1_2"]),
+                "cvg-2": _filled_template_block(["evt_v1_3", "evt_v1_4"]),
+                "cvg-3": _filled_template_block(["evt_v1_5", "evt_v1_6"]),
+            },
+            "main_event": None,
+            "impulses": {},
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    prompt = fake.calls[0]["prompt"]
+    assert (
+        f"Точный JSON-шаблон ответа для этого snapshot:\n"
+        f"{expected_template}"
+    ) in prompt
+    assert '"summary":null' not in prompt
+    assert prompt.index("\nВход:\n") < prompt.index("\nТочный JSON-шаблон ответа для этого snapshot:\n")
 
 
 @pytest.mark.asyncio
@@ -324,6 +353,34 @@ async def test_quiet_day_main_event_and_three_impulses_accepts_bound_claims() ->
         "evt_v1_impulse_2",
         "evt_v1_impulse_3",
     }
+    expected_template = json.dumps(
+        {
+            "convergences": {},
+            "main_event": _filled_template_block(["evt_v1_main"]),
+            "impulses": {
+                "evt_v1_impulse_1": _filled_template_block(["evt_v1_impulse_1"]),
+                "evt_v1_impulse_2": _filled_template_block(["evt_v1_impulse_2"]),
+                "evt_v1_impulse_3": _filled_template_block(["evt_v1_impulse_3"]),
+            },
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    prompt = fake.calls[0]["prompt"]
+    assert (
+        f"Точный JSON-шаблон ответа для этого snapshot:\n"
+        f"{expected_template}"
+    ) in prompt
+    assert '"summary":null' not in prompt
+    assert prompt.index("\nВход:\n") < prompt.index("\nТочный JSON-шаблон ответа для этого snapshot:\n")
+    assert (
+        "- Текст claim никогда не должен содержать часы, даты, окна или длительности:\n"
+        "  EventTime — только display-only данные для интерфейса. Формулируй текст claim\n"
+        "  только общими словами по kind, sphere и polarity; не упоминай house, angle или\n"
+        "  lot, если соответствующая capability не равна true."
+    ) in prompt
+    assert "Замени только пустые значения summary.text на текст и верни этот JSON." in prompt
 
 
 # END_BLOCK: HAPPY_PATH
@@ -518,9 +575,8 @@ async def test_prompt_is_bounded_to_selected_units_and_forwards_700_tokens() -> 
     selected_count = len(snapshot.deterministic_result_json["selected"]["selected_unit_ids"])  # type: ignore[index]
 
     assert isinstance(result, TodayNarrativeSuccess)
-    # Selected units only; a small constant budget covers the synthetic
-    # example IDs and key-rule mentions in the template.
-    assert prompt.count("evt_v1_") <= selected_count + 5
+    # Each selected ID appears once in the input and once in the exact template.
+    assert prompt.count("evt_v1_") <= selected_count * 2
     assert "factor_units" not in prompt
     assert '"audit"' not in prompt
     assert '"profile"' not in prompt

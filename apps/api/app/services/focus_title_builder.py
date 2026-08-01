@@ -5,7 +5,7 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-FOCUS-TITLE-BUILDER
-# purpose: Build deterministic human titles ("Марс напротив твоего Нептуна") and technical titles without raw prefixes or machine keys (§2 of C2 TZ), including correctly declined angles.
+# purpose: Build deterministic human titles ("Марс напротив твоего Нептуна") and technical titles without raw prefixes or machine keys (§2 of C2 TZ), including correctly declined angles and lots.
 # owns:
 #   - apps/api/app/services/focus_title_builder.py
 # inputs: factor (TodayFactor | dict | Any)
@@ -108,6 +108,18 @@ LOT_LABELS_RU: dict[str, str] = {
     "MARRIAGE": "Брака",
 }
 
+LOT_NOMINATIVE_RU: dict[str, str] = {
+    key: f"Жребий {label}" for key, label in LOT_LABELS_RU.items()
+}
+
+LOT_INSTRUMENTAL_RU: dict[str, str] = {
+    key: f"жребием {label}" for key, label in LOT_LABELS_RU.items()
+}
+
+LOT_GENITIVE_RU: dict[str, str] = {
+    key: f"жребия {label}" for key, label in LOT_LABELS_RU.items()
+}
+
 HOUSE_ORDINAL_RU: dict[int, str] = {
     1: "1-м", 2: "2-м", 3: "3-м", 4: "4-м", 5: "5-м", 6: "6-м",
     7: "7-м", 8: "8-м", 9: "9-м", 10: "10-м", 11: "11-м", 12: "12-м",
@@ -144,10 +156,9 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
     tgt_nom = PLANET_NOMINATIVE_RU.get(tgt_clean, tgt_clean)
     # Lot targets without a human label degrade to «жребий» forms, never machine keys
     if target_type == "lot" and tgt_clean not in PLANET_NOMINATIVE_RU:
-        lot_nom = LOT_LABELS_RU.get(tgt_clean)
-        tgt_nom = lot_nom or "жребий"
-        tgt_inst = lot_nom or "жребием"
-        tgt_gen = lot_nom or "жребия"
+        tgt_nom = LOT_NOMINATIVE_RU.get(tgt_clean, "жребий")
+        tgt_inst = LOT_INSTRUMENTAL_RU.get(tgt_clean, "жребием")
+        tgt_gen = LOT_GENITIVE_RU.get(tgt_clean, "жребия")
     else:
         tgt_inst = ANGLE_INSTRUMENTAL_RU.get(tgt_clean) or PLANET_INSTRUMENTAL_RU.get(tgt_clean, tgt_clean)
         tgt_gen = ANGLE_LABELS_RU.get(tgt_clean) or PLANET_GENITIVE_RU.get(tgt_clean, tgt_clean)

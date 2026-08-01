@@ -204,7 +204,7 @@ describe("Today Convergence screen fixture matrix", () => {
     expect(screen.getByTestId("convergence-hero")).toBeTruthy();
     expect(screen.getByTestId("today-narrative").getAttribute("data-state")).toBe("pending");
     expect(screen.getByTestId("today-narrative").getAttribute("role")).toBeNull();
-    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByRole("status").getAttribute("aria-label")).toBe("Готовим персональный разбор");
     expect(screen.queryByTestId("today-loading-skeleton")).toBeNull();
   });
 
@@ -217,8 +217,9 @@ describe("Today Convergence screen fixture matrix", () => {
     expect(narrative.getAttribute("aria-live")).toBe("polite");
     expect(narrative.querySelector('[role="alert"]')).toBeNull();
     expect(screen.getByTestId("today-narrative-unavailable").getAttribute("role")).toBe("status");
-    expect(narrative.textContent).toContain("Дополнительный разбор готовится");
-    expect(narrative.textContent).toContain("Основные факты и события уже доступны");
+    expect(narrative.textContent).toContain("Дополнительный разбор пока недоступен");
+    expect(narrative.textContent).toContain("Основные факты и события уже доступны на экране. Можно повторить попытку.");
+    expect(narrative.textContent).not.toContain("готовится");
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

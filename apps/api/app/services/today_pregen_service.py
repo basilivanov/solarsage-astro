@@ -660,7 +660,7 @@ class TodayPregenService:
         prompt_version = getattr(
             self.settings,
             "today_narrative_prompt_version",
-            "today-narrative-v1",
+            "today-narrative-v2",
         )
         attempt_clock = {"now": now}
         try:

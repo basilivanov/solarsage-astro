@@ -76,7 +76,8 @@ Producer пишет Mapping-форму (projection её уже поддержи�
   (alias `TODAY_NARRATIVE_TIMEOUT_SECONDS`, default 45 hard deadline;
   provider-level цель 30s остаётся конфигурацией вызова),
   `today_narrative_prompt_version: str` (alias `TODAY_NARRATIVE_PROMPT_VERSION`,
-  default `"today-narrative-v1"`).
+  default `"today-narrative-v2"` after the strict per-snapshot response-template
+  correction; v1 rows remain immutable and are not rewritten).
 - `apps/api/app/core/logging_events.py` — добавить ровно 3 события:
   `day.narrative_generation_started`, `day.narrative_generation_completed`,
   `day.narrative_generation_failed`.

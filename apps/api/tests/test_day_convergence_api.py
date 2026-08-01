@@ -479,6 +479,39 @@ async def test_retry_pending_returns_202_and_retry_after_without_provider_call(
 
 
 @pytest.mark.asyncio
+async def test_retry_unavailable_cooldown_returns_202_without_provider_call(
+    async_client, db_session, make_initdata, monkeypatch
+) -> None:
+    user = await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60111)
+    snapshot = _snapshot(user.id)
+    _install_access(monkeypatch, "full")
+    _install_profile_hash(monkeypatch)
+    _install_current_snapshot(monkeypatch, snapshot)
+    retry_at = datetime.now(UTC) + timedelta(seconds=20)
+    cooldown = NarrativeLeaseSkip(
+        uuid4(),
+        snapshot.id,
+        PROMPT_VERSION,
+        "unavailable",
+        "cooldown",
+        retry_at,
+    )
+    acquire = AsyncMock(return_value=cooldown)
+    load = AsyncMock(return_value=_narrative(snapshot, "unavailable"))
+    generate = AsyncMock()
+    monkeypatch.setattr("app.api.day.TodayNarrativeLeaseService.acquire", acquire)
+    monkeypatch.setattr("app.api.day.TodayNarrativeLeaseService.load", load)
+    monkeypatch.setattr("app.api.day.generate_today_narrative", generate)
+
+    response = await async_client.post(f"/api/day/{TARGET_DATE.isoformat()}/retry")
+
+    assert response.status_code == 202, response.text
+    assert int(response.headers["retry-after"]) >= 1
+    assert response.json()["contentState"] == "unavailable"
+    generate.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_retry_due_unavailable_claims_again_and_ready_is_noop(
     async_client, db_session, make_initdata, monkeypatch
 ) -> None:

@@ -30,6 +30,7 @@
 // semantic_blocks:
 //   - FIXTURE_MATRIX: route builders and deterministic browser runtime.
 //   - TODAY_CONTRACT: state axes, hero/quiet/access and sphere navigation.
+//   - IMPULSE_GEOMETRY: desktop title/time one-row visibility and mobile overflow safety.
 //   - VISUAL_BASELINES: key Today states and snapshot drilldown.
 //   - CHECKIN_AND_SPHERE: Yesterday recap and static sphere route wiring.
 //   - WEBKIT_SMOKE: minimal cross-engine transport/navigation proof.
@@ -66,6 +67,40 @@ import { prepareForScreenshot } from "./screenshot"
 
 const TODAY_DATE = "2026-08-01"
 const DRILLDOWN_SNAPSHOT = heroTense.snapshotId!
+const LONG_IMPULSE_EVENT_ID = "evt_v1_long_title_time"
+const LONG_IMPULSE_TITLE = "Луна в гармонии с твоим жребием Брака"
+const LONG_IMPULSE_TIME_TEXT = "пик 2 августа, 18:48, окно: с 2 августа, 03:58 до 3 августа, 09:28"
+
+const longImpulseTime: TodayConvergencePayload["events"][number]["time"] = {
+  mode: "exact",
+  peak: "18:48",
+  start: "03:58",
+  end: "09:28",
+  partOfDay: null,
+  peakAt: "2026-08-02T18:48:00+03:00",
+  startAt: "2026-08-02T03:58:00+03:00",
+  endAt: "2026-08-03T09:28:00+03:00",
+}
+
+const longImpulseQuietPayload: TodayConvergencePayload = {
+  ...quietSteady,
+  targetDate: "2026-08-02",
+  impulses: [
+    {
+      ...quietSteady.impulses[0],
+      eventId: LONG_IMPULSE_EVENT_ID,
+      time: longImpulseTime,
+    },
+  ],
+  events: [
+    {
+      ...quietSteady.events[0],
+      id: LONG_IMPULSE_EVENT_ID,
+      title: LONG_IMPULSE_TITLE,
+      time: longImpulseTime,
+    },
+  ],
+}
 
 const spherePagePayload: TodaySpherePagePayload = {
   birthTimeMode: "exact",
@@ -268,7 +303,7 @@ test.describe("Mock Visual — Today Convergence", () => {
       const root = page.getByTestId("today-screen")
       await expect(root).toHaveAttribute("data-screen-state", "ready", { timeout: 15000 })
       expectPayloadRoot(root, payload)
-      await expect(page.locator('[data-testid^="sphere-tile-"]')).toHaveCount(12)
+      await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
 
       if (payload.state === "convergence_today" && payload.access.state === "full") {
         await expect(page.getByTestId("convergence-hero")).toBeVisible()
@@ -319,6 +354,57 @@ test.describe("Mock Visual — Today Convergence", () => {
     await expect(page.getByTestId("drilldown-evidence")).toBeVisible()
     await prepareForScreenshot(page)
     await expect(page).toHaveScreenshot("sphere-drilldown.png", { fullPage: true })
+    await expectNoMissingApiFixtures(page, tracker)
+  })
+
+  test("keeps long impulse title and full date-aware time visible without overflow", async ({ page }, testInfo) => {
+    const tracker = await openToday(page, longImpulseQuietPayload)
+    const meta = page.getByTestId(`impulse-event-meta-${LONG_IMPULSE_EVENT_ID}`)
+    const title = page.getByTestId(`impulse-event-title-${LONG_IMPULSE_EVENT_ID}`)
+    const time = page.getByTestId(`impulse-event-time-${LONG_IMPULSE_EVENT_ID}`)
+
+    await expect(meta).toBeVisible()
+    await expect(title).toHaveText(LONG_IMPULSE_TITLE)
+    await expect(title).toBeVisible()
+    await expect(time).toHaveText(LONG_IMPULSE_TIME_TEXT)
+    await expect(time).toBeVisible()
+
+    const geometry = await page.evaluate((eventId) => {
+      const read = (testId: string) => {
+        const element = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+        if (!element) throw new Error(`missing ${testId}`)
+        const rect = element.getBoundingClientRect()
+        return {
+          y: rect.y,
+          height: rect.height,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+        }
+      }
+      const metaBox = read(`impulse-event-meta-${eventId}`)
+      const titleBox = read(`impulse-event-title-${eventId}`)
+      const timeBox = read(`impulse-event-time-${eventId}`)
+      return {
+        meta: metaBox,
+        title: titleBox,
+        time: timeBox,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+      }
+    }, LONG_IMPULSE_EVENT_ID)
+
+    expect(geometry.documentScrollWidth).toBeLessThanOrEqual(geometry.viewportWidth)
+    if (testInfo.project.name === "chromium") {
+      for (const box of [geometry.meta, geometry.title, geometry.time]) {
+        expect(box.height).toBeGreaterThanOrEqual(21)
+        expect(box.height).toBeLessThanOrEqual(23)
+        expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth)
+        expect(box.scrollHeight).toBeLessThanOrEqual(box.clientHeight)
+      }
+      expect(Math.abs(geometry.title.y - geometry.time.y)).toBeLessThanOrEqual(2)
+    }
     await expectNoMissingApiFixtures(page, tracker)
   })
 })
@@ -379,7 +465,7 @@ test.describe("WebKit Today smoke", () => {
   test("@webkit-smoke reaches ready Today navigation", async ({ page }) => {
     const tracker = await openToday(page, heroTense)
     await expect(page.getByTestId("today-screen")).toHaveAttribute("data-screen-state", "ready")
-    await expect(page.locator('[data-testid^="sphere-tile-"]')).toHaveCount(12)
+    await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
     await expectNoMissingApiFixtures(page, tracker)
   })
 

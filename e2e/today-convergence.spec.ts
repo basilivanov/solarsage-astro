@@ -65,7 +65,7 @@ test.describe("Today Convergence — Real API", () => {
     const tone = await screen.getAttribute("data-day-tone")
     if (tone !== null) expect(tone).toMatch(/^(steady|supportive|mixed|tense)$/)
     await expect(page.getByTestId("sphere-navigator")).toBeVisible()
-    await expect(page.locator('[data-testid^="sphere-tile-"]')).toHaveCount(12)
+    await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
 
     const state = await screen.getAttribute("data-state")
     if (state === "convergence_today") {

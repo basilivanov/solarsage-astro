@@ -53,16 +53,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // END_FUNCTION_CONTRACT: F-M-COMPONENTS-APP-SHELL.AppShell
   const { onboarded } = useOnboarded()
   const pathname = usePathname()
-  // Day screens implement the 03_W7 desktop grid (main 640 + rail 400, gap 32),
-  // so the shell widens to the canonical 1120px canvas on lg; other screens
-  // keep the phone-width column.
+  // Day surfaces use the canonical 1120px canvas on lg. Only the Today date
+  // screen expands to 1280px on xl so a full event title/time row fits without
+  // changing the accepted drilldown and sphere-page baselines.
   const wideCanvas = pathname?.startsWith("/day") ?? false
+  const extraWideTodayCanvas = pathname === "/day/today"
+    || /^\/day\/\d{4}-\d{2}-\d{2}\/?$/u.test(pathname ?? "")
 
   logger.debug('[AppShell] Render', { extra: { onboarded } })
 
   return (
     <main className="h-[var(--app-height)] overflow-hidden bg-background">
-      <div className={`mx-auto flex h-full max-w-md flex-col border-x border-border/50 bg-background ${wideCanvas ? "lg:max-w-[1120px]" : ""}`}>
+      <div className={`mx-auto flex h-full max-w-md flex-col border-x border-border/50 bg-background ${wideCanvas ? "lg:max-w-[1120px]" : ""} ${extraWideTodayCanvas ? "xl:max-w-[1280px]" : ""}`}>
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
