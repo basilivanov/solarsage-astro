@@ -68,6 +68,7 @@
   "events": [
     {
       "id": "evt_v1_00000000000000000000000000000141",
+      "title": "Марс в фокусе",
       "kind": "background",
       "sphere": "work",
       "polarity": "supportive",
@@ -83,6 +84,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000142",
+      "title": "Марс в фокусе",
       "kind": "lunar",
       "sphere": "relationships",
       "polarity": "mixed",

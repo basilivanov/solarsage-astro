@@ -2721,6 +2721,8 @@ export interface components {
              */
             sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
             time: components["schemas"]["TodayConvergenceEventTime"];
+            /** Title */
+            title: string | null;
         };
         /** TodayConvergenceEventTime */
         TodayConvergenceEventTime: {

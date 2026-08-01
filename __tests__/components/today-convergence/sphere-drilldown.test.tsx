@@ -56,6 +56,7 @@ const payload: TodaySphereDrilldownPayload = {
       kind: "aspect",
       polarity: "supportive",
       sphere: "work",
+      title: "Луна в гармонии с твоим Сатурном",
       time: { mode: "exact", peak: "15:40", start: "13:00", end: "18:00", partOfDay: null },
     },
     {
@@ -64,6 +65,7 @@ const payload: TodaySphereDrilldownPayload = {
       kind: "structural",
       polarity: "tense",
       sphere: "communication",
+      title: null,
       time: { mode: "partofday", partOfDay: "evening", peak: null, start: null, end: null },
     },
   ],
@@ -74,7 +76,7 @@ const payload: TodaySphereDrilldownPayload = {
 
 // START_BLOCK: READY_EVIDENCE
 describe("SphereDrilldown ready evidence", () => {
-  it("renders title, numbered events, textual polarity and convergence reason", () => {
+  it("renders driver titles, numbered events, textual polarity and convergence reason", () => {
     render(<SphereDrilldown payload={payload} sphereKey="work" />);
 
     const root = screen.getByTestId("sphere-drilldown");
@@ -85,10 +87,19 @@ describe("SphereDrilldown ready evidence", () => {
 
     expect(screen.getByTestId("drilldown-event-evt-drill-1").getAttribute("data-polarity")).toBe("supportive");
     expect(screen.getByTestId("drilldown-event-evt-drill-1").textContent).toContain("поддержка");
+    expect(screen.getByTestId("drilldown-event-title-evt-drill-1").textContent).toBe(
+      "Луна в гармонии с твоим Сатурном",
+    );
+    expect(screen.getByTestId("drilldown-event-polarity-evt-drill-1").className).toContain(
+      "bg-(--tone-supportive-bg)",
+    );
     expect(screen.getByTestId("drilldown-event-evt-drill-2").getAttribute("data-polarity")).toBe("tense");
     expect(screen.getByTestId("drilldown-event-evt-drill-2").textContent).toContain("напряжение");
+    expect(screen.queryByTestId("drilldown-event-title-evt-drill-2")).toBeNull();
     expect(screen.getByTestId("drilldown-convergence")).toBeTruthy();
-    expect(screen.getByTestId("drilldown-context")).toBeTruthy();
+    expect(screen.queryByTestId("drilldown-context")).toBeNull();
+    expect(screen.getByTestId("drilldown-evidence").textContent).not.toContain("Событие ·");
+    expect(screen.getByTestId("drilldown-evidence").textContent).not.toContain("Это событие несёт смысл");
   });
 
   it("keeps calculation disclosure accessible", () => {

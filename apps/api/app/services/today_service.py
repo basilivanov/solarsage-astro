@@ -991,7 +991,11 @@ class TodayService:
         stripped = strip_prefix(name)
         if not stripped:
             return "Планета"
-        return PLANET_LABELS_RU.get(stripped, "Планета")
+        normalized = stripped.casefold()
+        return next(
+            (label for key, label in PLANET_LABELS_RU.items() if key.casefold() == normalized),
+            "Планета",
+        )
 
     @staticmethod
     def _top_flag_aspect_summary(aspect_type: str) -> str:
@@ -1060,7 +1064,7 @@ class TodayService:
             if signal.type == "aspect"
             and signal.aspect_type
             and signal.target_planet
-            and (signal.planet or "").startswith("Transit_")
+            and (signal.planet or "").casefold().startswith("transit_")
         ]
 
         return DayChart(

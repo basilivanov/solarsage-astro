@@ -114,6 +114,7 @@
   "events": [
     {
       "id": "evt_v1_00000000000000000000000000000041",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "work",
       "polarity": "supportive",
@@ -129,6 +130,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000042",
+      "title": "Марс в твоём 10-м доме",
       "kind": "structural",
       "sphere": "documents",
       "polarity": "supportive",
@@ -144,6 +146,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000043",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "relationships",
       "polarity": "supportive",
@@ -159,6 +162,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000044",
+      "title": "Марс в фокусе",
       "kind": "lunar",
       "sphere": "relationships",
       "polarity": "mixed",
@@ -174,6 +178,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000045",
+      "title": "Марс в твоём 10-м доме",
       "kind": "structural",
       "sphere": "documents",
       "polarity": "supportive",
@@ -189,6 +194,7 @@
     },
     {
       "id": "evt_v1_00000000000000000000000000000046",
+      "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
       "sphere": "documents",
       "polarity": "supportive",

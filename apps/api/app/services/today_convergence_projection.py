@@ -54,6 +54,8 @@ from app.schemas.today_convergence import (
     TodayConvergenceBirthTime,
     TodayConvergencePayload,
 )
+from app.services.narrative_sanitizer import sanitize_narrative_text
+from app.services.today_convergence_titles import build_today_convergence_event_title
 
 
 _FORMULA_VERSION = "today-convergence-2"
@@ -515,6 +517,7 @@ def _build_deterministic_blocks(
         events.append({
             "id": event_id,
             "kind": kind,
+            "title": build_today_convergence_event_title(unit),
             "sphere": presentation.sphere,
             "polarity": presentation.polarity,
             "evidence_level": presentation.evidence_level,
@@ -663,7 +666,10 @@ def _claim(value: object, allowed_ids: set[str], *, summary: bool) -> dict[str, 
     source_ids = value.get("source_event_ids", value.get("sourceEventIds"))
     if not isinstance(text, str) or not text:
         raise _InvalidNarrative("claim_text")
-    if summary and len(text) > 220:
+    clean_text = sanitize_narrative_text(text)
+    if clean_text is None:
+        raise _InvalidNarrative("claim_text")
+    if summary and len(clean_text) > 220:
         raise _InvalidNarrative("summary_text")
     if not isinstance(source_ids, Sequence) or isinstance(source_ids, (str, bytes, bytearray)):
         raise _InvalidNarrative("claim_sources")
@@ -672,7 +678,7 @@ def _claim(value: object, allowed_ids: set[str], *, summary: bool) -> dict[str, 
         raise _InvalidNarrative("claim_sources")
     if len(ids) != len(set(ids)) or not set(ids).issubset(allowed_ids):
         raise _InvalidNarrative("claim_sources")
-    return {"text": text, "source_event_ids": ids}
+    return {"text": clean_text, "source_event_ids": ids}
 
 
 def _claims_for_block(block: Mapping[str, Any], allowed_ids: set[str]) -> dict[str, Any]:

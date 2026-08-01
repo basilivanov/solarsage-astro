@@ -240,6 +240,7 @@ class TodayConvergenceEventTime(CamelModel):
 class TodayConvergenceEvent(CamelModel):
     id: str
     kind: str
+    title: str | None
     sphere: CanonicalSphere
     polarity: Polarity
     evidence_level: EvidenceLevel

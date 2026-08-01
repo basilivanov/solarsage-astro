@@ -226,6 +226,31 @@ def test_natal_special_point_validation_accepts_ru_alias_when_fact_is_available(
     assert content.paragraphs[0].source_fact_ids == ["natal:planet:SUN"]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Transit_Mars нельзя публиковать.",
+        "Natal_Moon нельзя публиковать.",
+        "Список M, Mars не является описанием.",
+        "Natal, Planet, Moon — служебный вывод.",
+    ],
+)
+def test_natal_provider_machine_driver_text_is_rejected(text: str) -> None:
+    with pytest.raises(ValueError, match="schema_invalid"):
+        _validate_natal_provider_response(
+            {
+                "paragraphs": [
+                    {
+                        "text": text,
+                        "sourceFactIds": ["natal:planet:SUN"],
+                    }
+                ]
+            },
+            frozenset({"natal:planet:SUN"}),
+            frozenset(),
+        )
+
+
 # START_BLOCK: NATAL_CACHE_GATES
 @pytest.mark.asyncio
 async def test_natal_generation_is_claim_bound_and_cached(db_session: AsyncSession) -> None:
