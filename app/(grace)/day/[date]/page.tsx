@@ -8,7 +8,7 @@
 // owns:
 //   - app/(grace)/day/[date]/page.tsx
 // inputs: route date parameter, authenticated session, hook payload, and touch gestures.
-// outputs: date navigation plus TodayScreen transport/ready/error states.
+// outputs: safe-area-aware date navigation plus TodayScreen transport/ready/error states.
 // dependencies: next/navigation, useTodayConvergence, useOnboarded, lib/date, lib/today, generated Today contract.
 // side_effects: API lifecycle delegated to the hook; route replace/push and onboarding sync.
 // emitted_logs: delegated to useTodayConvergence and authentication/profile hooks.
@@ -22,7 +22,7 @@
 //   - DayPage
 // semantic_blocks:
 //   - ROUTE_DATE: normalize today/ISO route values and invalid redirects.
-//   - DATE_NAVIGATION: human date header plus previous/today/next route navigation and horizontal swipes.
+//   - DATE_NAVIGATION: human date header plus safe-area-aware previous/today/next route navigation and horizontal swipes.
 //   - TODAY_WIRING: connect hook state to the new TodayScreen.
 // owned_tests:
 //   - __tests__/app/day-page.test.tsx
@@ -196,7 +196,7 @@ function DayDateNavigation({
   onDateChange: (date: Date) => void;
 }) {
   // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayDateNavigation
-  // purpose: Preserve the previous/today/next day navigation around the new screen.
+  // purpose: Preserve the previous/today/next day navigation around the new screen below Telegram/iOS top safe areas.
   // inputs: selectedDate and route callback.
   // returns: accessible day navigation.
   // side_effects: invokes onDateChange on button activation.
@@ -207,7 +207,8 @@ function DayDateNavigation({
     <nav
       data-testid="day-date-navigation"
       aria-label="Навигация по дням"
-      className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 pt-4"
+      className="mx-auto flex w-full max-w-5xl items-center justify-between px-5"
+      style={{ paddingTop: "max(var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top), 1rem)" }}
     >
       <button
         type="button"

@@ -175,6 +175,14 @@ describe("DayPage route date handling", () => {
     expect(header.textContent).not.toContain("2026-08-01");
   });
 
+  it("keeps the date controls below Telegram and iOS top safe areas", () => {
+    render(<DayPage />);
+    const header = screen.getByTestId("day-date-navigation");
+
+    expect(header.getAttribute("style")).toContain("--tg-content-safe-area-inset-top");
+    expect(header.getAttribute("style")).toContain("env(safe-area-inset-top)");
+  });
+
   it("navigates next and previous dates from horizontal swipes", () => {
     render(<DayPage />);
     const page = screen.getByTestId("day-date-navigation").parentElement!;

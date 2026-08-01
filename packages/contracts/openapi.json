@@ -654,6 +654,23 @@
             "title": "Daystate",
             "type": "string"
           },
+          "dayTone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "steady",
+                  "supportive",
+                  "mixed",
+                  "tense"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daytone"
+          },
           "disabled": {
             "title": "Disabled",
             "type": "boolean"

@@ -60,6 +60,7 @@ These gates apply before broad autonomous business-feature work.
 | Modules | Gates | Scenarios |
 |---|---|---|
 | M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-CONTRACTS | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → contract error. S3: no access → preview/locked payload. S4: invalid date → error. S5: cache hit where cache layer enabled. |
+| M-COMPONENTS-TELEGRAM-INIT → M-APP-DAY-PAGE → M-TODAY-CONVERGENCE-IMPULSES → M-TODAY-IMPULSE-DRILLDOWN | Telegram content safe-area stays outside native chrome; impulse cards and dialog name the exact ledger event before optional sphere context; unavailable LLM copy is non-blocking and deterministic facts retain a bounded possible-manifestation fallback. | S1: `npx vitest run __tests__/app/day-page.test.tsx __tests__/components/today-convergence/today-screen.test.tsx`. S2: day/modal headers include Telegram + iOS safe-area fallback. S3: matched event title and ready meaning render first. S4: unavailable meaning renders deterministic sphere/polarity orientation while context remains collapsed. |
 
 ## UC-TODAY-CONVERGENCE-W1 · W1 deterministic convergence canon
 
@@ -185,6 +186,7 @@ These gates apply before broad autonomous business-feature work.
 | Modules | Gates | Scenarios |
 |---|---|---|
 | M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES | Allowed range enforced; day click navigates; calendar payload validates. | S1: valid month → grid. S2: out-of-range month → error. S3: tap date → Today/date route. |
+| M-CALENDAR-SERVICE → M-CONTRACTS → M-CALENDAR-CALENDAR-SCREEN | Published deterministic `dayTone` is copied read-only into `CalendarDay`; every known tone has a compact non-color-only icon, visible legend, `data-day-tone`, and accessible label; missing/uncomputed tones stay null. | S1: `cd apps/api && source .venv/bin/activate && python -m pytest tests/test_calendar_endpoints.py -q`. S2: `npx vitest run __tests__/components/CalendarScreen.test.tsx`. S3: supportive/steady/mixed/tense icons and labels render; not-computed has none. S4: generated OpenAPI/TS/Zod contracts are committed together. |
 
 ---
 

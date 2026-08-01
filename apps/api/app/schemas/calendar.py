@@ -10,6 +10,7 @@
 #   - month is YYYY-MM string.
 #   - allowedRange.from/to are ISO date strings.
 #   - day.date is ISO date string.
+#   - day.dayTone is a published deterministic tone or null when no valid snapshot exists.
 #   - meta.schema_version is "calendar/v2".
 # emits: nothing.
 # consumes: schemas._base.CamelModel, schemas.access.ContentAccessState.
@@ -31,6 +32,7 @@ from pydantic import Field
 
 from ._base import CamelModel
 from .access import ContentAccessState
+from .today_convergence import DayTone
 
 
 class CalendarLunarFields(CamelModel):
@@ -60,6 +62,7 @@ class CalendarDay(CamelModel):
     is_today: bool
     disabled: bool
     day_state: Literal["hero", "ordinary", "not-computed"]
+    day_tone: DayTone | None = None
     access: ContentAccessState | None = None
     lunar: CalendarLunarFields = Field(default_factory=CalendarLunarFields)
 

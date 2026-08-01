@@ -170,6 +170,9 @@ export const CalendarDay = z.object({
   date: z.string(),
   dayNumber: z.number().int(),
   dayState: z.enum(["hero", "ordinary", "not-computed"]),
+  dayTone: z
+    .union([z.enum(["steady", "supportive", "mixed", "tense"]), z.null()])
+    .optional(),
   disabled: z.boolean(),
   isCurrentMonth: z.boolean(),
   isToday: z.boolean(),

@@ -191,6 +191,7 @@ function ReadyContent({
             ) : null}
             <ImpulsesList
               impulses={payload.impulses}
+              events={payload.events}
               snapshotId={payload.snapshotId}
               targetDate={payload.targetDate}
               timezone={payload.timezone}

@@ -4,18 +4,18 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
-// purpose: Render the legacy calendar layout with generated calendar/v2 dayState markers and lunar facts.
+// purpose: Render the legacy calendar layout with generated calendar/v2 dayState markers, deterministic dayTone icons, lunar facts, and a safe-area-aware top header.
 // owns:
 //   - components/calendar/calendar-screen.tsx
 // inputs: optional access/onOpenDay compatibility props; current local month.
-// outputs: calendar-screen root, month navigation, day/moon toggle, calendar grid, and selected-day action.
+// outputs: calendar-screen root, safe-area-aware month navigation, day/moon toggle, calendar grid, and selected-day action.
 // dependencies: getMonthCalendar; lunar presentation components; generated CalendarPayload; date utilities.
 // side_effects: Credentialed monthly calendar fetches; onOpenDay callback when the selected day is opened.
 // emitted_logs: Delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_response_invalid.
 // invariants:
-//   - Calendar data is read from generated CalendarPayload and dayState is never projected to valence labels.
+//   - Calendar data is read from generated CalendarPayload; dayState is never projected to valence labels and tone icons render only for a non-null dayTone.
 //   - The restored layout owns one month heading and one calendar grid.
-//   - hero and not-computed markers are neutral structural dots; ordinary days have no marker.
+//   - hero and not-computed markers are neutral structural dots; ordinary days have no state marker.
 //   - access.state !== full renders a locked day with reduced opacity and a lock icon.
 // failure_policy: HTTP/schema failures render the public error state and no partial grid.
 // END_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
@@ -26,7 +26,7 @@
 // semantic_blocks:
 //   - CALENDAR_FETCH: month cursor and generated payload lifecycle.
 //   - CALENDAR_NAVIGATION: allowed-range previous/next controls and selected-day callback.
-//   - CALENDAR_RENDER: restored header, day/moon toggle, lunar strip, and 7-column grid.
+//   - CALENDAR_RENDER: restored safe-area-aware header, day/moon toggle, lunar strip, and 7-column grid.
 // owned_tests:
 //   - __tests__/components/CalendarScreen.test.tsx
 //   - e2e/mock-visual/calendar.spec.ts
@@ -35,7 +35,17 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, ChevronLeft, ChevronRight, Lock } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  CircleDot,
+  Lock,
+  Sparkles,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
@@ -57,6 +67,14 @@ type Props = {
 type ViewMode = "day" | "moon"
 type LoadState = "loading" | "ready" | "error"
 type CalendarDay = CalendarPayloadReadModel["days"][number]
+type CalendarDayTone = NonNullable<CalendarDay["dayTone"]>
+
+const DAY_TONE_ICONS: Record<CalendarDayTone, { Icon: LucideIcon; label: string }> = {
+  steady: { Icon: Circle, label: "ровный тон дня" },
+  supportive: { Icon: Sparkles, label: "поддерживающий тон дня" },
+  mixed: { Icon: CircleDot, label: "смешанный тон дня" },
+  tense: { Icon: AlertTriangle, label: "напряжённый тон дня" },
+}
 
 function accessAllowed(day: CalendarDay | undefined): boolean {
   if (!day || day.disabled) return false
@@ -97,6 +115,19 @@ function lunarAria(date: Date, day: CalendarDay | undefined): string {
   return parts.join(", ")
 }
 
+function dayTonePresentation(dayTone: CalendarDay["dayTone"]): { Icon: LucideIcon; label: string } | null {
+  // START_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.dayTonePresentation
+  // purpose: Resolve one compact icon from the generated dayTone enum.
+  // inputs: nullable CalendarDay.dayTone from the validated calendar payload.
+  // returns: icon metadata for a known tone, or null when the snapshot has no tone.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: no icon is rendered for null; unknown runtime values are ignored.
+  // END_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.dayTonePresentation
+  if (!dayTone) return null
+  return DAY_TONE_ICONS[dayTone] ?? null
+}
+
 function parseCalendarDayDate(raw: string): Date | null {
   return fromDateParam(raw)
 }
@@ -130,7 +161,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
   // START_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.CalendarScreen
   // purpose: Load the selected month and render the restored calendar lifecycle.
   // inputs: onOpenDay — optional callback for the selected day; access is accepted for route compatibility.
-  // returns: calendar-screen DOM contract with dayState cells and day/moon presentation modes.
+  // returns: calendar-screen DOM contract with dayState cells, dayTone icons, and day/moon presentation modes.
   // side_effects: GET /api/calendar?month=YYYY-MM whenever the cursor changes; invokes onOpenDay on CTA activation.
   // emitted_logs: Delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_response_invalid.
   // error_behavior: failed requests render role=alert with data-state=error.
@@ -272,7 +303,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
     >
       <header
         className="flex flex-none items-center justify-between px-5 pb-4"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
+        style={{ paddingTop: "max(var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top), 1.25rem)" }}
         data-testid="calendar-header"
       >
         <button
@@ -353,6 +384,26 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
         </button>
       </div>
 
+      {view === "day" && displayDays.some((day) => day.dayTone != null) ? (
+        <div
+          data-testid="calendar-tone-legend"
+          aria-label="Обозначения тонов дня"
+          className="mx-5 mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground"
+        >
+          {(Object.entries(DAY_TONE_ICONS) as [CalendarDayTone, (typeof DAY_TONE_ICONS)[CalendarDayTone]][]).map(
+            ([toneKey, tone]) => {
+              const Icon = tone.Icon
+              return (
+                <span key={toneKey} className="inline-flex items-center gap-1">
+                  <Icon aria-hidden className="h-3 w-3 text-foreground/60" strokeWidth={1.75} />
+                  {tone.label.replace(" тон дня", "")}
+                </span>
+              )
+            },
+          )}
+        </div>
+      ) : null}
+
       <div className="mt-4 grid flex-none grid-cols-7 px-5">
         {WEEKDAYS_SHORT.map((weekday, index) => (
           <div
@@ -388,6 +439,8 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
               const accessible = accessAllowed(day)
               const disabled = day.disabled === true
               const lunar = day.lunar ?? {}
+              const tone = dayTonePresentation(day.dayTone)
+              const toneLabel = tone ? `, ${tone.label}` : ""
 
               return (
                 <li key={day.date} className="flex items-center justify-center py-1">
@@ -397,10 +450,11 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
                     disabled={disabled}
                     aria-pressed={isSelected}
                     aria-label={view === "moon"
-                      ? lunarAria(date, day)
-                      : `${formatLong(date)}${accessible ? "" : ", требуется подписка"}`}
+                      ? `${lunarAria(date, day)}${toneLabel}`
+                      : `${formatLong(date)}${toneLabel}${accessible ? "" : ", требуется подписка"}`}
                     data-testid={`calendar-day-${day.date}`}
                     data-day-state={day.dayState}
+                    data-day-tone={day.dayTone ?? undefined}
                     className={cn(
                       "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
@@ -462,6 +516,16 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
                             className="mt-0.5 h-1.5 w-1.5 rounded-full border border-muted-foreground/50"
                             data-testid="calendar-day-not-computed"
                             aria-hidden
+                          />
+                        ) : null}
+
+                        {day.isCurrentMonth && tone ? (
+                          <tone.Icon
+                            aria-hidden
+                            className="absolute left-1.5 top-1.5 h-[10px] w-[10px] text-foreground/55"
+                            data-testid="calendar-day-tone-icon"
+                            data-tone={day.dayTone}
+                            strokeWidth={1.75}
                           />
                         ) : null}
 

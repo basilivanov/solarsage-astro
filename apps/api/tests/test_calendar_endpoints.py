@@ -228,8 +228,11 @@ async def test_calendar_snapshot_state_matrix_and_preserved_fields(
     days = {day["date"]: day for day in payload["days"]}
 
     assert days["2026-05-05"]["dayState"] == "hero"
+    assert days["2026-05-05"]["dayTone"] == "steady"
     assert days["2026-05-06"]["dayState"] == "ordinary"
+    assert days["2026-05-06"]["dayTone"] == "steady"
     assert days["2026-05-07"]["dayState"] == "not-computed"
+    assert days["2026-05-07"]["dayTone"] is None
     assert "dayStatus" not in days["2026-05-05"]
 
     may_fifth = days["2026-05-05"]

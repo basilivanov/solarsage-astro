@@ -4,11 +4,11 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-IMPULSES
-// purpose: Group selected quiet-day impulses by sphere and render their public time/polarity attributes with a modal CTA.
+// purpose: Group selected quiet-day impulses by sphere, resolve event titles from the Today ledger, and render a modal CTA.
 // owns:
 //   - components/today-convergence/impulses-list.tsx
-// inputs: generated TodayConvergenceImpulse array, optional snapshot/date/timezone context.
-// outputs: grouped sphere cards, data-testid=impulses-list, data-testid=impulse-{eventId} facts, and drilldown triggers.
+// inputs: generated TodayConvergenceImpulse array, TodayConvergenceEvent ledger, optional snapshot/date/timezone context.
+// outputs: grouped sphere cards with exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, and drilldown triggers.
 // dependencies: today-formatters, impulse-drilldown-sheet, packages/contracts/today-convergence.ts.
 // side_effects: opens the child sheet; the child lazily fetches sphere context.
 // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed from the child sheet.
@@ -20,13 +20,16 @@
 // public_entrypoints:
 //   - ImpulsesList
 // semantic_blocks:
-//   - IMPULSES: capped quiet-day rows and time mode contract.
+//   - IMPULSES: capped quiet-day rows, event-ledger title lookup, and time mode contract.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-IMPULSES
 
 import { useState } from "react";
-import type { TodayConvergenceImpulse } from "@/packages/contracts/today-convergence";
+import type {
+  TodayConvergenceEvent,
+  TodayConvergenceImpulse,
+} from "@/packages/contracts/today-convergence";
 import {
   formatEventTime,
   getEventTimeDateTime,
@@ -41,12 +44,17 @@ import {
 
 type Props = {
   impulses: readonly TodayConvergenceImpulse[];
+  events?: readonly TodayConvergenceEvent[];
   snapshotId?: string | null;
   targetDate?: string | null;
   timezone?: string | null;
 };
 
-function groupImpulses(impulses: readonly TodayConvergenceImpulse[]): ImpulseDrilldownGroup[] {
+function groupImpulses(
+  impulses: readonly TodayConvergenceImpulse[],
+  events: readonly TodayConvergenceEvent[],
+): ImpulseDrilldownGroup[] {
+  const eventById = new Map(events.map((event) => [event.id, event] as const));
   const groups = new Map<TodayConvergenceImpulse["sphere"], TodayConvergenceImpulse[]>();
   for (const impulse of impulses) {
     const group = groups.get(impulse.sphere);
@@ -56,14 +64,18 @@ function groupImpulses(impulses: readonly TodayConvergenceImpulse[]): ImpulseDri
   return Array.from(groups, ([sphere, groupedImpulses]) => ({
     sphere,
     impulses: groupedImpulses,
+    events: groupedImpulses.flatMap((impulse) => {
+      const event = eventById.get(impulse.eventId);
+      return event ? [event] : [];
+    }),
   }));
 }
 
 // START_BLOCK: IMPULSES
-export function ImpulsesList({ impulses, snapshotId, targetDate, timezone }: Props) {
+export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, timezone }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-IMPULSES.ImpulsesList
   // purpose: Render the quiet-day impulse list.
-  // inputs: impulses — generated selected impulse rows; snapshotId/targetDate/timezone — modal context.
+  // inputs: impulses — generated selected impulse rows; events — matching Today event ledger; snapshotId/targetDate/timezone — modal context.
   // returns: grouped list DOM or null when the array is empty.
   // side_effects: opens the selected sphere sheet; lazy network work is delegated to the sheet.
   // emitted_logs: none.
@@ -72,7 +84,8 @@ export function ImpulsesList({ impulses, snapshotId, targetDate, timezone }: Pro
   const [openSphere, setOpenSphere] = useState<TodayConvergenceImpulse["sphere"] | null>(null);
   if (impulses.length === 0) return null;
 
-  const groups = groupImpulses(impulses);
+  const eventById = new Map(events.map((event) => [event.id, event] as const));
+  const groups = groupImpulses(impulses, events);
   const activeGroup = openSphere ? groups.find((group) => group.sphere === openSphere) : undefined;
 
   return (
@@ -107,8 +120,17 @@ export function ImpulsesList({ impulses, snapshotId, targetDate, timezone }: Pro
                   data-polarity={impulse.polarity}
                   data-time-mode={impulse.time.mode}
                   data-has-summary={impulse.summary ? "true" : "false"}
+                  data-has-event-title={eventById.get(impulse.eventId)?.title ? "true" : "false"}
                   className="rounded-xl border border-border/50 bg-background/60 p-3"
                 >
+                  {eventById.get(impulse.eventId)?.title ? (
+                    <h4
+                      data-testid={`impulse-event-title-${impulse.eventId}`}
+                      className="text-[16px] font-medium leading-[22px] text-foreground"
+                    >
+                      {eventById.get(impulse.eventId)?.title}
+                    </h4>
+                  ) : null}
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
                     <time className="tabular-nums" dateTime={getEventTimeDateTime(impulse.time)}>
                       {formatEventTime(impulse.time, timezone)}

@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-CALENDAR-SCREEN
-// purpose: Test the active CalendarScreen loading, toggle, dayState marker, access, and selected-day contracts.
+// purpose: Test the active CalendarScreen loading, toggle, dayState marker, dayTone icon, access, and selected-day contracts.
 // owns:
 //   - __tests__/components/CalendarScreen.test.tsx
 // inputs: generated CalendarPayload fixture and mocked monthly fetch.
@@ -12,7 +12,7 @@
 // dependencies: CalendarScreen; generated contract types; Testing Library; Vitest.
 // side_effects: none; the calendar API facade is mocked at the module boundary.
 // emitted_logs: none.
-// invariants: hero/not-computed markers are distinct; ordinary has no marker; locked days retain a lock; moon mode exposes lunar data.
+// invariants: hero/not-computed markers are distinct; tone icons follow only dayTone; locked days retain a lock; moon mode exposes lunar data.
 // failure_policy: fail on state, selector, marker, toggle, or access-contract drift.
 // END_MODULE_CONTRACT: M-TEST-CALENDAR-SCREEN
 
@@ -62,6 +62,7 @@ const calendarPayload: CalendarPayload = {
       date: "2026-08-01",
       dayNumber: 1,
       dayState: "hero",
+      dayTone: "supportive",
       disabled: false,
       isCurrentMonth: true,
       isToday: true,
@@ -81,6 +82,7 @@ const calendarPayload: CalendarPayload = {
       date: "2026-08-02",
       dayNumber: 2,
       dayState: "ordinary",
+      dayTone: "steady",
       disabled: false,
       isCurrentMonth: true,
       isToday: false,
@@ -91,6 +93,7 @@ const calendarPayload: CalendarPayload = {
       date: "2026-08-03",
       dayNumber: 3,
       dayState: "not-computed",
+      dayTone: null,
       disabled: false,
       isCurrentMonth: true,
       isToday: false,
@@ -101,10 +104,22 @@ const calendarPayload: CalendarPayload = {
       date: "2026-08-04",
       dayNumber: 4,
       dayState: "ordinary",
+      dayTone: "tense",
       disabled: false,
       isCurrentMonth: true,
       isToday: false,
       lunar: { phaseIndex: 6, lunarDay: 20, voidOfCourse: true },
+    },
+    {
+      access: { state: "full", reason: "active_subscription", subscriptionActive: true },
+      date: "2026-08-05",
+      dayNumber: 5,
+      dayState: "ordinary",
+      dayTone: "mixed",
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: false,
+      lunar: { phaseIndex: 6, lunarDay: 21, voidOfCourse: false },
     },
   ],
   meta: {
@@ -130,6 +145,8 @@ describe("CalendarScreen dayState markers", () => {
     await renderReady()
 
     expect(screen.getByTestId("calendar-month-header").textContent).toBe("Август 2026")
+    expect(screen.getByTestId("calendar-header").getAttribute("style")).toContain("--tg-content-safe-area-inset-top")
+    expect(screen.getByTestId("calendar-header").getAttribute("style")).toContain("env(safe-area-inset-top)")
     expect(screen.getByTestId("calendar-grid")).toBeTruthy()
 
     const hero = screen.getByTestId("calendar-day-2026-08-01")
@@ -137,13 +154,23 @@ describe("CalendarScreen dayState markers", () => {
     const notComputed = screen.getByTestId("calendar-day-2026-08-03")
 
     expect(hero.getAttribute("data-day-state")).toBe("hero")
+    expect(hero.getAttribute("data-day-tone")).toBe("supportive")
     expect(ordinary.getAttribute("data-day-state")).toBe("ordinary")
+    expect(ordinary.getAttribute("data-day-tone")).toBe("steady")
     expect(notComputed.getAttribute("data-day-state")).toBe("not-computed")
+    expect(notComputed.getAttribute("data-day-tone")).toBeNull()
     expect(hero.querySelector("[data-testid='calendar-day-hero-dot']")).toBeTruthy()
+    expect(hero.querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("supportive")
+    expect(ordinary.querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("steady")
     expect(notComputed.querySelector("[data-testid='calendar-day-not-computed']")).toBeTruthy()
+    expect(notComputed.querySelector("[data-testid='calendar-day-tone-icon']")).toBeNull()
     expect(ordinary.querySelector("[data-testid='calendar-day-hero-dot']")).toBeNull()
     expect(ordinary.querySelector("[data-testid='calendar-day-not-computed']")).toBeNull()
-    expect(screen.queryByText(/напряжённый|поддерживающий|ровный/)).toBeNull()
+    expect(screen.getByTestId("calendar-day-2026-08-04").querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("tense")
+    expect(screen.getByTestId("calendar-day-2026-08-05").querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("mixed")
+    expect(hero.getAttribute("aria-label")).toContain("поддерживающий тон дня")
+    expect(screen.getByTestId("calendar-tone-legend").textContent).toContain("поддерживающий")
+    expect(ordinary.textContent).not.toContain("поддерживающий")
   })
 })
 // END_BLOCK: DAY_STATE_MARKERS

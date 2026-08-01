@@ -1095,6 +1095,8 @@ export interface components {
              * @enum {string}
              */
             dayState: "hero" | "ordinary" | "not-computed";
+            /** Daytone */
+            dayTone?: ("steady" | "supportive" | "mixed" | "tense") | null;
             /** Disabled */
             disabled: boolean;
             /** Iscurrentmonth */

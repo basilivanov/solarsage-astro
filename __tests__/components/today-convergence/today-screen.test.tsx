@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
-// purpose: Verify every Today fixture, grouped impulse presentation, lazy sphere modal, time formatting, disclosure, and accessibility contract.
+// purpose: Verify every Today fixture, grouped event-first impulse presentation, lazy sphere modal, time formatting, disclosure, and accessibility contract.
 // owns:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // inputs: 16 generated TodayConvergencePayload fixtures and TodayScreen props.
@@ -12,7 +12,7 @@
 // dependencies: @testing-library/react, packages/contracts/today-convergence.ts, sphere page client mock, Today component suite.
 // side_effects: local callbacks and mocked lazy sphere requests only.
 // emitted_logs: none.
-// invariants: tests never inspect CSS classes, React internals, or legacy payload fields; modal context cannot hide Today facts; period title/date and explanation copy stay visible.
+// invariants: tests never inspect CSS classes, React internals, or legacy payload fields; event titles come from the payload ledger; modal context cannot hide Today facts; period title/date and explanation copy stay visible.
 // failure_policy: fail with the public DOM contract mismatch.
 // END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SCREEN
 
@@ -26,7 +26,7 @@
 //   - TRANSPORT: loading/error root states and retry.
 //   - ACCESSIBILITY: disclosures, roles, and dismiss actions.
 //   - TIME_FORMAT: exact, date-aware, partofday, and date public text.
-//   - IMPULSE_MODAL: grouping, CTA, lazy context, and close/error behavior.
+//   - IMPULSE_MODAL: grouping, event title/meaning hierarchy, CTA, lazy context, and close/error behavior.
 //   - TECHNIQUE_COPY: shared static period explanations in the modal.
 // owned_tests:
 //   - self
@@ -214,7 +214,11 @@ describe("Today Convergence screen fixture matrix", () => {
     expect(screen.getByTestId("impulses-list")).toBeTruthy();
     const narrative = screen.getByTestId("today-narrative");
     expect(narrative.getAttribute("data-state")).toBe("unavailable");
-    expect(narrative.textContent).toContain("Персональный разбор пока не готов");
+    expect(narrative.getAttribute("aria-live")).toBe("polite");
+    expect(narrative.querySelector('[role="alert"]')).toBeNull();
+    expect(screen.getByTestId("today-narrative-unavailable").getAttribute("role")).toBe("status");
+    expect(narrative.textContent).toContain("Дополнительный разбор готовится");
+    expect(narrative.textContent).toContain("Основные факты и события уже доступны");
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
@@ -350,12 +354,26 @@ describe("Today Convergence public time and access projections", () => {
     fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
 
     const dialog = screen.getByTestId("impulse-drilldown-sheet");
+    const event = quietSteady.events.find((candidate) => candidate.id === quietSteady.impulses[0].eventId);
+    const fact = screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`);
     expect(dialog.getAttribute("role")).toBe("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`)).toBeTruthy();
+    expect(dialog.querySelector("header")?.getAttribute("style")).toContain("--tg-content-safe-area-inset-top");
+    expect(dialog.querySelector("header")?.getAttribute("style")).toContain("env(safe-area-inset-top)");
+    expect(screen.getByTestId(`impulse-event-title-${quietSteady.impulses[0].eventId}`).textContent).toBe(event?.title);
+    expect(screen.getByTestId(`impulse-drilldown-event-title-${quietSteady.impulses[0].eventId}`).textContent).toBe(event?.title);
+    expect(fact).toBeTruthy();
+    expect(fact.getAttribute("data-has-event-title")).toBe("true");
     expect(dialog.textContent).toContain(quietSteady.impulses[0].summary?.text ?? "");
+    const contextTrigger = screen.getByTestId("impulse-drilldown-context-trigger");
+    const contextPanel = screen.getByTestId("impulse-drilldown-context-panel");
+    expect(contextTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(contextPanel.hasAttribute("hidden")).toBe(true);
     expect(mockFetchSpherePage).toHaveBeenCalledWith("work", expect.any(AbortSignal));
 
+    fireEvent.click(contextTrigger);
+    expect(contextTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(contextPanel.hasAttribute("hidden")).toBe(false);
     await waitFor(() => {
       expect(screen.getByTestId("impulse-drilldown-context")).toBeTruthy();
     });
@@ -384,6 +402,48 @@ describe("Today Convergence public time and access projections", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
+  });
+
+  it("renders meaning under the matched event title without fabricating a missing title", () => {
+    mockFetchSpherePage.mockReturnValueOnce(new Promise(() => undefined));
+    const impulse = quietSteady.impulses[0];
+    const meaning = "Можно заметить, что рабочий ритм легче удерживать через один приоритет.";
+    renderToday({
+      ...quietSteady,
+      impulses: [
+        {
+          ...impulse,
+          meaning: {
+            text: meaning,
+            sourceEventIds: [impulse.eventId],
+          },
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+
+    expect(screen.getByTestId(`impulse-drilldown-event-title-${impulse.eventId}`).textContent).toBe(
+      quietSteady.events.find((event) => event.id === impulse.eventId)?.title,
+    );
+    expect(screen.getByTestId(`impulse-drilldown-meaning-${impulse.eventId}`).textContent).toContain(meaning);
+  });
+
+  it("renders deterministic possible manifestation when optional meaning is unavailable", () => {
+    mockFetchSpherePage.mockReturnValueOnce(new Promise(() => undefined));
+    const impulse = quietSteady.impulses[0];
+    renderToday({
+      ...quietSteady,
+      contentState: "unavailable",
+      impulses: [{ ...impulse, meaning: null }],
+    });
+
+    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+
+    expect(screen.getByTestId(`impulse-drilldown-fallback-meaning-${impulse.eventId}`).textContent).toContain(
+      "Возможное проявление",
+    );
+    expect(screen.queryByTestId(`impulse-drilldown-meaning-${impulse.eventId}`)).toBeNull();
   });
 
   it("keeps Today facts visible when sphere context returns 403", async () => {

@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-NARRATIVE
-// purpose: Render the Today LLM zone for ready, pending, unavailable, or not-needed content.
+// purpose: Render the Today LLM zone for ready, pending, unavailable, or not-needed content without blocking deterministic facts.
 // owns:
 //   - components/today-convergence/today-narrative.tsx
 // inputs: generated narrative claims, contentState, and optional retry callback.
@@ -13,7 +13,7 @@
 // side_effects: invokes onRetry only after an explicit user click.
 // emitted_logs: none.
 // invariants: ready output is claim.text only; pending skeleton stays inside this zone.
-// failure_policy: unavailable is honest status copy with a retry action; not_needed renders nothing.
+// failure_policy: unavailable is honest polite status copy with a retry action; not_needed renders nothing.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-NARRATIVE
 
 // START_MODULE_MAP: M-TODAY-CONVERGENCE-NARRATIVE
@@ -58,7 +58,7 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
     <section
       data-testid="today-narrative"
       data-state={state}
-      aria-live={state === "pending" ? "polite" : undefined}
+      aria-live={state === "pending" || state === "unavailable" ? "polite" : undefined}
       className="rounded-2xl border border-border/60 bg-card/80 p-4 text-[15px] leading-6"
     >
       {state === "ready" ? (
@@ -77,8 +77,16 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
       ) : null}
 
       {state === "unavailable" ? (
-        <div className="flex flex-col items-start gap-3" role="alert">
-          <p>Персональный разбор пока не готов</p>
+        <div
+          data-testid="today-narrative-unavailable"
+          className="flex flex-col items-start gap-3"
+          role="status"
+          aria-live="polite"
+        >
+          <p>Дополнительный разбор готовится</p>
+          <p className="text-[13px] leading-5 text-muted-foreground">
+            Основные факты и события уже доступны на экране.
+          </p>
           <button
             type="button"
             onClick={() => onRetry?.()}

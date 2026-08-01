@@ -581,6 +581,9 @@ def test_invalid_ready_narrative_atomically_falls_back_to_unavailable() -> None:
         for convergence in payload.convergences
         for claim in (convergence.summary, convergence.meaning, convergence.action)
     )
+    assert payload.convergences[0].event_ids == ["evt-1", "evt-2"]
+    assert [event.id for event in payload.events] == ["evt-1", "evt-2"]
+    assert payload.day_tone == "tense"
     assert payload.events[0].id == "evt-1"
 
 

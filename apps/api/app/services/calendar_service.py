@@ -26,6 +26,7 @@
 # invariants:
 #   - Returns exactly 3 months: prev, current, next
 #   - Snapshot states are read-only projections: hero, ordinary, or not-computed
+#   - Snapshot day tones are copied read-only into dayTone; absent/invalid tones are null.
 #   - Missing published snapshots never trigger a calculation
 #   - Allowed range is ±2 years from the explicitly provided local date
 #   - isToday and allowed range derive from the same explicitly provided date
@@ -66,6 +67,7 @@ from app.db.models import AccessLedger, SemanticLayerCache, TodayPayloadCache, T
 from app.schemas.access import ContentAccessState
 from app.schemas.calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
 from app.schemas.today import DayStatus
+from app.schemas.today_convergence import DayTone
 from app.core.config import settings
 from app.clients.solarsage_client import get_solarsage_client
 from app.services.natal_context_service import NatalContextService
@@ -179,7 +181,9 @@ class CalendarService:
             is_today = (date == today)
 
             access = self._access_for_date(access_entries, date, today)
-            day_state = self._day_state(snapshot_index.get(date))
+            snapshot = snapshot_index.get(date)
+            day_state = self._day_state(snapshot)
+            day_tone = self._day_tone(snapshot)
             lunar = self._lunar_facts.facts_for_date(date)
 
             # Disabled if outside current month (for UI purposes)
@@ -192,6 +196,7 @@ class CalendarService:
                 is_today=is_today,
                 disabled=disabled,
                 day_state=day_state,
+                day_tone=day_tone,
                 access=access.model_dump(by_alias=True),  # Convert to dict for Pydantic
                 lunar=lunar,
             ))
@@ -326,6 +331,23 @@ class CalendarService:
         result = snapshot.deterministic_result_json
         state = result.get("state") if isinstance(result, dict) else None
         return "hero" if state == "convergence_today" else "ordinary"
+
+    @staticmethod
+    def _day_tone(snapshot: TodaySnapshot | None) -> DayTone | None:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._day_tone
+        # purpose: Copy the published deterministic day tone into one calendar cell.
+        # inputs: optional published snapshot head.
+        # returns: steady, supportive, mixed, tense, or None when no valid snapshot tone exists.
+        # side_effects: none; never calculates or mutates the snapshot.
+        # emitted_logs: none.
+        # error_behavior: missing or malformed legacy tone becomes None.
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._day_tone
+        if snapshot is None or not isinstance(snapshot.deterministic_result_json, dict):
+            return None
+        tone = snapshot.deterministic_result_json.get("day_tone")
+        if tone not in {"steady", "supportive", "mixed", "tense"}:
+            return None
+        return tone
     # END_BLOCK: REAL_ACCESS
 
     async def _prepare_request_context(self, user_id: uuid.UUID) -> None:

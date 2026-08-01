@@ -4,11 +4,11 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-IMPULSE-DRILLDOWN
-// purpose: Render one sphere's Today impulse facts in an accessible modal and load optional natal/period context lazily.
+// purpose: Render one sphere's exact event facts first in an accessible safe-area-aware modal and load optional natal/period context lazily.
 // owns:
 //   - components/today-convergence/impulse-drilldown-sheet.tsx
-// inputs: grouped generated impulses, target date/timezone, snapshot identity, and close callback.
-// outputs: role=dialog sheet with deterministic facts, period technique explanations, context transport states, and a context-preserving full-analysis link.
+// inputs: grouped generated impulses, their Today event ledger entries, target date/timezone, snapshot identity, and close callback.
+// outputs: role=dialog sheet with event-first deterministic facts, optional meaning/action, collapsed context transport states, and a context-preserving full-analysis link.
 // dependencies: fetchSpherePage; generated Today and sphere contracts; Today formatters.
 // side_effects: credentialed GET /api/spheres/{sphere} on open; aborts the request on close/unmount.
 // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
@@ -20,9 +20,9 @@
 // public_entrypoints:
 //   - ImpulseDrilldownSheet
 // semantic_blocks:
-//   - TODAY_FACTS: sphere heading and one row per deterministic impulse.
-//   - SPHERE_CONTEXT: lazy loading, access, error, natal, period, and technique-copy projections.
-//   - DIALOG_SHELL: responsive bottom-sheet/modal, close actions, and full-analysis link.
+//   - TODAY_FACTS: sphere heading and one event-first row per deterministic impulse.
+//   - SPHERE_CONTEXT: collapsed lazy loading, access, error, natal, period, and technique-copy projections.
+//   - DIALOG_SHELL: responsive safe-area-aware bottom-sheet/modal, close actions, and full-analysis link.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-IMPULSE-DRILLDOWN
@@ -30,7 +30,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { TodayConvergenceImpulse } from "@/packages/contracts/today-convergence";
+import type {
+  TodayConvergenceEvent,
+  TodayConvergenceImpulse,
+} from "@/packages/contracts/today-convergence";
 import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
 import { fetchSpherePage } from "@/lib/api/spheres";
 import {
@@ -45,6 +48,7 @@ import { getPeriodTechniqueCopy } from "./period-technique-copy";
 export type ImpulseDrilldownGroup = {
   sphere: TodayConvergenceImpulse["sphere"];
   impulses: readonly TodayConvergenceImpulse[];
+  events: readonly TodayConvergenceEvent[];
 };
 
 type Props = {
@@ -83,6 +87,30 @@ function errorStatus(error: unknown): number | undefined {
   if (!error || typeof error !== "object") return undefined;
   const status = (error as { status?: unknown }).status;
   return typeof status === "number" ? status : undefined;
+}
+
+function eventTitle(group: ImpulseDrilldownGroup, eventId: string): string | null {
+  const title = group.events.find((event) => event.id === eventId)?.title;
+  return typeof title === "string" && title.trim().length > 0 ? title : null;
+}
+
+function eventFallbackMeaning(impulse: TodayConvergenceImpulse): string {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.eventFallbackMeaning
+  // purpose: Provide a short deterministic, non-personalized real-life orientation when optional LLM meaning is unavailable.
+  // inputs: impulse — validated sphere and polarity from the immutable Today snapshot.
+  // returns: concise possible manifestation guidance; never claims certainty or natal-specific causation.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: all supported polarities have a neutral bounded fallback.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.eventFallbackMeaning
+  const sphere = getTodaySphereLabel(impulse.sphere).toLocaleLowerCase("ru-RU");
+  if (impulse.polarity === "supportive") {
+    return `В сфере «${sphere}» это может проявиться как более лёгкий обмен, новый вариант или поддержка в нужный момент.`;
+  }
+  if (impulse.polarity === "tense") {
+    return `В сфере «${sphere}» возможны резкие реакции или смена приоритетов; оставь запас времени и перепроверь важное.`;
+  }
+  return `В сфере «${sphere}» одновременно есть ресурс и напряжение: новый вариант может появиться вместе с необходимостью его перепроверить.`;
 }
 
 function ContextLayer({
@@ -237,13 +265,14 @@ export function ImpulseDrilldownSheet({
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.ImpulseDrilldownSheet
   // purpose: Render deterministic grouped impulse facts and lazy sphere context in a responsive accessible dialog.
-  // inputs: group — one sphere and its Today impulses; snapshotId/targetDate/timezone — product context; onClose — parent close action.
+  // inputs: group — one sphere, its Today impulses, and matched event ledger entries; snapshotId/targetDate/timezone — product context; onClose — parent close action.
   // returns: dialog DOM with local facts immediately and context transport/content states.
   // side_effects: GET /api/spheres/{sphere} on mount; aborts that request on unmount; listens for Escape.
   // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
   // error_behavior: context failures render inside the dialog while deterministic Today facts remain visible.
   // END_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.ImpulseDrilldownSheet
   const [contextState, setContextState] = useState<ContextState>("loading");
+  const [contextOpen, setContextOpen] = useState(false);
   const [contextPayload, setContextPayload] = useState<TodaySpherePagePayload>();
   const [contextStatus, setContextStatus] = useState<number>();
   const titleId = `impulse-drilldown-title-${group.sphere}`;
@@ -298,7 +327,10 @@ export function ImpulseDrilldownSheet({
     >
       <div aria-hidden className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]" />
       <section className="relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-border/70 bg-background shadow-2xl md:max-h-[min(80vh,720px)] md:w-[min(560px,calc(100vw-2rem))] md:rounded-[24px]">
-        <header className="flex items-start justify-between gap-4 border-b border-border/60 px-5 pb-4 pt-5">
+        <header
+          className="flex items-start justify-between gap-4 border-b border-border/60 px-5 pb-4"
+          style={{ paddingTop: "max(var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top), 1.25rem)" }}
+        >
           <div>
             <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Сегодня</p>
             <h2 id={titleId} className="mt-1 font-serif text-[26px] leading-tight">
@@ -333,9 +365,18 @@ export function ImpulseDrilldownSheet({
                   data-testid={`impulse-drilldown-fact-${impulse.eventId}`}
                   data-polarity={impulse.polarity}
                   data-time-mode={impulse.time.mode}
+                  data-has-event-title={eventTitle(group, impulse.eventId) ? "true" : "false"}
                   className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
                 >
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
+                  {eventTitle(group, impulse.eventId) ? (
+                    <h4
+                      data-testid={`impulse-drilldown-event-title-${impulse.eventId}`}
+                      className="text-[19px] font-medium leading-6 text-foreground"
+                    >
+                      {eventTitle(group, impulse.eventId)}
+                    </h4>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
                     <time
                       className="tabular-nums"
                       dateTime={getEventTimeDateTime(impulse.time)}
@@ -352,6 +393,24 @@ export function ImpulseDrilldownSheet({
                       {impulse.summary.text}
                     </p>
                   ) : null}
+                  {impulse.meaning ? (
+                    <p
+                      data-testid={`impulse-drilldown-meaning-${impulse.eventId}`}
+                      className="mt-3 border-l-2 border-primary/40 pl-3 text-[14px] leading-5 text-foreground/85"
+                    >
+                      <span className="font-medium text-foreground">Что это значит: </span>
+                      {impulse.meaning.text}
+                    </p>
+                  ) : null}
+                  {!impulse.meaning && eventTitle(group, impulse.eventId) ? (
+                    <p
+                      data-testid={`impulse-drilldown-fallback-meaning-${impulse.eventId}`}
+                      className="mt-3 border-l-2 border-primary/30 pl-3 text-[14px] leading-5 text-foreground/80"
+                    >
+                      <span className="font-medium text-foreground">Возможное проявление: </span>
+                      {eventFallbackMeaning(impulse)}
+                    </p>
+                  ) : null}
                   {impulse.action ? (
                     <p
                       data-testid={`impulse-drilldown-action-${impulse.eventId}`}
@@ -366,7 +425,27 @@ export function ImpulseDrilldownSheet({
             </ul>
           </section>
 
-          <ContextLayer state={contextState} payload={contextPayload} status={contextStatus} />
+          <button
+            type="button"
+            data-testid="impulse-drilldown-context-trigger"
+            aria-expanded={contextOpen}
+            aria-controls="impulse-drilldown-context-panel"
+            onClick={() => setContextOpen((open) => !open)}
+            className="inline-flex min-h-11 w-full items-center justify-between rounded-2xl border border-border/60 bg-card px-4 py-3 text-left text-[14px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span>{contextOpen ? "Скрыть контекст сферы" : "Показать контекст сферы"}</span>
+            <span aria-hidden className="text-muted-foreground">
+              {contextOpen ? "−" : "+"}
+            </span>
+          </button>
+          <div
+            id="impulse-drilldown-context-panel"
+            data-testid="impulse-drilldown-context-panel"
+            data-state={contextOpen ? "open" : "closed"}
+            hidden={!contextOpen}
+          >
+            <ContextLayer state={contextState} payload={contextPayload} status={contextStatus} />
+          </div>
 
           <a
             data-testid="impulse-drilldown-full-link"
