@@ -55,6 +55,14 @@
   --syn-bad-bg: #fae9ec;
   --syn-ink: #3e3347;
   --syn-lavender: #f1e9f4;
+
+  /* Today Convergence polarity tones: semantic accents on warm paper. */
+  --tone-supportive-bg: #e3eee7;
+  --tone-supportive-fg: #285a47;
+  --tone-tense-bg: #f5e6bf;
+  --tone-tense-fg: #6f4a12;
+  --tone-mixed-bg: #e8e1da;
+  --tone-mixed-fg: #5e554e;
 }
 
 /* Fallback for Samsung/old Android WebView — oklch() not supported before Chrome 111 */

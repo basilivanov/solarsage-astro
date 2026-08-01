@@ -20,9 +20,11 @@
 // public_entrypoints:
 //   - getTodaySphereLabel
 //   - getPolarityLabel
+//   - getPolarityToneClasses
+//   - getDayToneBackgroundClass
 //   - formatEventTime
 // semantic_blocks:
-//   - CANONICAL_LABELS: product sphere and polarity labels.
+//   - CANONICAL_LABELS: product sphere and polarity labels/classes.
 //   - EVENT_TIME: exact, partofday, and date presentation.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
@@ -31,6 +33,7 @@
 import type {
   TodayConvergenceEventTime,
   TodayConvergenceGroup,
+  TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
 
 const SPHERE_LABELS: Record<TodayConvergenceGroup["primarySphere"], string> = {
@@ -61,6 +64,21 @@ const PART_OF_DAY_LABELS: Record<"night" | "morning" | "day" | "evening", string
   evening: "вечером",
 };
 
+type TodayPolarity = TodayConvergenceGroup["polarity"];
+
+const POLARITY_TONE_CLASSES: Record<TodayPolarity, string> = {
+  supportive: "text-(--tone-supportive-fg) bg-(--tone-supportive-bg)",
+  tense: "text-(--tone-tense-fg) bg-(--tone-tense-bg)",
+  mixed: "text-(--tone-mixed-fg) bg-(--tone-mixed-bg)",
+};
+
+const DAY_TONE_BACKGROUND_CLASSES: Record<NonNullable<TodayConvergencePayload["dayTone"]>, string> = {
+  steady: "",
+  supportive: "bg-(--tone-supportive-bg)",
+  tense: "bg-(--tone-tense-bg)",
+  mixed: "bg-(--tone-mixed-bg)",
+};
+
 // START_BLOCK: CANONICAL_LABELS
 export function getTodaySphereLabel(key: TodayConvergenceGroup["primarySphere"]): string {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getTodaySphereLabel
@@ -85,6 +103,30 @@ export function getPolarityLabel(polarity: "supportive" | "tense" | "mixed"): st
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getPolarityLabel
   return POLARITY_LABELS[polarity];
 }
+
+export function getPolarityToneClasses(polarity: TodayPolarity): string {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getPolarityToneClasses
+  // purpose: Return the semantic foreground/background classes for a polarity label.
+  // inputs: polarity — generated polarity value.
+  // returns: static Tailwind token classes that keep polarity visible beyond color alone.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: generated union typing prevents unsupported values.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getPolarityToneClasses
+  return POLARITY_TONE_CLASSES[polarity];
+}
+
+export function getDayToneBackgroundClass(dayTone: TodayConvergencePayload["dayTone"]): string {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getDayToneBackgroundClass
+  // purpose: Return the optional hero background class for the current day tone.
+  // inputs: dayTone — generated day tone, or null for unavailable/locked states.
+  // returns: a tone background class for non-steady tones, otherwise an empty string.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: null and steady intentionally return no tone accent.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getDayToneBackgroundClass
+  return dayTone ? DAY_TONE_BACKGROUND_CLASSES[dayTone] : "";
+}
 // END_BLOCK: CANONICAL_LABELS
 
 // START_BLOCK: EVENT_TIME
@@ -98,7 +140,9 @@ export function formatEventTime(time: TodayConvergenceEventTime): string {
   // error_behavior: incomplete exact windows degrade to the available exact value.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTime
   if (time.mode === "exact") {
-    const window = time.start && time.end ? `, окно ${time.start}–${time.end}` : "";
+    const window = time.start && time.end
+      ? `, окно ${time.start}${time.start > time.end ? " → " : "–"}${time.end}`
+      : "";
     if (time.peak) return `пик ${time.peak}${window}`;
     if (window) return window.slice(2);
     return "точное время события";

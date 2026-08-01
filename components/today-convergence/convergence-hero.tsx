@@ -30,7 +30,12 @@ import type {
   TodayConvergenceGroup,
   TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
-import { getPolarityLabel, getTodaySphereLabel } from "./today-formatters";
+import {
+  getDayToneBackgroundClass,
+  getPolarityLabel,
+  getPolarityToneClasses,
+  getTodaySphereLabel,
+} from "./today-formatters";
 import { TodayNarrative } from "./today-narrative";
 
 type Props = {
@@ -56,10 +61,14 @@ function SphereLink({
       href={`/day/spheres/${sphere}`}
       data-testid={`convergence-sphere-${sphere}`}
       data-polarity={polarity}
-      className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-1 font-serif text-[20px] leading-tight text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-1 font-serif text-[20px] leading-[26px] text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {getTodaySphereLabel(sphere)}
-      <span className="font-sans text-[12px] text-muted-foreground">{getPolarityLabel(polarity)}</span>
+      <span
+        className={`font-sans text-[13px] leading-[18px] ${getPolarityToneClasses(polarity)} rounded-full px-2 py-0.5 no-underline`}
+      >
+        {getPolarityLabel(polarity)}
+      </span>
     </a>
   );
 }
@@ -79,17 +88,18 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
 
   const secondaryGroups = groups.slice(1);
   const claims = groups.flatMap(groupClaims);
+  const toneBackgroundClass = getDayToneBackgroundClass(dayTone);
 
   return (
     <section
       data-testid="convergence-hero"
       data-day-tone={dayTone ?? undefined}
       data-evidence-level={hero.evidenceLevel}
-      className="overflow-hidden rounded-[24px] border border-primary/40 bg-card p-5 shadow-sm"
+      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--accent) ${toneBackgroundClass || "bg-card"} p-5 shadow-sm`}
     >
-      <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+      <h2 className="font-serif text-[28px] leading-[34px] text-foreground">
         Что сошлось сегодня
-      </p>
+      </h2>
       <div className="mt-4 flex flex-col items-start gap-1">
         <SphereLink sphere={hero.primarySphere} polarity={hero.polarity} />
         {hero.secondarySphere ? (
@@ -99,14 +109,14 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
 
       {secondaryGroups.length > 0 ? (
         <div className="mt-5 space-y-2">
-          <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="text-[13px] font-medium uppercase leading-[18px] tracking-[0.14em] text-muted-foreground">
             Также сегодня
           </p>
           {secondaryGroups.map((group) => (
             <div
               key={group.id}
               data-testid="convergence-secondary"
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-[14px]"
+              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-[14px] leading-[18px]"
             >
               <SphereLink sphere={group.primarySphere} polarity={group.polarity} />
               {group.secondarySphere ? (
@@ -120,7 +130,7 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-2 text-[13px] text-muted-foreground">
+      <div className="mt-4 flex items-center gap-2 text-[13px] leading-[18px] text-muted-foreground">
         <span>Доказательность: {hero.evidenceLevel === "high" ? "высокая" : "средняя"}</span>
       </div>
       <TodayNarrative state={contentState} claims={claims} onRetry={onRetry} />

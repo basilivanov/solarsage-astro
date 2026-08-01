@@ -26,7 +26,12 @@
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-MAIN-EVENT
 
 import type { TodayConvergenceMainEvent } from "@/packages/contracts/today-convergence";
-import { formatEventTime, getPolarityLabel, getTodaySphereLabel } from "./today-formatters";
+import {
+  formatEventTime,
+  getPolarityLabel,
+  getPolarityToneClasses,
+  getTodaySphereLabel,
+} from "./today-formatters";
 
 type Props = { event: TodayConvergenceMainEvent };
 
@@ -49,9 +54,13 @@ export function MainEvent({ event }: Props) {
       <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         Главное событие дня
       </p>
-      <h2 className="mt-2 font-serif text-[20px] leading-tight">{getTodaySphereLabel(event.sphere)}</h2>
-      <p className="mt-1 text-[13px] text-muted-foreground">{getPolarityLabel(event.polarity)}</p>
-      <time className="mt-3 block text-[15px] tabular-nums" dateTime={event.time.peak ?? undefined}>
+      <h2 className="mt-2 font-serif text-[20px] leading-[26px]">{getTodaySphereLabel(event.sphere)}</h2>
+      <p
+        className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(event.polarity)}`}
+      >
+        {getPolarityLabel(event.polarity)}
+      </p>
+      <time className="mt-3 block text-[15px] leading-[22px] tabular-nums" dateTime={event.time.peak ?? undefined}>
         {formatEventTime(event.time)}
       </time>
     </article>

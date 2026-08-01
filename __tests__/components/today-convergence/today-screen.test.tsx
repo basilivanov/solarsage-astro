@@ -52,6 +52,7 @@ import {
   todayConvergenceFixtures,
 } from "../../fixtures/today_convergence_v2";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
+import { formatEventTime } from "@/components/today-convergence/today-formatters";
 
 vi.mock("@/components/paywall", () => ({
   Paywall: ({ title }: { title?: string }) => <section data-testid="paywall">{title}</section>,
@@ -240,6 +241,18 @@ describe("Today Convergence public time and access projections", () => {
     const event = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
     expect(event.textContent).toContain("пик 09:30, окно 08:00–11:00");
     expect(event.getAttribute("data-time-mode")).toBe("exact");
+  });
+
+  it("formats overnight windows with an arrow and keeps midnight same-day", () => {
+    expect(
+      formatEventTime({ mode: "exact", peak: "10:06", start: "22:42", end: "21:21" }),
+    ).toBe("пик 10:06, окно 22:42 → 21:21");
+    expect(
+      formatEventTime({ mode: "exact", peak: "15:40", start: "13:00", end: "18:00" }),
+    ).toBe("пик 15:40, окно 13:00–18:00");
+    expect(
+      formatEventTime({ mode: "exact", peak: "00:00", start: "00:00", end: "00:00" }),
+    ).toBe("пик 00:00, окно 00:00–00:00");
   });
 
   it("formats bucket and unknown event times without exact clocks", () => {

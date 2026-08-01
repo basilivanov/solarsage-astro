@@ -26,7 +26,12 @@
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-IMPULSES
 
 import type { TodayConvergenceImpulse } from "@/packages/contracts/today-convergence";
-import { formatEventTime, getPolarityLabel, getTodaySphereLabel } from "./today-formatters";
+import {
+  formatEventTime,
+  getPolarityLabel,
+  getPolarityToneClasses,
+  getTodaySphereLabel,
+} from "./today-formatters";
 
 type Props = { impulses: readonly TodayConvergenceImpulse[] };
 
@@ -56,13 +61,17 @@ export function ImpulsesList({ impulses }: Props) {
             data-time-mode={impulse.time.mode}
             className="rounded-2xl border border-border/60 bg-card p-4"
           >
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px]">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
               <time className="tabular-nums" dateTime={impulse.time.peak ?? undefined}>
                 {formatEventTime(impulse.time)}
               </time>
               <span className="font-medium">{getTodaySphereLabel(impulse.sphere)}</span>
             </div>
-            <p className="mt-1 text-[13px] text-muted-foreground">{getPolarityLabel(impulse.polarity)}</p>
+            <p
+              className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}
+            >
+              {getPolarityLabel(impulse.polarity)}
+            </p>
           </li>
         ))}
       </ul>
