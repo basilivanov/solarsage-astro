@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Синастрия — вариант B (стиль экрана «День»)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Токены — 1:1 из app/globals.css (light), как на экране «День» */
+  :root {
+    --background: #faf7f0;            /* warm milk */
+    --foreground: #3d314a;
+    --card: #fefcf8;
+    --primary: #7b5e8b;               /* dusty plum */
+    --primary-foreground: #faf7f0;
+    --secondary: #f0e8f5;             /* pale lavender */
+    --secondary-foreground: #5a4080;
+    --muted: #f2edf5;
+    --muted-foreground: #7b6a8a;
+    --accent: #e6d8f0;
+    --border: #dcd5e5;
+    --border-60: color-mix(in oklab, #dcd5e5 60%, transparent);
+    --border-50: color-mix(in oklab, #dcd5e5 50%, transparent);
+    --ring: #7b5e8b;
+
+    /* Today Convergence polarity tones */
+    --tone-supportive-bg: #e3eee7;
+    --tone-supportive-fg: #285a47;
+    --tone-tense-bg: #f5e6bf;
+    --tone-tense-fg: #6f4a12;
+    --tone-mixed-bg: #e8e1da;
+    --tone-mixed-fg: #5e554e;
+
+    --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .phone { max-width: 430px; margin: 0 auto; padding: 12px 16px 60px; }
+  .serif { font-family: 'Lora', Georgia, 'Times New Roman', serif; }
+  .over {
+    font-size: 12px; font-weight: 500; letter-spacing: .14em;
+    line-height: 18px; text-transform: uppercase; color: var(--muted-foreground);
+  }
+  .muted { color: var(--muted-foreground); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border-60);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(61,49,74,.05);
+  }
+  .stack > * + * { margin-top: 14px; }
+  button { font: inherit; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* top bar */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; }
+  .icon-btn {
+    border: 0; background: transparent; color: var(--muted-foreground); cursor: pointer;
+    width: 44px; height: 44px; border-radius: 50%; font-size: 18px; line-height: 1;
+  }
+  .icon-btn:hover { background: var(--secondary); color: var(--foreground); }
+  .topbar .label { font-size: 12px; font-weight: 500; letter-spacing: .14em; color: var(--muted-foreground); }
+
+  /* hero */
+  .hero { text-align: center; padding-top: 22px; padding-bottom: 22px; }
+  .pair { display: flex; justify-content: center; margin-bottom: 12px; }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 600; font-size: 20px; background: var(--secondary); color: var(--secondary-foreground);
+    border: 2px solid var(--card);
+  }
+  .avatar + .avatar { margin-left: -14px; background: var(--primary); color: var(--primary-foreground); }
+  .badge {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 500; letter-spacing: .1em;
+    background: var(--secondary); color: var(--secondary-foreground);
+  }
+  .hero h1 { font-size: 28px; line-height: 34px; font-weight: 500; margin-top: 10px; }
+  .score-chip {
+    display: inline-flex; align-items: baseline; gap: 5px; margin-top: 12px;
+    padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--card); font-size: 13px; color: var(--muted-foreground);
+  }
+  .score-chip strong { font-family: 'Lora', Georgia, serif; font-size: 20px; font-weight: 500; color: var(--foreground); }
+
+  /* lede — главный смысловой блок, как convergence-hero: plum-бордер 1.5px */
+  .lede { border: 1.5px solid var(--primary); }
+  .lede h2 { font-size: 22px; line-height: 1.3; font-weight: 500; margin: 6px 0 8px; }
+  .lede p { font-size: 13.5px; line-height: 1.5; color: var(--muted-foreground); }
+
+  /* dynamics */
+  .dyn { padding: 18px; }
+  .dyn + .dyn { margin-top: 10px; }
+  .pill {
+    display: inline-block; border-radius: 999px; padding: 3px 10px;
+    font-size: 12px; font-weight: 500; line-height: 18px; letter-spacing: .04em;
+  }
+  .pill.sup { background: var(--tone-supportive-bg); color: var(--tone-supportive-fg); }
+  .pill.ten { background: var(--tone-tense-bg); color: var(--tone-tense-fg); }
+  .pill.mix { background: var(--tone-mixed-bg); color: var(--tone-mixed-fg); }
+  .dyn h3 { font-size: 17px; font-weight: 600; line-height: 1.35; margin: 8px 0 8px; }
+  .scene {
+    background: var(--muted); border-radius: 14px; padding: 10px 12px;
+    font-size: 13px; line-height: 1.5; color: var(--foreground);
+  }
+  .dyn-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .chip-btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground);
+    border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: background 160ms var(--ease-premium), color 160ms var(--ease-premium);
+  }
+  .chip-btn:hover { background: var(--secondary); }
+  .chip-btn[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--secondary); }
+  .chip-btn.pos[aria-pressed="true"] { border-color: transparent; color: var(--tone-supportive-fg); background: var(--tone-supportive-bg); }
+  .more {
+    margin-left: auto; border: 0; background: transparent; color: var(--primary);
+    font-size: 13px; font-weight: 500; cursor: pointer; padding: 6px 0;
+    min-height: 32px;
+  }
+  .more:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  /* action card */
+  .action { background: var(--secondary); border-color: transparent; }
+  .action .over { color: var(--secondary-foreground); }
+  .action h3 { font-size: 17px; font-weight: 600; line-height: 1.35; margin: 6px 0 6px; }
+  .action .phrase {
+    font-size: 13.5px; line-height: 1.5; color: var(--secondary-foreground); font-style: italic;
+    border-left: 3px solid var(--primary); padding-left: 10px; margin-top: 8px;
+  }
+  .action .src { font-size: 12px; color: var(--muted-foreground); margin-top: 10px; }
+
+  /* spheres */
+  .spheres { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 12px; }
+  .sphere span { font-size: 13px; }
+  .bar { height: 5px; border-radius: 999px; background: var(--muted); margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+  .all-link { margin-top: 12px; }
+
+  /* tech accordion */
+  .acc-head {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    border: 0; background: transparent; cursor: pointer; padding: 0; text-align: left;
+  }
+  .acc-head .chev { color: var(--muted-foreground); transition: transform .2s var(--ease-premium); font-size: 18px; }
+  .acc-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .acc-body { margin-top: 14px; }
+  .acc-body[hidden] { display: none; }
+  .aspect-row {
+    display: flex; align-items: center; gap: 8px; padding: 10px 0;
+    border-top: 1px solid var(--border-50); font-size: 13px;
+  }
+  .aspect-row:first-of-type { border-top: 0; }
+  .aspect-row .sig { font-weight: 600; }
+  .aspect-row .orb { margin-left: auto; font-size: 12px; color: var(--muted-foreground); }
+  .aspect-row .tdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .tdot.sup { background: var(--tone-supportive-fg); }
+  .tdot.ten { background: var(--tone-tense-fg); }
+  .tdot.mix { background: var(--tone-mixed-fg); }
+  .wheel { display: block; margin: 6px auto 2px; color: var(--border); }
+  .wheel .ring { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .wheel .sup { stroke: var(--tone-supportive-fg); stroke-width: 2; }
+  .wheel .ten { stroke: var(--tone-tense-fg); stroke-width: 2; }
+  .wheel .hl { stroke: var(--tone-tense-fg); stroke-width: 3.5; }
+  .wheel .pt { fill: var(--foreground); }
+
+  /* sheet */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(61,49,74,.4);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 100%);
+    width: min(100%, 430px); max-height: 88vh; overflow-y: auto;
+    background: var(--card); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 34px;
+    visibility: hidden; opacity: 0;
+    transition: transform .25s var(--ease-premium), opacity .2s, visibility 0s linear .25s;
+    box-shadow: 0 -12px 40px rgba(61,49,74,.22);
+  }
+  .sheet.open {
+    transform: translate(-50%, 0);
+    visibility: visible; opacity: 1;
+    transition: transform .25s var(--ease-premium), opacity .2s;
+  }
+  .grab { width: 38px; height: 4px; border-radius: 999px; background: var(--border); margin: 4px auto 14px; }
+  .sheet h2 { font-size: 24px; line-height: 1.3; font-weight: 500; margin: 8px 0 8px; }
+  .sheet h3.sec { font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 8px; }
+  .sheet section + section { margin-top: 22px; }
+  .scene-item { padding: 11px 0; border-top: 1px solid var(--border-50); font-size: 13.5px; line-height: 1.5; }
+  .scene-item:first-of-type { border-top: 0; }
+  .scene-item strong { display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .tip { display: flex; gap: 8px; padding: 8px 0; font-size: 13.5px; line-height: 1.5; }
+  .tip b { color: var(--primary); font-weight: 600; }
+  .proof { background: var(--muted); border-radius: 16px; padding: 16px; }
+  .proof .sig { font-size: 16px; font-weight: 600; }
+  .proof .meta { font-size: 12px; color: var(--muted-foreground); margin: 3px 0 10px; }
+  .proof .role { font-size: 13px; line-height: 1.5; padding: 8px 0; border-top: 1px solid var(--border-50); }
+  .proof .note { font-size: 12px; line-height: 1.5; color: var(--muted-foreground); margin-top: 10px; }
+  .sheet-close {
+    position: sticky; top: 0; float: right; z-index: 2;
+    width: 36px; height: 36px; border-radius: 50%; border: 0;
+    background: var(--secondary); color: var(--secondary-foreground); font-size: 15px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="phone" data-testid="synastry-detail-screen" data-state="ready">
+
+  <header class="topbar">
+    <button class="icon-btn" type="button" aria-label="Назад к списку">←</button>
+    <span class="label">СОВМЕСТИМОСТЬ</span>
+    <button class="icon-btn" type="button" aria-label="Поделиться">↗</button>
+  </header>
+
+  <div class="stack">
+
+    <!-- 1. HERO: пара + балл -->
+    <section class="card hero" data-testid="synastry-pair-hero">
+      <div class="pair" aria-label="Пара: ты и Ирина">
+        <span class="avatar">В</span><span class="avatar">И</span>
+      </div>
+      <span class="badge">РОМАНТИЧЕСКИЕ ОТНОШЕНИЯ</span>
+      <h1 class="serif">Ты + Ирина</h1>
+      <span class="score-chip" data-testid="synastry-score"><strong>78</strong> / 100</span>
+    </section>
+
+    <!-- 2. ГЛАВНОЕ: один абзац -->
+    <section class="card lede">
+      <span class="over">Главное о вас</span>
+      <h2 class="serif">Близость возникает быстро, но сложные разговоры требуют перевода</h2>
+      <p>Вы легко считываете настроение друг друга. Напряжение начинается не из-за чувств,
+         а когда каждый по-своему объясняет, что произошло.</p>
+    </section>
+
+    <!-- 3. ТРИ ДИНАМИКИ -->
+    <section>
+      <span class="over">Ваши три динамики</span>
+      <p class="muted" style="font-size:12.5px; margin-top:4px;">
+        Три линии, которые заметнее всего в ваших буднях.
+      </p>
+      <div style="margin-top:12px;" data-testid="synastry-dynamics">
+
+        <article class="card dyn" data-testid="synastry-dynamic" data-tone="good">
+          <span class="pill sup">Сила</span>
+          <h3>Вам легко быть на одной волне</h3>
+          <div class="scene">Вы перебиваете друг друга с середины фразы — и обоим всё равно понятно, о чём речь.</div>
+          <div class="dyn-actions">
+            <button class="chip-btn pos" type="button" aria-pressed="false">Похоже на нас</button>
+            <button class="chip-btn" type="button" aria-pressed="false">Не про нас</button>
+            <button class="more" type="button" data-sheet>Подробнее →</button>
+          </div>
+        </article>
+
+        <article class="card dyn" data-testid="synastry-dynamic" data-tone="bad">
+          <span class="pill ten">Внимание</span>
+          <h3>Сложные темы звучат по-разному</h3>
+          <div class="scene">В споре ты приводишь факты и даты. Ирина в этот момент слышит критику.</div>
+          <div class="dyn-actions">
+            <button class="chip-btn pos" type="button" aria-pressed="false">Похоже на нас</button>
+            <button class="chip-btn" type="button" aria-pressed="false">Не про нас</button>
+            <button class="more" type="button" data-sheet>Подробнее →</button>
+          </div>
+        </article>
+
+        <article class="card dyn" data-testid="synastry-dynamic" data-tone="mid">
+          <span class="pill mix">Потенциал</span>
+          <h3>Притяжение растёт через новизну</h3>
+          <div class="scene">После совместной поездки вы ещё несколько дней разговариваете, как в первые месяцы.</div>
+          <div class="dyn-actions">
+            <button class="chip-btn pos" type="button" aria-pressed="false">Похоже на нас</button>
+            <button class="chip-btn" type="button" aria-pressed="false">Не про нас</button>
+            <button class="more" type="button" data-sheet>Подробнее →</button>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- 4. ДЕЙСТВИЕ -->
+    <aside class="card action" data-testid="synastry-action">
+      <span class="over">Попробовать на этой неделе</span>
+      <h3>Перед спором назвать не претензию, а задачу</h3>
+      <p class="phrase">«Я хочу не доказать свою правоту, а понять, как нам решить это вместе».</p>
+      <p class="src">Работает на динамику «Сложные темы звучат по-разному»</p>
+    </aside>
+
+    <!-- 5. СФЕРЫ (реальные 4 из отчёта: synastry_scoring.py SPHERE_DEFINITIONS) -->
+    <section class="card" data-testid="synastry-spheres">
+      <span class="over">По сферам жизни</span>
+      <div class="spheres">
+        <div class="sphere"><span>Близость · 85</span><div class="bar"><i style="width:85%"></i></div></div>
+        <div class="sphere"><span>Быт · 74</span><div class="bar"><i style="width:74%"></i></div></div>
+        <div class="sphere"><span>Общение · 61</span><div class="bar"><i style="width:61%"></i></div></div>
+        <div class="sphere"><span>Дела и деньги · 57</span><div class="bar"><i style="width:57%"></i></div></div>
+      </div>
+    </section>
+
+    <!-- 6. ТЕХНИЧЕСКИЙ СЛОЙ -->
+    <section class="card" data-testid="synastry-tech-details">
+      <button class="acc-head" type="button" id="tech-head" aria-expanded="false" aria-controls="tech-body">
+        <span>
+          <span class="over">Как это рассчитано</span>
+          <div class="muted" style="font-size:12.5px; margin-top:3px;">Карта, все аспекты, дома, как считается балл</div>
+        </span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="acc-body" id="tech-body" hidden>
+        <svg class="wheel" viewBox="0 0 260 260" width="230" role="img"
+             aria-label="Два кольца синастрии, выделен контакт Меркурий — Меркурий">
+          <circle class="ring" cx="130" cy="130" r="105"></circle>
+          <circle class="ring" cx="130" cy="130" r="72"></circle>
+          <line class="sup" x1="64" y1="61" x2="181" y2="78"></line>
+          <line class="sup" x1="130" y1="25" x2="103" y2="192"></line>
+          <line class="ten" x1="78" y1="181" x2="190" y2="164"></line>
+          <line class="hl" x1="64" y1="61" x2="190" y2="164"></line>
+          <circle class="pt" cx="64" cy="61" r="5"></circle>
+          <circle class="pt" cx="78" cy="181" r="5"></circle>
+          <circle class="pt" cx="130" cy="25" r="5"></circle>
+          <circle class="pt" cx="181" cy="78" r="5"></circle>
+          <circle class="pt" cx="190" cy="164" r="5"></circle>
+          <circle class="pt" cx="103" cy="192" r="5"></circle>
+        </svg>
+        <p class="muted" style="font-size:12px; text-align:center;">Красной выделен контакт из разбора выше — Меркурий □ Меркурий</p>
+        <div style="margin-top:10px;">
+          <div class="aspect-row"><span class="tdot ten"></span><span class="sig">Меркурий □ Меркурий</span><span class="orb">орб 1°00′</span></div>
+          <div class="aspect-row"><span class="tdot sup"></span><span class="sig">Луна △ Венера</span><span class="orb">орб 2°14′</span></div>
+          <div class="aspect-row"><span class="tdot sup"></span><span class="sig">Солнце ⚹ Марс</span><span class="orb">орб 3°02′</span></div>
+          <div class="aspect-row"><span class="tdot mix"></span><span class="sig">Венера ☍ Сатурн</span><span class="orb">орб 4°37′</span></div>
+          <div class="aspect-row muted" style="justify-content:center;">ещё 13 аспектов…</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ШИТ: разбор одной динамики (наполнение зависит от карточки) -->
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="grab" aria-hidden="true"></div>
+  <button class="sheet-close" type="button" aria-label="Закрыть">✕</button>
+
+  <span class="pill" id="sheet-pill"></span>
+  <h2 class="serif" id="sheet-title"></h2>
+  <p class="muted" style="font-size:13.5px; line-height:1.5;" id="sheet-intro"></p>
+
+  <section>
+    <h3 class="sec">Узнаете себя, если</h3>
+    <div id="sheet-scenes"></div>
+  </section>
+
+  <section>
+    <h3 class="sec">Что помогает</h3>
+    <div id="sheet-tips"></div>
+  </section>
+
+  <section class="proof">
+    <h3 class="sec" style="margin-bottom:6px;">Почему мы так говорим</h3>
+    <div class="sig" id="sheet-proof-sig"></div>
+    <div class="meta" id="sheet-proof-meta"></div>
+    <div id="sheet-proof-roles"></div>
+    <p class="note" id="sheet-proof-note"></p>
+  </section>
+</div>
+
+<script>
+  // фидбек-чипы
+  document.querySelectorAll('.chip-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const group = btn.parentElement;
+      group.querySelectorAll('.chip-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      btn.setAttribute('aria-pressed', 'true');
+    });
+  });
+
+  // технический аккордеон
+  const head = document.getElementById('tech-head');
+  const body = document.getElementById('tech-body');
+  head.addEventListener('click', () => {
+    const open = head.getAttribute('aria-expanded') === 'true';
+    head.setAttribute('aria-expanded', String(!open));
+    body.hidden = open;
+  });
+
+  // наполнение шита по динамике (в реале — поля dynamics[] из API)
+  const DYN_CONTENT = {
+    good: {
+      pill: ['Сила', 'sup'],
+      title: 'Вам легко быть на одной волне',
+      intro: 'Вы быстро замечаете состояние друг друга и умеете подхватить — часто без лишних слов.',
+      scenes: [
+        ['В быту', 'Один только подумал о чае — второй уже ставит чайник.'],
+        ['В гостях', 'Вы переглядываетесь в один и тот же момент — и обоим понятно, что пора домой.'],
+        ['В трудный день', 'Плохое настроение считывается по первому сообщению, ещё до всяких слов.'],
+      ],
+      tips: [
+        'Просить о поддержке заранее, а не когда уже совсем плохо — вас услышат.',
+        'Не принимать взаимность как данность: благодарить вслух.',
+        'Делиться не только плохим состоянием, но и хорошим.',
+      ],
+      proof: {
+        sig: 'Луна △ Венера',
+        meta: 'Трин · орб 2°14′ · поддерживающий контакт',
+        roles: [
+          ['Твоя Луна', 'что тебе нужно для ощущения безопасности и уюта.'],
+          ['Венера Ирины', 'как она проявляет симпатию, заботу и вкус к жизни.'],
+        ],
+        note: 'Один аспект не описывает отношения целиком — эта сила работает вместе с остальными контактами пары.',
+      },
+    },
+    bad: {
+      pill: ['Точка напряжения', 'ten'],
+      title: 'Сложные темы звучат по-разному',
+      intro: 'Ты пытаешься уточнить и разложить всё по фактам. Ирина в этот момент может слышать холодность или недоверие.',
+      scenes: [
+        ['В переписке', 'Короткая фраза внезапно превращается в длинное выяснение того, «что именно ты имела в виду».'],
+        ['В споре', 'Один приводит примеры и даты, второй пытается объяснить, как ему было в этой ситуации.'],
+        ['После разговора', 'Оба уверены, что сказали главное, но помнят смысл разговора совершенно по-разному.'],
+      ],
+      tips: [
+        'Сначала повторить смысл слов партнёра своими словами.',
+        'Не решать эмоциональные вопросы длинной перепиской.',
+        'Отделять факт события от чувства, которое оно вызвало.',
+      ],
+      proof: {
+        sig: 'Меркурий □ Меркурий',
+        meta: 'Квадрат · орб 1°00′ · напряжённый контакт',
+        roles: [
+          ['Твой Меркурий', 'как ты формулируешь мысли, задаёшь вопросы и собираешь факты.'],
+          ['Меркурий Ирины', 'как она слышит, отвечает и принимает решения в разговоре.'],
+        ],
+        note: 'Один аспект не описывает отношения целиком — вывод наверху учитывает его вместе с поддерживающими контактами.',
+      },
+    },
+    mid: {
+      pill: ['Потенциал', 'mix'],
+      title: 'Притяжение растёт через новизну',
+      intro: 'Совместные новые впечатления возвращают отношениям живость быстрее, чем разговоры об отношениях.',
+      scenes: [
+        ['После поездки', 'Вы ещё несколько дней разговариваете, как в первые месяцы знакомства.'],
+        ['Новое место', 'Даже новое кафе или другой маршрут прогулки заметно оживляют обычный вечер.'],
+        ['В рутине', 'Когда недели похожи одна на другую, интерес глохнет без видимой причины.'],
+      ],
+      tips: [
+        'Планировать новизну заранее, а не ждать вдохновения.',
+        'Маленькое новое каждую неделю работает лучше редких больших событий.',
+        'Чередовать, кто выбирает занятие: один раз ты, другой — партнёр.',
+      ],
+      proof: {
+        sig: 'Солнце ⚹ Марс',
+        meta: 'Секстиль · орб 3°02′ · гармоничный контакт',
+        roles: [
+          ['Твоё Солнце', 'что тебя заряжает и где ты чувствуешь себя собой.'],
+          ['Марс Ирины', 'как она действует, пробует новое и проявляет инициативу.'],
+        ],
+        note: 'Секстиль включается через действие: контакт работает, пока вы что-то делаете вместе.',
+      },
+    },
+  };
+
+  // шит
+  const sheet = document.getElementById('sheet');
+  const backdrop = document.getElementById('backdrop');
+  const fillSheet = (key) => {
+    const c = DYN_CONTENT[key] || DYN_CONTENT.bad;
+    const pill = document.getElementById('sheet-pill');
+    pill.textContent = c.pill[0];
+    pill.className = 'pill ' + c.pill[1];
+    document.getElementById('sheet-title').textContent = c.title;
+    document.getElementById('sheet-intro').textContent = c.intro;
+    document.getElementById('sheet-scenes').innerHTML = c.scenes
+      .map(([label, text]) => `<div class="scene-item"><strong>${label}</strong>${text}</div>`).join('');
+    document.getElementById('sheet-tips').innerHTML = c.tips
+      .map((t, i) => `<div class="tip"><b>${i + 1}.</b> ${t}</div>`).join('');
+    document.getElementById('sheet-proof-sig').textContent = c.proof.sig;
+    document.getElementById('sheet-proof-meta').textContent = c.proof.meta;
+    document.getElementById('sheet-proof-roles').innerHTML = c.proof.roles
+      .map(([label, text]) => `<div class="role"><strong>${label}</strong> — ${text}</div>`).join('');
+    document.getElementById('sheet-proof-note').textContent = c.proof.note;
+  };
+  const openSheet = (key) => { fillSheet(key); sheet.classList.add('open'); backdrop.classList.add('open'); };
+  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); };
+  document.querySelectorAll('[data-sheet]').forEach((b) => b.addEventListener('click', () => {
+    openSheet(b.closest('[data-tone]')?.getAttribute('data-tone'));
+  }));
+  backdrop.addEventListener('click', closeSheet);
+  sheet.querySelector('.sheet-close').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+  // превью-состояния для скриншотов: ?sheet=good|bad|mid, ?tech=1
+  const sheetParam = new URLSearchParams(location.search).get('sheet');
+  if (sheetParam) openSheet(sheetParam === '1' ? 'bad' : sheetParam);
+  if (location.search.includes('tech')) { head.setAttribute('aria-expanded', 'true'); body.hidden = false; }
+</script>
+</body>
+</html>
