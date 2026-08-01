@@ -95,7 +95,7 @@ export function ConvergenceHero({ groups, dayTone, contentState, onRetry }: Prop
       data-testid="convergence-hero"
       data-day-tone={dayTone ?? undefined}
       data-evidence-level={hero.evidenceLevel}
-      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--accent) ${toneBackgroundClass || "bg-card"} p-5 shadow-sm`}
+      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${toneBackgroundClass || "bg-card"} p-5 shadow-sm`}
     >
       <h2 className="font-serif text-[28px] leading-[34px] text-foreground">
         Что сошлось сегодня
