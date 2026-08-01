@@ -14,7 +14,8 @@
 # side_effects: none.
 # emitted_logs: none.
 # invariants: Projection tests use stable input rows and never require HTTP/DB/LLM;
-#   exact EventTime assertions cover date-aware absolute instants and midpoint fallback.
+#   exact EventTime assertions cover date-aware absolute instants and midpoint fallback;
+#   overlapping selected convergence evidence is unioned once with first-group precedence.
 # failure_policy: pytest failure on contract or atomic-fallback drift.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-PROJECTION
 
@@ -135,6 +136,42 @@ def _hero_result() -> dict[str, Any]:
     }
 
 
+def _overlapping_convergence_result() -> dict[str, Any]:
+    return {
+        "schema_version": "today-deterministic-result.v1",
+        "state": "convergence_today",
+        "day_tone": "mixed",
+        "selected": {
+            "convergences": [
+                {
+                    "group_id": "cvg-overlap-first",
+                    "anchor_event_id": "evt-shared",
+                    "member_event_ids": ["evt-shared", "evt-first-only"],
+                    "evidence_event_ids": ["evt-shared", "evt-first-only"],
+                    "primary_sphere": "work",
+                    "secondary_sphere": "documents",
+                    "polarity": "tense",
+                    "evidence_level": "high",
+                },
+                {
+                    "group_id": "cvg-overlap-second",
+                    "anchor_event_id": "evt-shared",
+                    "member_event_ids": ["evt-shared", "evt-second-only"],
+                    "evidence_event_ids": ["evt-shared", "evt-second-only"],
+                    "primary_sphere": "money",
+                    "secondary_sphere": "documents",
+                    "polarity": "supportive",
+                    "evidence_level": "medium",
+                },
+            ],
+            "main_event": None,
+            "impulses": [],
+            "selected_unit_ids": ["evt-shared", "evt-first-only", "evt-second-only"],
+            "selected_spheres": ["work", "documents", "money"],
+        },
+    }
+
+
 def test_projection_adds_localized_title_and_null_for_unnameable_unit() -> None:
     snapshot = _snapshot(
         _hero_result(),
@@ -154,6 +191,66 @@ def test_projection_adds_localized_title_and_null_for_unnameable_unit() -> None:
 
     assert payload.events[0].title == "Луна в напряжении с твоим Сатурном"
     assert payload.events[1].title is None
+
+
+def test_overlapping_convergences_union_shared_event_with_first_group_presentation() -> None:
+    result = _overlapping_convergence_result()
+    snapshot = _snapshot(
+        result,
+        [
+            _factor(
+                "evt-shared",
+                exact_at="2026-08-03T15:40:00+03:00",
+                active_from="2026-08-03T13:00:00+03:00",
+                active_until="2026-08-03T18:00:00+03:00",
+            ),
+            _factor(
+                "evt-first-only",
+                exact_at="2026-08-03T10:20:00+03:00",
+                active_from="2026-08-03T09:00:00+03:00",
+                active_until="2026-08-03T12:00:00+03:00",
+            ),
+            _factor(
+                "evt-second-only",
+                exact_at="2026-08-03T18:20:00+03:00",
+                active_from="2026-08-03T17:00:00+03:00",
+                active_until="2026-08-03T20:00:00+03:00",
+            ),
+        ],
+        snapshot_id="snap-overlap-2026-08-03",
+        target_date=date(2026, 8, 3),
+    )
+    before_result = copy.deepcopy(snapshot.deterministic_result_json)
+    before_input = copy.deepcopy(snapshot.canonical_input_json)
+
+    payload = project_snapshot_payload(snapshot, None, _access("full"))
+
+    assert payload.content_state == "pending"
+    assert [group.id for group in payload.convergences] == [
+        "cvg-overlap-first",
+        "cvg-overlap-second",
+    ]
+    assert payload.convergences[0].primary_sphere == "work"
+    assert payload.convergences[0].polarity == "tense"
+    assert payload.convergences[1].primary_sphere == "money"
+    assert payload.convergences[1].polarity == "supportive"
+    assert [group.event_ids for group in payload.convergences] == [
+        ["evt-shared", "evt-first-only"],
+        ["evt-shared", "evt-second-only"],
+    ]
+    assert [event.id for event in payload.events] == [
+        "evt-shared",
+        "evt-first-only",
+        "evt-second-only",
+    ]
+    shared_event = payload.events[0]
+    assert shared_event.id == "evt-shared"
+    assert shared_event.sphere == "work"
+    assert shared_event.polarity == "tense"
+    assert shared_event.evidence_level == "high"
+    assert {event.id for event in payload.events} == set(result["selected"]["selected_unit_ids"])
+    assert snapshot.deterministic_result_json == before_result
+    assert snapshot.canonical_input_json == before_input
 
 
 def test_projection_does_not_publish_machine_driver_narrative() -> None:
@@ -238,6 +335,7 @@ def _snapshot(
     factors: list[dict[str, Any]],
     *,
     snapshot_id: str = "snap-hero-2026-07-31",
+    target_date: date = TARGET_DATE,
     mode: str = "exact",
     bucket: str | None = None,
     range_start: str = "12:34",
@@ -255,7 +353,7 @@ def _snapshot(
     return TodaySnapshot(
         id=snapshot_id,
         user_id="00000000-0000-0000-0000-000000000001",
-        target_date=TARGET_DATE,
+        target_date=target_date,
         timezone="Europe/Moscow",
         profile_hash="profile-hash",
         input_hash="input-hash",
@@ -593,6 +691,15 @@ def test_foreign_selected_event_reference_is_a_typed_projection_error() -> None:
     snapshot = _snapshot(result, [_factor("evt-1"), _factor("evt-2", event_class="structural")])
 
     with pytest.raises(TodayConvergenceProjectionError, match="today_convergence_projection:"):
+        project_snapshot_payload(snapshot, None, _access("full"))
+
+
+def test_duplicate_evidence_pair_id_is_a_typed_projection_error() -> None:
+    result = _hero_result()
+    result["selected"]["convergences"][0]["evidence_event_ids"] = ["evt-1", "evt-1"]
+    snapshot = _snapshot(result, [_factor("evt-1"), _factor("evt-2", event_class="structural")])
+
+    with pytest.raises(TodayConvergenceProjectionError, match="today_convergence_projection:evidence_pair"):
         project_snapshot_payload(snapshot, None, _access("full"))
 
 

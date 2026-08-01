@@ -12,7 +12,8 @@
 // dependencies: app/(grace)/day/[date]/page, useTodayConvergence, TodayScreen.
 // side_effects: local router/onboarding spies only.
 // emitted_logs: none.
-// invariants: tests do not import or render the legacy day screen path.
+// invariants: tests do not import or render the legacy day screen path; the
+//   Today-label test pins its clock locally and always restores real timers.
 // failure_policy: fail on route/state wiring mismatch.
 // END_MODULE_CONTRACT: M-TEST-DAY-PAGE-WIRING
 
@@ -167,12 +168,20 @@ describe("DayPage route date handling", () => {
     expect(mocks.push).toHaveBeenCalledWith("/day/2026-07-31");
   });
 
-  it("renders a human date header with the Today label", () => {
-    render(<DayPage />);
-    const header = screen.getByTestId("day-date-navigation");
+  it("renders a human date header with the Today label", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-01T12:00:00+03:00"));
+      vi.resetModules();
+      const { default: DayPageAtPinnedTime } = await import("@/app/(grace)/day/[date]/page");
+      render(<DayPageAtPinnedTime />);
+      const header = screen.getByTestId("day-date-navigation");
 
-    expect(header.textContent).toContain("Сегодня, 1 августа");
-    expect(header.textContent).not.toContain("2026-08-01");
+      expect(header.textContent).toContain("Сегодня, 1 августа");
+      expect(header.textContent).not.toContain("2026-08-01");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the date controls below Telegram and iOS top safe areas", () => {

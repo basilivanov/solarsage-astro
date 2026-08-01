@@ -617,7 +617,13 @@ describe("Today Convergence public time and access projections", () => {
 
   it("keeps period context, spheres, and calculation disclosure in rail order", () => {
     renderToday(quietZeroImpulses);
+    const stack = screen.getByTestId("today-content-stack");
+    const main = screen.getByTestId("today-main-column");
     const rail = screen.getByTestId("today-layout-rail");
+    expect(stack.getAttribute("data-layout")).toBe("single-column");
+    expect(main.parentElement).toBe(stack);
+    expect(rail.parentElement).toBe(stack);
+    expect(Array.from(stack.children).indexOf(main)).toBeLessThan(Array.from(stack.children).indexOf(rail));
     expect(Array.from(rail.children).map((child) => child.getAttribute("data-testid"))).toEqual([
       "period-context",
       "sphere-navigator",

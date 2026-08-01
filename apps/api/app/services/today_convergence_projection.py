@@ -17,7 +17,8 @@
 # invariants: Deterministic fields are copied from published JSON, narrative is
 #   accepted atomically, event references resolve to the snapshot factor ledger,
 #   exact EventTime windows preserve timezone-aware local instants alongside clocks,
-#   and input rows are never mutated.
+#   overlapping evidence across selected convergence groups is unioned once with
+#   first-group presentation precedence, and input rows are never mutated.
 # failure_policy: TodayConvergenceProjectionError with a stable prefixed reason;
 #   invalid narrative content falls back atomically to unavailable LLM content.
 # END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-PROJECTION
@@ -355,11 +356,13 @@ def _register_presentation(
     factor_units: Mapping[str, Mapping[str, Any]],
     presentations: dict[str, _EventPresentation],
     ordered_ids: list[str],
+    *,
+    allow_existing: bool = False,
 ) -> None:
     if event_id not in factor_units:
         _fail("foreign_event_reference")
     previous = presentations.get(event_id)
-    if previous is not None and previous != presentation:
+    if previous is not None and not allow_existing and previous != presentation:
         _fail("event_presentation_conflict")
     if previous is None:
         presentations[event_id] = presentation
@@ -398,8 +401,12 @@ def _build_deterministic_blocks(
 
     for group in selection.convergences:
         group_id = _text(_value(group, "group_id", "groupId"), "group_id")
-        event_ids = _text_list(_value(group, "evidence_event_ids", "evidenceEventIds"), "evidence_event_ids")
-        if len(event_ids) != 2:
+        raw_event_ids = _sequence(
+            _value(group, "evidence_event_ids", "evidenceEventIds"),
+            "evidence_event_ids",
+        )
+        event_ids = [_text(event_id, "evidence_event_id") for event_id in raw_event_ids]
+        if len(event_ids) != 2 or len(set(event_ids)) != 2:
             _fail("evidence_pair")
         primary = _enum_text(_value(group, "primary_sphere", "primarySphere"), _SPHERES, "selected_sphere")
         raw_secondary = _value(group, "secondary_sphere", "secondarySphere", default=None)
@@ -442,6 +449,7 @@ def _build_deterministic_blocks(
                 factor_units,
                 presentations,
                 ordered_ids,
+                allow_existing=True,
             )
         groups.append({
             "id": group_id,

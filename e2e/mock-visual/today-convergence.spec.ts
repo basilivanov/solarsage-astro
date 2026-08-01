@@ -16,6 +16,7 @@
 //   - Production runtime never imports these test fixtures; all API mocking stays in page.route.
 //   - Every Today fixture exposes the public root state axes and twelve sphere tiles.
 //   - Narrative text is masked in visual assertions; structural selectors carry the contract.
+//   - Desktop Today content is one vertical main/context stack; mobile keeps the same public DOM contract.
 //   - Missing API routes fail closed.
 // failure_policy: fail on schema-shaped fixture wiring, DOM contract drift, missing routes, or visual mismatch.
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-TODAY-CONVERGENCE-SPEC
@@ -30,6 +31,7 @@
 // semantic_blocks:
 //   - FIXTURE_MATRIX: route builders and deterministic browser runtime.
 //   - TODAY_CONTRACT: state axes, hero/quiet/access and sphere navigation.
+//   - TODAY_LAYOUT: desktop single-column stack geometry.
 //   - IMPULSE_GEOMETRY: desktop title/time one-row visibility and mobile overflow safety.
 //   - VISUAL_BASELINES: key Today states and snapshot drilldown.
 //   - CHECKIN_AND_SPHERE: Yesterday recap and static sphere route wiring.
@@ -405,6 +407,36 @@ test.describe("Mock Visual — Today Convergence", () => {
       }
       expect(Math.abs(geometry.title.y - geometry.time.y)).toBeLessThanOrEqual(2)
     }
+    await expectNoMissingApiFixtures(page, tracker)
+  })
+
+  test("keeps Today main content and context in one desktop stack", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "desktop-only geometry gate")
+    const tracker = await openToday(page, quietSteady)
+    const stack = page.getByTestId("today-content-stack")
+    const main = page.getByTestId("today-main-column")
+    const rail = page.getByTestId("today-layout-rail")
+
+    await expect(stack).toHaveAttribute("data-layout", "single-column")
+    await expect(main).toBeVisible()
+    await expect(rail).toBeVisible()
+
+    const geometry = await page.evaluate(() => {
+      const read = (testId: string) => {
+        const element = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+        if (!element) throw new Error(`missing ${testId}`)
+        const rect = element.getBoundingClientRect()
+        return { x: rect.x, top: rect.top, bottom: rect.bottom, width: rect.width }
+      }
+      return {
+        main: read("today-main-column"),
+        rail: read("today-layout-rail"),
+      }
+    })
+
+    expect(geometry.rail.top).toBeGreaterThanOrEqual(geometry.main.bottom - 2)
+    expect(Math.abs(geometry.rail.x - geometry.main.x)).toBeLessThanOrEqual(2)
+    expect(Math.abs(geometry.rail.width - geometry.main.width)).toBeLessThanOrEqual(2)
     await expectNoMissingApiFixtures(page, tracker)
   })
 })

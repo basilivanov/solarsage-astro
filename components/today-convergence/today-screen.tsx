@@ -8,7 +8,8 @@
 // owns:
 //   - components/today-convergence/today-screen.tsx
 // inputs: generated TodayConvergencePayload and parent-owned transport/profile callbacks.
-// outputs: today-screen root and composed public Today block selectors.
+// outputs: today-screen root, single-column content stack, and composed public
+//   Today block selectors.
 // dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall.
 // side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, and timezone-aware child formatting.
 // emitted_logs: none.
@@ -22,7 +23,7 @@
 // semantic_blocks:
 //   - TRANSPORT: loading, ready, and error root projections.
 //   - ACCESS_AND_STATE: full, preview, locked, and unavailable projections.
-//   - READY_COMPOSITION: hero/main/grouped impulses/context/navigation composition with a desktop width that preserves full event meta rows.
+//   - READY_COMPOSITION: one vertical main/context composition with enough width to preserve full event meta rows.
 // owned_tests:
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-SCREEN
@@ -141,8 +142,12 @@ function ReadyContent({
   const isFullCalculation = payload.access.state === "full" && !isUnavailable;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-6 px-5 py-5 xl:grid-cols-5 xl:gap-6">
-      <div data-testid="today-main-column" className="min-w-0 space-y-4 xl:col-span-4">
+    <div
+      data-testid="today-content-stack"
+      data-layout="single-column"
+      className="mx-auto flex w-full max-w-[1120px] flex-col items-stretch gap-6 px-5 py-5"
+    >
+      <div data-testid="today-main-column" className="min-w-0 space-y-4">
         <BirthTimeBanner
           birthTime={payload.birthTime}
           dismissed={birthTimeDismissed}
@@ -205,10 +210,10 @@ function ReadyContent({
       <aside
         data-testid="today-layout-rail"
         aria-label="Дополнительный контекст дня"
-        className="min-w-0 space-y-4 xl:col-span-1 xl:sticky xl:top-5 xl:self-start"
+        className="min-w-0 space-y-4"
       >
         {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
-        <SphereNavigator payload={payload} rail />
+        <SphereNavigator payload={payload} />
         {isFullCalculation ? <HowCalculated /> : null}
       </aside>
     </div>
