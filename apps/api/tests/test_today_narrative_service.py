@@ -245,6 +245,26 @@ def _quiet_snapshot(*, mode: str = "exact", capabilities: dict[str, bool] | None
     )
 
 
+def _quiet_impulses_only_snapshot() -> TodaySnapshot:
+    impulses = [
+        _single("evt_v1_impulse_only_1", sphere="money", polarity="mixed"),
+        _single("evt_v1_impulse_only_2", sphere="work", polarity="supportive"),
+        _single("evt_v1_impulse_only_3", sphere="documents", polarity="supportive"),
+    ]
+    factors = [
+        _factor(impulse["event_id"], event_class="activation")  # type: ignore[index]
+        for impulse in impulses
+    ]
+    return _snapshot(
+        state="quiet_day",
+        convergences=[],
+        main_event=None,
+        impulses=impulses,
+        factors=factors,
+        snapshot_id=UUID("66666666-6666-4666-8666-666666666666"),
+    )
+
+
 def _claim(text: str, event_ids: list[str]) -> dict[str, object]:
     return {"text": text, "sourceEventIds": event_ids}
 
@@ -295,6 +315,22 @@ def _quiet_content(snapshot: TodaySnapshot, *, text: str = "Выбери оди�
                 "action": None,
             }
             for impulse in impulses  # type: ignore[union-attr]
+        },
+    }
+
+
+def _quiet_impulses_only_content(snapshot: TodaySnapshot) -> dict[str, object]:
+    selected = snapshot.deterministic_result_json["selected"]  # type: ignore[index]
+    return {
+        "convergences": {},
+        "main_event": None,
+        "impulses": {
+            impulse["event_id"]: {
+                "summary": _claim("Короткий импульс поддерживает один практичный шаг.", [impulse["event_id"]]),
+                "meaning": None,
+                "action": None,
+            }
+            for impulse in selected["impulses"]  # type: ignore[index]
         },
     }
 
@@ -381,6 +417,29 @@ async def test_quiet_day_main_event_and_three_impulses_accepts_bound_claims() ->
         "  lot, если соответствующая capability не равна true."
     ) in prompt
     assert "Замени только пустые значения summary.text на текст и верни этот JSON." in prompt
+
+
+@pytest.mark.asyncio
+async def test_quiet_day_three_impulses_without_main_event_accepts_null_main_template() -> None:
+    snapshot = _quiet_impulses_only_snapshot()
+    fake = FakeLLM(json.dumps(_quiet_impulses_only_content(snapshot), ensure_ascii=False))
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v2",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    assert result.content_json["main_event"] is None
+    assert set(result.content_json["impulses"]) == {
+        "evt_v1_impulse_only_1",
+        "evt_v1_impulse_only_2",
+        "evt_v1_impulse_only_3",
+    }
+    prompt = fake.calls[0]["prompt"]
+    assert '"main_event":null' in prompt
+    assert prompt.count('"sourceEventIds"') == 3
 
 
 # END_BLOCK: HAPPY_PATH
