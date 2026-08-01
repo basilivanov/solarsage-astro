@@ -68,6 +68,9 @@ function narrativeClaims(payload: TodayConvergencePayload): TodayConvergenceNarr
     add(group.meaning);
     add(group.action);
   }
+  // Quiet-day cards own their generated summary text; keep this zone only for
+  // pending/unavailable status rather than duplicating inline copy.
+  if (payload.state === "quiet_day") return claims;
   if (payload.mainEvent) {
     add(payload.mainEvent.summary);
     add(payload.mainEvent.meaning);
@@ -179,8 +182,8 @@ function ReadyContent({
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
           <>
-            {payload.mainEvent ? <MainEvent event={payload.mainEvent} /> : null}
-            <ImpulsesList impulses={payload.impulses} />
+            {payload.mainEvent ? <MainEvent event={payload.mainEvent} snapshotId={payload.snapshotId} /> : null}
+            <ImpulsesList impulses={payload.impulses} snapshotId={payload.snapshotId} />
             <TodayNarrative state={payload.contentState} claims={claims} onRetry={onRetry} />
             {payload.lookahead ? <TodayLookahead lookahead={payload.lookahead} /> : null}
           </>

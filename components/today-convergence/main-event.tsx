@@ -1,13 +1,13 @@
 // ############################################################################
 // AI_HEADER: MODULE_TODAY_CONVERGENCE_MAIN_EVENT — quiet-day exceptional event block.
-// ROLE: Renders deterministic main-event identity, polarity, and EventTime.
+// ROLE: Renders deterministic main-event identity, summary, polarity, EventTime, and drilldown.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-MAIN-EVENT
 // purpose: Render a quiet-day main event without merging it into convergence content.
 // owns:
 //   - components/today-convergence/main-event.tsx
-// inputs: generated TodayConvergenceMainEvent.
+// inputs: generated TodayConvergenceMainEvent and optional published snapshot id.
 // outputs: data-testid=main-event block with public polarity and time attributes.
 // dependencies: today-formatters, packages/contracts/today-convergence.ts.
 // side_effects: none.
@@ -33,25 +33,27 @@ import {
   getTodaySphereLabel,
 } from "./today-formatters";
 
-type Props = { event: TodayConvergenceMainEvent };
+type Props = {
+  event: TodayConvergenceMainEvent;
+  snapshotId?: string | null;
+};
 
 // START_BLOCK: MAIN_EVENT
-export function MainEvent({ event }: Props) {
+export function MainEvent({ event, snapshotId }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
   // purpose: Render the deterministic main event block.
-  // inputs: event — generated main event payload.
+  // inputs: event — generated main event payload; snapshotId — published snapshot identity for drilldown.
   // returns: accessible main-event article.
   // side_effects: none.
   // emitted_logs: none.
   // error_behavior: generated event fields are rendered as received.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
-  return (
-    <article
-      data-testid="main-event"
-      data-polarity={event.polarity}
-      className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
-    >
-      <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+  const href = snapshotId
+    ? `/day/snapshots/${encodeURIComponent(snapshotId)}/spheres/${event.sphere}`
+    : null;
+  const content = (
+    <>
+      <p className="text-[13px] font-medium uppercase leading-[18px] tracking-[0.14em] text-muted-foreground">
         Главное событие дня
       </p>
       <h2 className="mt-2 font-serif text-[20px] leading-[26px]">{getTodaySphereLabel(event.sphere)}</h2>
@@ -63,6 +65,27 @@ export function MainEvent({ event }: Props) {
       <time className="mt-3 block text-[15px] leading-[22px] tabular-nums" dateTime={event.time.peak ?? undefined}>
         {formatEventTime(event.time)}
       </time>
+      {event.summary ? (
+        <p className="mt-2 text-[15px] leading-[22px] text-pretty text-foreground/85">{event.summary.text}</p>
+      ) : null}
+    </>
+  );
+
+  return (
+    <article
+      data-testid="main-event"
+      data-polarity={event.polarity}
+      data-has-summary={event.summary ? "true" : "false"}
+      className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+    >
+      {href ? (
+        <a
+          href={href}
+          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {content}
+        </a>
+      ) : content}
     </article>
   );
 }

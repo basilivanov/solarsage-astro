@@ -7,7 +7,7 @@
 // purpose: Render /day/[date] and /day/today from the Today Convergence envelope.
 // owns:
 //   - app/(grace)/day/[date]/page.tsx
-// inputs: route date parameter, authenticated session, and hook payload.
+// inputs: route date parameter, authenticated session, hook payload, and touch gestures.
 // outputs: date navigation plus TodayScreen transport/ready/error states.
 // dependencies: next/navigation, useTodayConvergence, useOnboarded, lib/date, lib/today, generated Today contract.
 // side_effects: API lifecycle delegated to the hook; route replace/push and onboarding sync.
@@ -22,7 +22,7 @@
 //   - DayPage
 // semantic_blocks:
 //   - ROUTE_DATE: normalize today/ISO route values and invalid redirects.
-//   - DATE_NAVIGATION: preserve previous/today/next route navigation.
+//   - DATE_NAVIGATION: human date header plus previous/today/next route navigation and horizontal swipes.
 //   - TODAY_WIRING: connect hook state to the new TodayScreen.
 // owned_tests:
 //   - __tests__/app/day-page.test.tsx
@@ -30,13 +30,13 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, type TouchEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import { useOnboarded } from "@/hooks/use-onboarded";
 import { useTodayConvergence } from "@/lib/grace/hooks/useTodayConvergence";
-import { fromDateParam, toDateParam } from "@/lib/date";
-import { TODAY } from "@/lib/today";
+import { formatDayMonth, fromDateParam, toDateParam } from "@/lib/date";
+import { TODAY, sameDay } from "@/lib/today";
 
 const TRANSPORT_PAYLOAD = {
   schemaVersion: 1,
@@ -79,6 +79,30 @@ function shiftDate(date: Date, days: number): Date {
   return shifted;
 }
 
+// START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.formatDateHeader
+// purpose: Render the selected day as a human Russian date relative to today.
+// inputs: date — selected local calendar date.
+// returns: Today/yesterday/tomorrow label or day-month label with a year only outside the current year.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: valid Date input always produces a deterministic label.
+// END_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.formatDateHeader
+function formatDateHeader(date: Date): string {
+  const dayMonth = formatDayMonth(date);
+  if (sameDay(date, TODAY)) return `Сегодня, ${dayMonth}`;
+  if (sameDay(date, shiftDate(TODAY, -1))) return `Вчера, ${dayMonth}`;
+  if (sameDay(date, shiftDate(TODAY, 1))) return `Завтра, ${dayMonth}`;
+  return date.getFullYear() === TODAY.getFullYear()
+    ? dayMonth
+    : `${dayMonth} ${date.getFullYear()}`;
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(
+    target.closest("a,button,input,textarea,select,option,label,[contenteditable='true'],[role='button'],[role='link']"),
+  );
+}
+
 // START_BLOCK: ROUTE_DATE
 export default function DayPage() {
   // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayPage
@@ -115,8 +139,40 @@ export default function DayPage() {
     [router],
   );
 
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch || isInteractiveTarget(event.target)) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+  }, []);
+
+  const handleTouchEnd = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch || isInteractiveTarget(event.target)) return;
+
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 48 || Math.abs(dx) <= 1.5 * Math.abs(dy)) return;
+    navigateToDate(shiftDate(selectedDate, dx < 0 ? 1 : -1));
+  }, [navigateToDate, selectedDate]);
+
   return (
-    <div className="min-h-full bg-background">
+    <div
+      className="min-h-full bg-background"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => {
+        swipeStartRef.current = null;
+      }}
+    >
       <DayDateNavigation
         selectedDate={selectedDate}
         onDateChange={navigateToDate}
@@ -161,7 +217,7 @@ function DayDateNavigation({
       >
         ←
       </button>
-      <span className="text-[13px] font-medium">{toDateParam(selectedDate)}</span>
+      <span className="text-[15px] font-medium leading-[22px]">{formatDateHeader(selectedDate)}</span>
       <button
         type="button"
         aria-label="Следующий день"

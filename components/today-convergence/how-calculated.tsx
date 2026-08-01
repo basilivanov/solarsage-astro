@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-HOW-CALCULATED
-// purpose: Render the static “Как это рассчитано” disclosure for ready Today screens.
+// purpose: Render the static multi-paragraph “Как это рассчитано” disclosure for ready Today screens.
 // owns:
 //   - components/today-convergence/how-calculated.tsx
 // inputs: none.
@@ -54,8 +54,16 @@ export function HowCalculated() {
         <span>Как это рассчитано</span>
         <span aria-hidden>{open ? "⌃" : "⌄"}</span>
       </button>
-      <div id={contentId} hidden={!open} className="border-t border-border/50 px-4 py-3 text-[13px] leading-5 text-muted-foreground">
-        День собран из опубликованных событий и правил выбора сфер. Персональный текст показывается отдельно и не заменяет исходные данные.
+      <div id={contentId} hidden={!open} className="space-y-3 border-t border-border/50 px-4 py-3 text-[13px] leading-5 text-muted-foreground">
+        <p>
+          День считается по твоей натальной карте и точному положению планет (Swiss Ephemeris); результат публикуется как неизменяемый снимок (snapshot) расчёта.
+        </p>
+        <p>
+          События и сферы отбираются детерминированными правилами из этого снимка; времена — точные моменты аспектов.
+        </p>
+        <p>
+          Персональный текст поверх пишет языковая модель только по фактам снимка; если текст не готов, факты дня всё равно показываются.
+        </p>
       </div>
     </section>
   );

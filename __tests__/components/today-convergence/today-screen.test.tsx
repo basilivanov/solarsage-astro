@@ -216,6 +216,17 @@ describe("Today Convergence transport, access, and accessibility contract", () =
     expect(content?.hasAttribute("hidden")).toBe(false);
   });
 
+  it("expands the calculation disclosure into three static source paragraphs", () => {
+    renderToday(quietZeroImpulses);
+    fireEvent.click(screen.getByRole("button", { name: "Как это рассчитано" }));
+
+    const content = document.getElementById("today-calculation-details");
+    expect(content?.querySelectorAll("p")).toHaveLength(3);
+    expect(content?.textContent).toContain("Swiss Ephemeris");
+    expect(content?.textContent).toContain("неизменяемый снимок");
+    expect(content?.textContent).toContain("языковая модель");
+  });
+
   it("dismisses the birth-time banner through the parent callback", () => {
     const onDismiss = vi.fn();
     const { rerender } = renderToday(birthBucket, {
@@ -241,6 +252,47 @@ describe("Today Convergence public time and access projections", () => {
     const event = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
     expect(event.textContent).toContain("пик 09:30, окно 08:00–11:00");
     expect(event.getAttribute("data-time-mode")).toBe("exact");
+  });
+
+  it("renders impulse summary and links it to the published snapshot sphere", () => {
+    renderToday(quietSteady);
+    const impulse = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
+    const summary = quietSteady.impulses[0].summary?.text ?? "";
+
+    expect(impulse.tagName).toBe("A");
+    expect(impulse.getAttribute("data-has-summary")).toBe("true");
+    expect(impulse.getAttribute("href")).toBe(
+      `/day/snapshots/${encodeURIComponent(quietSteady.snapshotId!)}/spheres/work`,
+    );
+    expect(impulse.textContent).toContain(summary);
+    expect(screen.queryByTestId("today-narrative")).toBeNull();
+  });
+
+  it("keeps an impulse as a plain list item when summary and snapshot are absent", () => {
+    const payloadWithoutSummary: TodayConvergencePayload = {
+      ...quietSteady,
+      snapshotId: null,
+      impulses: [{ ...quietSteady.impulses[0], summary: null }],
+    };
+    renderToday(payloadWithoutSummary);
+    const impulse = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
+
+    expect(impulse.tagName).toBe("LI");
+    expect(impulse.getAttribute("data-has-summary")).toBe("false");
+    expect(impulse.querySelector("a")).toBeNull();
+    expect(impulse.textContent).not.toContain(quietSteady.impulses[0].summary?.text ?? "");
+  });
+
+  it("renders the main-event summary with the same snapshot drilldown route", () => {
+    renderToday(quietMainMax);
+    const mainEvent = screen.getByTestId("main-event");
+    const link = mainEvent.querySelector("a");
+
+    expect(mainEvent.getAttribute("data-has-summary")).toBe("true");
+    expect(link?.getAttribute("href")).toBe(
+      `/day/snapshots/${encodeURIComponent(quietMainMax.snapshotId!)}/spheres/decisions`,
+    );
+    expect(mainEvent.textContent).toContain(quietMainMax.mainEvent?.summary?.text ?? "");
   });
 
   it("formats overnight windows with an arrow and keeps midnight same-day", () => {

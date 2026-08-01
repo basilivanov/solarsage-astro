@@ -166,5 +166,40 @@ describe("DayPage route date handling", () => {
     fireEvent.click(screen.getByRole("button", { name: "Предыдущий день" }));
     expect(mocks.push).toHaveBeenCalledWith("/day/2026-07-31");
   });
+
+  it("renders a human date header with the Today label", () => {
+    render(<DayPage />);
+    const header = screen.getByTestId("day-date-navigation");
+
+    expect(header.textContent).toContain("Сегодня, 1 августа");
+    expect(header.textContent).not.toContain("2026-08-01");
+  });
+
+  it("navigates next and previous dates from horizontal swipes", () => {
+    render(<DayPage />);
+    const page = screen.getByTestId("day-date-navigation").parentElement!;
+
+    fireEvent.touchStart(page, { touches: [{ clientX: 220, clientY: 120 }] });
+    fireEvent.touchEnd(page, { changedTouches: [{ clientX: 150, clientY: 125 }] });
+    expect(mocks.push).toHaveBeenLastCalledWith("/day/2026-08-02");
+
+    fireEvent.touchStart(page, { touches: [{ clientX: 150, clientY: 120 }] });
+    fireEvent.touchEnd(page, { changedTouches: [{ clientX: 225, clientY: 125 }] });
+    expect(mocks.push).toHaveBeenLastCalledWith("/day/2026-07-31");
+  });
+
+  it("ignores vertical and interactive-element gestures", () => {
+    render(<DayPage />);
+    const page = screen.getByTestId("day-date-navigation").parentElement!;
+    const nextButton = screen.getByRole("button", { name: "Следующий день" });
+
+    fireEvent.touchStart(page, { touches: [{ clientX: 220, clientY: 120 }] });
+    fireEvent.touchEnd(page, { changedTouches: [{ clientX: 280, clientY: 190 }] });
+    expect(mocks.push).not.toHaveBeenCalled();
+
+    fireEvent.touchStart(nextButton, { touches: [{ clientX: 220, clientY: 120 }] });
+    fireEvent.touchEnd(nextButton, { changedTouches: [{ clientX: 140, clientY: 125 }] });
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
 });
 // END_BLOCK: ROUTE_DATE
