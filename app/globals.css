@@ -437,3 +437,14 @@
     animation: none !important;
   }
 }
+
+@layer utilities {
+  /*
+   * Instrument Serif (первый в --font-serif стеке для латиницы) рисует пробел
+   * шириной ~0.15em — serif-текст «склеивается» (3 августа → 3августа).
+   * Выравниваем словесные пробелы во всех serif-контекстах до читаемых.
+   */
+  .font-serif {
+    word-spacing: 0.09em;
+  }
+}
