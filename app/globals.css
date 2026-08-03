@@ -63,6 +63,10 @@
   --tone-tense-fg: #6f4a12;
   --tone-mixed-bg: #e8e1da;
   --tone-mixed-fg: #5e554e;
+
+  /* Calm warm elevation for cards on warm paper. */
+  --shadow-card: 0 1px 2px rgb(62 51 71 / 0.05), 0 6px 20px rgb(62 51 71 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(62 51 71 / 0.06), 0 10px 28px rgb(62 51 71 / 0.09);
 }
 
 /* Fallback for Samsung/old Android WebView — oklch() not supported before Chrome 111 */

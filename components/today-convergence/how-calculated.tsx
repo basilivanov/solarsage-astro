@@ -28,6 +28,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 // START_BLOCK: CALCULATION_DISCLOSURE
 export function HowCalculated() {
@@ -43,7 +44,7 @@ export function HowCalculated() {
   const contentId = "today-calculation-details";
 
   return (
-    <section data-testid="how-calculated" className="rounded-2xl border border-border/60 bg-card/70">
+    <section data-testid="how-calculated" className="rounded-[24px] border border-border/40 bg-card shadow-(--shadow-card)">
       <button
         type="button"
         aria-expanded={open}
@@ -52,7 +53,10 @@ export function HowCalculated() {
         className="flex min-h-12 w-full items-center justify-between px-4 text-left text-[14px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span>Как это рассчитано</span>
-        <span aria-hidden>{open ? "⌃" : "⌄"}</span>
+        <ChevronDown
+          aria-hidden
+          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""} motion-reduce:transition-none`}
+        />
       </button>
       <div id={contentId} hidden={!open} className="space-y-3 border-t border-border/50 px-4 py-3 text-[13px] leading-5 text-muted-foreground">
         <p>

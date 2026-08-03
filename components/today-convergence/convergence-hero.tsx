@@ -54,16 +54,18 @@ function groupClaims(group: TodayConvergenceGroup) {
 function SphereLink({
   sphere,
   polarity,
+  className = "",
 }: {
   sphere: TodayConvergenceGroup["primarySphere"];
   polarity: TodayConvergenceGroup["polarity"];
+  className?: string;
 }) {
   return (
     <a
       href={`/day/spheres/${sphere}`}
       data-testid={`convergence-sphere-${sphere}`}
       data-polarity={polarity}
-      className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-1 font-serif text-[20px] leading-[26px] text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-2 py-1 font-serif text-foreground transition-colors duration-150 hover:text-primary hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none ${className}`}
     >
       {getTodaySphereLabel(sphere)}
       <span
@@ -98,21 +100,21 @@ export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onR
       data-testid="convergence-hero"
       data-day-tone={dayTone ?? undefined}
       data-evidence-level={hero.evidenceLevel}
-      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${toneBackgroundClass || "bg-card"} p-5 shadow-sm`}
+      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${toneBackgroundClass || "bg-card"} p-5 shadow-(--shadow-card)`}
     >
       <h2 className="font-serif text-[28px] leading-[34px] text-foreground">
         Что сошлось {targetDateLabel}
       </h2>
       <div className="mt-4 flex flex-col items-start gap-1">
-        <SphereLink sphere={hero.primarySphere} polarity={hero.polarity} />
+        <SphereLink sphere={hero.primarySphere} polarity={hero.polarity} className="text-[22px] leading-[28px]" />
         {hero.secondarySphere ? (
-          <SphereLink sphere={hero.secondarySphere} polarity={hero.polarity} />
+          <SphereLink sphere={hero.secondarySphere} polarity={hero.polarity} className="text-[22px] leading-[28px]" />
         ) : null}
       </div>
 
       {secondaryGroups.length > 0 ? (
         <div className="mt-5 space-y-2">
-          <p className="text-[13px] font-medium uppercase leading-[18px] tracking-[0.14em] text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase leading-[18px] tracking-[0.18em] text-muted-foreground/80">
             Также {targetDateLabel}
           </p>
           {secondaryGroups.map((group) => (
@@ -121,11 +123,11 @@ export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onR
               data-testid="convergence-secondary"
               className="flex min-h-11 items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-[14px] leading-[18px]"
             >
-              <SphereLink sphere={group.primarySphere} polarity={group.polarity} />
+              <SphereLink sphere={group.primarySphere} polarity={group.polarity} className="text-[15px] leading-[21px]" />
               {group.secondarySphere ? (
                 <>
                   <span aria-hidden className="text-muted-foreground">·</span>
-                  <SphereLink sphere={group.secondarySphere} polarity={group.polarity} />
+                  <SphereLink sphere={group.secondarySphere} polarity={group.polarity} className="text-[15px] leading-[21px]" />
                 </>
               ) : null}
             </div>
@@ -133,7 +135,8 @@ export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onR
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-2 text-[13px] leading-[18px] text-muted-foreground">
+      <div className="mt-4 flex items-center gap-2 text-[12px] leading-[18px] text-muted-foreground/80">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary/60" />
         <span>Доказательность: {hero.evidenceLevel === "high" ? "высокая" : "средняя"}</span>
       </div>
       <TodayNarrative state={contentState} claims={claims} onRetry={onRetry} />

@@ -53,7 +53,7 @@ export function BirthTimeBanner({ birthTime, dismissed = false, onDismiss }: Pro
   return (
     <aside
       data-testid="birth-time-banner"
-      className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3 text-[13px]"
+      className="flex items-start gap-3 rounded-[24px] border border-border/40 bg-card px-4 py-3 text-[13px] shadow-(--shadow-card)"
     >
       <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
       <p className="flex-1 leading-5">{message} Уточнить можно в профиле.</p>

@@ -59,7 +59,7 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
       data-testid="today-narrative"
       data-state={state}
       aria-live={state === "pending" || state === "unavailable" ? "polite" : undefined}
-      className="rounded-2xl border border-border/60 bg-card/80 p-4 text-[15px] leading-6"
+      className="rounded-[24px] border border-border/40 bg-card p-4 text-[15px] leading-[24px] text-pretty text-foreground/90 shadow-(--shadow-card)"
     >
       {state === "ready" ? (
         <div className="space-y-3">

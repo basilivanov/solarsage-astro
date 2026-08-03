@@ -44,7 +44,7 @@ export function TodayLookahead({ lookahead }: Props) {
     <aside
       data-testid="today-lookahead"
       data-target-date={lookahead.targetDate}
-      className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3 text-[14px]"
+      className="rounded-[24px] border border-border/40 bg-card px-4 py-3 text-[14px] shadow-(--shadow-card)"
     >
       Завтра факторы сходятся в сфере «{getTodaySphereLabel(lookahead.sphere)}».
     </aside>

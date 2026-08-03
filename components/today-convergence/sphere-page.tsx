@@ -96,7 +96,7 @@ function RetryState({
   onRetry?: () => void;
 }) {
   return (
-    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
+    <section data-testid={testId} className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)">
       <h1 className="font-serif text-[24px] leading-tight">{title}</h1>
       <p className="mt-2 text-[14px] leading-6 text-muted-foreground">{description}</p>
       <button
@@ -133,7 +133,7 @@ function TransportContent({
 
   if (errorStatus === 403) {
     return (
-      <section data-testid="sphere-page-access" className="space-y-4 rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
+      <section data-testid="sphere-page-access" className="space-y-4 rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)">
         <h1 className="font-serif text-[24px] leading-tight">Нужен полный доступ</h1>
         <p className="text-[14px] leading-6 text-muted-foreground">
           Полный разбор сферы доступен по подписке.
@@ -179,7 +179,7 @@ function NatalLayer({ payload }: { payload: TodaySpherePagePayload }) {
       data-testid="sphere-natal"
       data-state={hasNatalText ? "ready" : "empty"}
       data-content-state={hasNatalText ? "ready" : "unavailable"}
-      className="rounded-[24px] border border-border/60 bg-card p-5 shadow-sm"
+      className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
     >
       <h2 className="font-serif text-[22px] leading-tight">В твоей карте</h2>
       {hasNatalText ? (
@@ -189,7 +189,7 @@ function NatalLayer({ payload }: { payload: TodaySpherePagePayload }) {
               key={`${index}-${paragraph.sourceFactIds.join("-")}`}
               data-testid={`sphere-natal-paragraph-${index}`}
               data-source-fact-ids={paragraph.sourceFactIds.join(",")}
-              className="text-pretty text-[15px] leading-7 text-foreground/90"
+              className="text-pretty text-[15px] leading-[26px] text-foreground/90"
             >
               {paragraph.text}
             </p>
@@ -227,7 +227,7 @@ function PeriodLayer({ payload }: { payload: TodaySpherePagePayload }) {
       data-state={hasPeriods ? "ready" : "empty"}
       data-content-state={hasPeriods ? "ready" : periodUnavailable ? "unavailable" : "empty"}
       data-period-identity={payload.periodIdentity}
-      className="rounded-[24px] border border-border/60 bg-card p-5 shadow-sm"
+      className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
     >
       <h2 className="font-serif text-[22px] leading-tight">Сейчас действует</h2>
       {hasPeriods ? (
@@ -240,17 +240,17 @@ function PeriodLayer({ payload }: { payload: TodaySpherePagePayload }) {
                 data-testid={`sphere-period-${item.id}`}
                 data-technique={item.technique ?? "unknown"}
                 data-active-until={item.activeUntil}
-                className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
+                className="rounded-[20px] border border-border/40 bg-card p-4 shadow-(--shadow-card)"
               >
                 <p
                   data-testid={`sphere-period-title-${item.id}`}
-                  className="text-[15px] leading-6 text-foreground"
+                  className="text-[15px] font-medium leading-[21px] text-foreground"
                 >
                   {item.title}
                 </p>
                 <time
                   dateTime={item.activeUntil}
-                  className="mt-1 block text-[13px] leading-5 text-muted-foreground"
+                  className="mt-1 block text-[13px] leading-[18px] text-muted-foreground"
                 >
                   до {formatDateOnly(item.activeUntil)}
                 </time>
@@ -348,7 +348,7 @@ export function SpherePage({
         {ready ? (
           <>
             <header>
-              <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
                 Страница сферы
               </p>
               <h1 className="mt-2 font-serif text-[30px] leading-tight">{sphereLabel(payload.sphere)}</h1>

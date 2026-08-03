@@ -71,7 +71,7 @@ function RetryState({
   onRetry?: () => void;
 }) {
   return (
-    <section data-testid={testId} className="rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
+    <section data-testid={testId} className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)">
       <h1 className="font-serif text-[24px] leading-tight">{title}</h1>
       <p className="mt-2 text-[14px] leading-6 text-muted-foreground">{description}</p>
       <button
@@ -103,7 +103,7 @@ function TransportContent({
 
   if (errorStatus === 403) {
     return (
-      <section data-testid="sphere-drilldown-access" className="space-y-4 rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm">
+      <section data-testid="sphere-drilldown-access" className="space-y-4 rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)">
         <h1 className="font-serif text-[24px] leading-tight">Нужен полный доступ</h1>
         <p className="text-[14px] leading-6 text-muted-foreground">
           Доказательная цепочка доступна в полном разборе дня.
@@ -149,7 +149,7 @@ function EvidenceChain({
 }) {
   return (
     <section data-testid="drilldown-evidence" className="space-y-3">
-      <h2 className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+      <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
         Доказательная цепочка
       </h2>
       <ol className="space-y-3">
@@ -160,17 +160,17 @@ function EvidenceChain({
             data-polarity={event.polarity}
             data-event-kind={event.kind}
             data-time-mode={event.time.mode}
-            className="rounded-[20px] border border-border/60 bg-card p-4 shadow-sm"
+            className="rounded-[20px] border border-border/40 bg-card p-4 shadow-(--shadow-card)"
           >
             <div className="flex items-start gap-3">
-              <span aria-hidden className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-secondary text-[13px] font-medium">
+              <span aria-hidden className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-primary/10 text-[13px] font-medium text-primary">
                 {index + 1}
               </span>
               <div className="min-w-0">
                 {event.title ? (
                   <p
                     data-testid={`drilldown-event-title-${event.id}`}
-                    className="text-[14px] font-medium leading-5 text-foreground"
+                    className="text-[15px] font-medium leading-[21px] text-foreground"
                   >
                     {event.title}
                   </p>
@@ -211,7 +211,7 @@ function ConvergenceContext({ payload }: { payload: TodaySphereDrilldownPayload 
         <section
           data-testid="drilldown-convergence"
           data-polarity={convergence.polarity}
-          className="rounded-[20px] border border-border/60 bg-card p-4 shadow-sm"
+          className="rounded-[20px] border border-border/40 bg-card p-4 shadow-(--shadow-card)"
         >
           <h2 className="text-[14px] font-medium">Основание связи</h2>
           <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
@@ -284,10 +284,10 @@ export function SphereDrilldown({
         {ready ? (
           <>
             <header>
-              <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
                 Почему сошлось
               </p>
-              <h1 className="mt-2 font-serif text-[28px] leading-tight">
+              <h1 className="mt-2 font-serif text-[28px] leading-[34px]">
                 {sphereLabel(payload.sphere)} — сегодня
               </h1>
             </header>

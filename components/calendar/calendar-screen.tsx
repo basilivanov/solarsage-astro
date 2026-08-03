@@ -262,7 +262,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
         role="alert"
       >
         <div
-          className="rounded-lg border border-border/60 bg-card/70 px-4 py-5 text-center"
+          className="rounded-[24px] border border-border/40 bg-card px-4 py-5 text-center shadow-(--shadow-card)"
           data-testid="calendar-unavailable"
         >
           <p className="text-sm font-medium text-foreground">Календарь недоступен</p>
@@ -282,7 +282,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
         data-testid="calendar-loading"
         role="status"
       >
-        <div className="rounded-lg border border-border/60 bg-card/70 px-4 py-5 text-center">
+        <div className="rounded-[24px] border border-border/40 bg-card px-4 py-5 text-center shadow-(--shadow-card)">
           <p className="text-sm font-medium text-foreground">Загружаем календарь</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Ждём реальные данные месяца от backend.
@@ -311,13 +311,13 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
           onClick={() => go(-1)}
           disabled={!canPrev}
           aria-label="Предыдущий месяц"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-card text-foreground/70 shadow-(--shadow-card) transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
         </button>
 
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
             Календарь
           </span>
           <h1
@@ -333,7 +333,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
           onClick={() => go(1)}
           disabled={!canNext}
           aria-label="Следующий месяц"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-card text-foreground/70 shadow-(--shadow-card) transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
         </button>
@@ -356,7 +356,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
           {view === "day" ? (
             <motion.span
               layoutId="cal-toggle"
-              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              className="absolute inset-0 rounded-full bg-card shadow-(--shadow-card)"
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
             />
           ) : null}
@@ -376,33 +376,13 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
           {view === "moon" ? (
             <motion.span
               layoutId="cal-toggle"
-              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              className="absolute inset-0 rounded-full bg-card shadow-(--shadow-card)"
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
             />
           ) : null}
           <span className="relative">Луна</span>
         </button>
       </div>
-
-      {view === "day" && displayDays.some((day) => day.dayTone != null) ? (
-        <div
-          data-testid="calendar-tone-legend"
-          aria-label="Обозначения тонов дня"
-          className="mx-5 mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground"
-        >
-          {(Object.entries(DAY_TONE_ICONS) as [CalendarDayTone, (typeof DAY_TONE_ICONS)[CalendarDayTone]][]).map(
-            ([toneKey, tone]) => {
-              const Icon = tone.Icon
-              return (
-                <span key={toneKey} className="inline-flex items-center gap-1">
-                  <Icon aria-hidden className="h-3 w-3 text-foreground/60" strokeWidth={1.75} />
-                  {tone.label.replace(" тон дня", "")}
-                </span>
-              )
-            },
-          )}
-        </div>
-      ) : null}
 
       <div className="mt-4 grid flex-none grid-cols-7 px-5">
         {WEEKDAYS_SHORT.map((weekday, index) => (
@@ -434,6 +414,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
             {displayDays.map((day) => {
               const date = parseCalendarDayDate(day.date)
               if (!date) return null
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6
               const isToday = day.isToday || sameDay(date, TODAY)
               const isSelected = sameDay(date, selected)
               const accessible = accessAllowed(day)
@@ -459,8 +440,8 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
                       "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                       !day.isCurrentMonth && "opacity-30",
-                      day.isCurrentMonth && !isSelected && !isToday && "text-foreground/85 hover:bg-muted/60",
-                      isToday && !isSelected && "text-foreground ring-1 ring-border",
+                      day.isCurrentMonth && !isSelected && !isToday && (isWeekend ? "text-foreground/60" : "text-foreground/85") + " hover:bg-muted/60",
+                      isToday && !isSelected && (isWeekend ? "text-foreground/60" : "text-foreground/85") + " ring-1 ring-border",
                       isSelected && view === "day" && "bg-primary text-primary-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]",
                       isSelected && view === "moon" && "bg-primary/10 text-foreground ring-2 ring-primary",
                       day.isCurrentMonth && !accessible && "opacity-65",
@@ -505,7 +486,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
 
                         {day.isCurrentMonth && day.dayState === "hero" ? (
                           <span
-                            className="mt-0.5 h-1.5 w-1.5 rounded-full bg-foreground/70"
+                            className="mt-0.5 h-1.5 w-1.5 rounded-full bg-foreground"
                             data-testid="calendar-day-hero-dot"
                             aria-hidden
                           />
@@ -513,7 +494,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
 
                         {day.isCurrentMonth && day.dayState === "not-computed" ? (
                           <span
-                            className="mt-0.5 h-1.5 w-1.5 rounded-full border border-muted-foreground/50"
+                            className="mt-0.5 h-1.5 w-1.5 rounded-full border-[1.5px] border-muted-foreground/45"
                             data-testid="calendar-day-not-computed"
                             aria-hidden
                           />
@@ -546,13 +527,13 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
           </ol>
 
           <div
-            className="flex-none border-t border-border/60 bg-card/60 px-5 pt-4"
+            className="flex-none border-t border-border/60 bg-card px-5 pt-4"
             style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
             data-testid="calendar-selected-summary"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
                   {sameDay(selected, TODAY) ? "Сегодня" : "Выбранный день"}
                 </div>
                 <div className="mt-1 truncate font-serif text-[20px] leading-tight tracking-tight text-foreground">
@@ -609,7 +590,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
                 className={cn(
                   "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                   isSelectedAccessible
-                    ? "border-foreground/85 bg-foreground text-background hover:bg-foreground/90"
+                    ? "border-primary bg-primary text-primary-foreground shadow-(--shadow-card) hover:bg-primary/90"
                     : "border-border/70 bg-card text-foreground",
                 )}
               >

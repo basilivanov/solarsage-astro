@@ -46,7 +46,7 @@ export function PeriodContext({ context }: Props) {
   const contentId = "today-period-context-details";
 
   return (
-    <section data-testid="period-context" className="rounded-2xl border border-border/60 bg-card/70">
+    <section data-testid="period-context" className="rounded-[24px] border border-border/40 bg-card shadow-(--shadow-card)">
       <button
         type="button"
         aria-expanded={open}

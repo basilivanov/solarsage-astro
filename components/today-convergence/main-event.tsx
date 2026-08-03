@@ -55,20 +55,20 @@ export function MainEvent({ event, snapshotId, timezone }: Props) {
     : null;
   const content = (
     <>
-      <p className="text-[13px] font-medium uppercase leading-[18px] tracking-[0.14em] text-muted-foreground">
+      <p className="text-[11px] font-medium uppercase leading-[18px] tracking-[0.18em] text-muted-foreground/80">
         Главное событие дня
       </p>
-      <h2 className="mt-2 font-serif text-[20px] leading-[26px]">{getTodaySphereLabel(event.sphere)}</h2>
+      <h2 className="mt-2 font-serif text-[17px] leading-[22px] text-foreground">{getTodaySphereLabel(event.sphere)}</h2>
       <p
         className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(event.polarity)}`}
       >
         {getPolarityLabel(event.polarity)}
       </p>
-      <time className="mt-3 block text-[15px] leading-[22px] tabular-nums" dateTime={getEventTimeDateTime(event.time)}>
+      <time className="mt-3 block text-[13px] leading-[18px] tabular-nums text-muted-foreground" dateTime={getEventTimeDateTime(event.time)}>
         {formatEventTime(event.time, timezone)}
       </time>
       {event.summary ? (
-        <p className="mt-2 text-[15px] leading-[22px] text-pretty text-foreground/85">{event.summary.text}</p>
+        <p className="mt-2 text-[15px] leading-[23px] text-pretty text-foreground/90">{event.summary.text}</p>
       ) : null}
     </>
   );
@@ -78,7 +78,7 @@ export function MainEvent({ event, snapshotId, timezone }: Props) {
       data-testid="main-event"
       data-polarity={event.polarity}
       data-has-summary={event.summary ? "true" : "false"}
-      className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+      className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
     >
       {href ? (
         <a

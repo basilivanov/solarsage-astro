@@ -31,6 +31,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, type TouchEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import { useOnboarded } from "@/hooks/use-onboarded";
@@ -214,18 +215,18 @@ function DayDateNavigation({
         type="button"
         aria-label="Предыдущий день"
         onClick={() => onDateChange(shiftDate(selectedDate, -1))}
-        className="min-h-11 rounded-full px-4 text-[13px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-card text-muted-foreground shadow-(--shadow-card) transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
       >
-        ←
+        <ChevronLeft aria-hidden className="h-4 w-4" />
       </button>
-      <span className="text-[15px] font-medium leading-[22px]">{formatDateHeader(selectedDate)}</span>
+      <span className="font-serif text-[17px] leading-[22px]">{formatDateHeader(selectedDate)}</span>
       <button
         type="button"
         aria-label="Следующий день"
         onClick={() => onDateChange(shiftDate(selectedDate, 1))}
-        className="min-h-11 rounded-full px-4 text-[13px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-card text-muted-foreground shadow-(--shadow-card) transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
       >
-        →
+        <ChevronRight aria-hidden className="h-4 w-4" />
       </button>
     </nav>
   );

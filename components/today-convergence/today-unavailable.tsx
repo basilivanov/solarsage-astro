@@ -38,7 +38,7 @@ export function TodayUnavailable({ onRetry }: Props) {
   // error_behavior: no-op callback when omitted.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-UNAVAILABLE.TodayUnavailable
   return (
-    <section data-testid="today-unavailable" role="alert" className="rounded-[24px] border border-border/60 bg-card p-5">
+    <section data-testid="today-unavailable" role="alert" className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)">
       <p className="font-serif text-[22px] leading-tight">Не удалось рассчитать день. Обновить</p>
       <button
         type="button"

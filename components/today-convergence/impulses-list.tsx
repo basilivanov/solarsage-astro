@@ -26,6 +26,7 @@
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-IMPULSES
 
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import type {
   TodayConvergenceEvent,
   TodayConvergenceImpulse,
@@ -90,7 +91,7 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
 
   return (
     <section data-testid="impulses-list" data-count={String(impulses.length)} data-group-count={String(groups.length)} className="space-y-3">
-      <h2 className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+      <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
         Импульсы дня
       </h2>
       <div className="space-y-3">
@@ -100,11 +101,11 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
             data-testid={`impulse-group-${group.sphere}`}
             data-sphere={group.sphere}
             data-impulse-count={String(group.impulses.length)}
-            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-serif text-[20px] leading-[26px]">{getTodaySphereLabel(group.sphere)}</h3>
+                <h3 className="font-serif text-[17px] leading-[22px] text-foreground">{getTodaySphereLabel(group.sphere)}</h3>
                 <p className="mt-1 text-[13px] leading-[18px] text-muted-foreground">
                   {group.impulses.length === 1 ? "Один сигнал сегодня" : `${group.impulses.length} сигнала сегодня`}
                 </p>
@@ -115,16 +116,17 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
             <ul className="mt-4 space-y-2">
               {group.impulses.map((impulse) => {
                 const eventTitle = eventById.get(impulse.eventId)?.title;
-                return (
-                  <li
-                    key={impulse.eventId}
-                    data-testid={`impulse-${impulse.eventId}`}
-                    data-polarity={impulse.polarity}
-                    data-time-mode={impulse.time.mode}
-                    data-has-summary={impulse.summary ? "true" : "false"}
-                    data-has-event-title={eventTitle ? "true" : "false"}
-                    className="min-w-0 rounded-xl border border-border/50 bg-background/60 p-3"
-                  >
+                const cardHref = snapshotId
+                  ? `/day/snapshots/${encodeURIComponent(snapshotId)}/spheres/${impulse.sphere}`
+                  : null;
+                const cardClassName = [
+                  "relative block rounded-[20px] border border-border/40 bg-card p-4 shadow-(--shadow-card)",
+                  cardHref
+                    ? "pr-10 transition-[border-color,box-shadow] duration-150 hover:border-primary/30 hover:shadow-(--shadow-lift) motion-reduce:transition-none"
+                    : "",
+                ].join(" ");
+                const cardContent = (
+                  <>
                     <div
                       data-testid={`impulse-event-meta-${impulse.eventId}`}
                       className="flex min-w-0 flex-col gap-1 text-[15px] leading-[22px] xl:flex-row xl:items-baseline xl:justify-between xl:gap-x-4"
@@ -132,7 +134,7 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
                       {eventTitle ? (
                         <h4
                           data-testid={`impulse-event-title-${impulse.eventId}`}
-                          className="min-w-0 break-words text-[16px] font-medium leading-[22px] text-foreground xl:flex-none xl:whitespace-nowrap"
+                          className="min-w-0 break-words font-serif text-[17px] leading-[22px] text-foreground xl:flex-none xl:whitespace-nowrap"
                         >
                           {eventTitle}
                         </h4>
@@ -140,7 +142,7 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
                       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 xl:flex-none xl:flex-nowrap xl:whitespace-nowrap">
                         <time
                           data-testid={`impulse-event-time-${impulse.eventId}`}
-                          className="min-w-0 break-words tabular-nums xl:whitespace-nowrap"
+                          className="min-w-0 break-words text-[13px] tabular-nums text-muted-foreground xl:whitespace-nowrap"
                           dateTime={getEventTimeDateTime(impulse.time)}
                         >
                           {formatEventTime(impulse.time, timezone)}
@@ -151,10 +153,39 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
                       </div>
                     </div>
                     {impulse.summary ? (
-                      <p className="mt-2 text-[15px] leading-[22px] text-pretty text-foreground/85">
+                      <p className="mt-2 text-[15px] leading-[23px] text-pretty text-foreground/90">
                         {impulse.summary.text}
                       </p>
                     ) : null}
+                    {cardHref ? (
+                      <ChevronRight
+                        aria-hidden
+                        className="absolute right-3 top-4 h-4 w-4 text-muted-foreground/50"
+                      />
+                    ) : null}
+                  </>
+                );
+                return (
+                  <li
+                    key={impulse.eventId}
+                    data-testid={`impulse-${impulse.eventId}`}
+                    data-polarity={impulse.polarity}
+                    data-time-mode={impulse.time.mode}
+                    data-has-summary={impulse.summary ? "true" : "false"}
+                    data-has-event-title={eventTitle ? "true" : "false"}
+                    className="min-w-0"
+                  >
+                    {cardHref ? (
+                      <a
+                        href={cardHref}
+                        aria-label={`Открыть разбор сферы «${getTodaySphereLabel(impulse.sphere)}»`}
+                        className={cardClassName}
+                      >
+                        {cardContent}
+                      </a>
+                    ) : (
+                      <div className={cardClassName}>{cardContent}</div>
+                    )}
                   </li>
                 );
               })}

@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-CALENDAR-SCREEN
-// purpose: Test the active CalendarScreen loading, toggle, dayState marker, dayTone icon, access, and selected-day contracts.
+// purpose: Test the active CalendarScreen loading, toggle, dayState marker, dayTone icon, access, and selected-day contracts without a dead tone legend.
 // owns:
 //   - __tests__/components/CalendarScreen.test.tsx
 // inputs: generated CalendarPayload fixture and mocked monthly fetch.
@@ -169,7 +169,7 @@ describe("CalendarScreen dayState markers", () => {
     expect(screen.getByTestId("calendar-day-2026-08-04").querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("tense")
     expect(screen.getByTestId("calendar-day-2026-08-05").querySelector("[data-testid='calendar-day-tone-icon']")?.getAttribute("data-tone")).toBe("mixed")
     expect(hero.getAttribute("aria-label")).toContain("поддерживающий тон дня")
-    expect(screen.getByTestId("calendar-tone-legend").textContent).toContain("поддерживающий")
+    expect(screen.queryByTestId("calendar-tone-legend")).toBeNull()
     expect(ordinary.textContent).not.toContain("поддерживающий")
   })
 })
