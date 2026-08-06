@@ -12,7 +12,8 @@
 #   - docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py
 #   - per-chart checkpoint and aggregate report files under a run directory.
 # inputs: corpus_manifest.v1.json, date range, shard residues, worker count.
-# outputs: atomic per-chart JSON checkpoints and aggregate JSON/Markdown.
+# outputs: atomic per-chart JSON checkpoints, aggregate JSON/Markdown, and
+#   deterministic per-day physical-signature JSONL.
 # dependencies: direct_replay_pipeline, birthtime_replay, fixed ablation
 #   classifier, Swiss Ephemeris and canon files.
 # side_effects: Swiss Ephemeris reads; writes only the requested output dir.
@@ -31,11 +32,13 @@
 # public_entrypoints:
 #   - run_chart
 #   - aggregate_checkpoints
+#   - write_physical_signatures
 #   - main
 # semantic_blocks:
 #   - PATH_BOOTSTRAP: analysis/repository imports.
 #   - CHART_REPLAY: sequential per-chart control streams.
 #   - METRICS: compact daily and chart summaries.
+#   - PHYSICAL_SIGNATURES: baseline identity and projection evidence.
 #   - CLI: resumable shard execution.
 # owned_tests:
 #   - docs/work/2026-07-29_today-convergence-rewrite/analysis/test_corpus_replay.py
@@ -45,6 +48,7 @@ from __future__ import annotations
 
 # START_BLOCK: PATH_BOOTSTRAP
 import argparse
+import hashlib
 import json
 import os
 import statistics
@@ -100,6 +104,217 @@ def _date_range(start: Date, end: Date) -> list[Date]:
     return [start + timedelta(days=index) for index in range((end - start).days + 1)]
 
 
+LEGACY_SPHERE_KEYS = frozenset({"decisions", "shopping"})
+
+
+def _field(item: Any, key: str, default: Any = None) -> Any:
+    if isinstance(item, Mapping):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
+
+def _iter_values(value: Any) -> tuple[Any, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    try:
+        return tuple(value)
+    except TypeError:
+        return (value,)
+
+
+def _sphere_values(item: Any) -> tuple[str, ...]:
+    raw = _field(item, "spheres", None)
+    if raw is None:
+        raw = _field(item, "sphere", None)
+    return tuple(sorted({str(value).strip() for value in _iter_values(raw) if str(value).strip()}))
+
+
+def _facet_value(item: Any) -> Any:
+    value = _field(item, "facet", None)
+    if value is None:
+        value = _field(item, "facet_key", None)
+    return value
+
+
+def _event_id(item: Any) -> str | None:
+    for key in ("canonical_event_id", "canonicalEventId", "factor_id", "factorId", "semantic_key"):
+        value = _field(item, key, None)
+        if value is not None and str(value).strip():
+            return str(value)
+    return None
+
+
+def _driver_key(item: Mapping[str, Any]) -> str:
+    try:
+        return str(driver_of(dict(item)))
+    except (KeyError, TypeError, AttributeError):
+        return f"src:{str(_field(item, 'source_planet', None) or 'UNKNOWN')}"
+
+
+def _group_id(group: Mapping[str, Any], member_event_ids: Sequence[str]) -> str:
+    explicit = _field(group, "group_id", None) or _field(group, "groupId", None)
+    if explicit is not None and str(explicit).strip():
+        return str(explicit)
+    payload = json.dumps(sorted(member_event_ids), ensure_ascii=False, separators=(",", ":"))
+    return f"group:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
+
+
+def _legacy_key_counts(items: Sequence[Any]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for item in items:
+        for key in ("spheres", "sphere", "facet", "facet_key", "theme_keys", "technical_spheres"):
+            for value in _iter_values(_field(item, key, None)):
+                normalized = str(value).strip().lower()
+                if normalized in LEGACY_SPHERE_KEYS:
+                    counts[normalized] += 1
+    return counts
+
+
+def _facet_stats(items: Sequence[Any]) -> tuple[Counter[str], int, int]:
+    counts: Counter[str] = Counter()
+    null_count = 0
+    invalid_count = 0
+    for item in items:
+        facet = _facet_value(item)
+        if facet is None:
+            null_count += 1
+        elif isinstance(facet, str) and facet.strip():
+            counts[facet.strip()] += 1
+        else:
+            invalid_count += 1
+    return counts, null_count, invalid_count
+
+
+def _physical_signature(
+    public: Sequence[Mapping[str, Any]],
+    result: Mapping[str, Any],
+    tone: Mapping[str, Any],
+    *,
+    state: str,
+    day_tone: str,
+    target_date: str | None,
+) -> dict[str, Any]:
+    """Build the deterministic physical/projection identity for one day."""
+    significant = [dict(unit) for unit in result.get("sig_units", ()) or ()]
+    selected = [dict(unit) for unit in result.get("selected_public_units", ()) or ()]
+    public_units = [dict(unit) for unit in public]
+
+    event_driver_keys = {
+        event_id: _driver_key(unit)
+        for unit in significant
+        if (event_id := _event_id(unit)) is not None
+    }
+    significant_event_ids = sorted(
+        {event_id for unit in significant if (event_id := _event_id(unit)) is not None}
+    )
+    selected_event_ids = sorted(
+        {event_id for unit in selected if (event_id := _event_id(unit)) is not None}
+    )
+    selected_sphere_counts: Counter[str] = Counter()
+    all_sphere_counts: Counter[str] = Counter()
+    for unit in public_units:
+        all_sphere_counts.update(_sphere_values(unit))
+    for unit in selected:
+        selected_sphere_counts.update(_sphere_values(unit))
+
+    selected_facet_counts, selected_facet_null_count, selected_invalid_facet_count = _facet_stats(selected)
+    facet_counts, facet_null_count, invalid_facet_count = _facet_stats(public_units)
+
+    tone_groups = tuple(tone.get("groups", ()) or ())
+    group_signatures: list[dict[str, Any]] = []
+    for index, raw_group in enumerate(result.get("groups", ()) or ()):
+        group = dict(raw_group)
+        members = [dict(member) for member in group.get("members", ()) or ()]
+        member_event_ids = sorted(
+            {event_id for member in members if (event_id := _event_id(member)) is not None}
+        )
+        group_id = _group_id(group, member_event_ids)
+        tone_group = tone_groups[index] if index < len(tone_groups) else {}
+        tone_group = dict(tone_group) if isinstance(tone_group, Mapping) else {}
+        hero_anchor = group.get("hero_anchor") or {}
+        hero_confirmation = group.get("hero_confirmation") or {}
+        hero_anchor_id = _event_id(hero_anchor)
+        hero_confirmation_id = _event_id(hero_confirmation)
+        is_hero = bool(group.get("hero"))
+        evidence_level = None
+        if is_hero:
+            evidence_level = "high" if hero_anchor_id and hero_confirmation_id else "medium"
+        driver_keys = sorted(
+            {str(value) for value in (tone_group.get("driver_keys") or ())}
+            or {_driver_key(member) for member in members}
+        )
+        group_signatures.append(
+            {
+                "group_id": group_id,
+                "member_event_ids": member_event_ids,
+                "driver_keys": driver_keys,
+                "independence_keys": driver_keys,
+                "n_independent": int(group.get("n_independent", len(driver_keys))),
+                "spheres": list(_sphere_values(group)),
+                "hero": is_hero,
+                "hero_anchor_id": hero_anchor_id,
+                "hero_confirmation_id": hero_confirmation_id,
+                "hero_evidence_level": evidence_level,
+                "polarity": str(tone_group.get("polarity") or "steady"),
+            }
+        )
+
+    group_signatures.sort(key=lambda record: record["group_id"])
+    group_ids = [record["group_id"] for record in group_signatures]
+    selected_group_ids = sorted(
+        record["group_id"]
+        for record in group_signatures
+        if set(record["member_event_ids"]) & set(selected_event_ids)
+    )
+    hero_records = [record for record in group_signatures if record["hero"]]
+    hero_levels = sorted({record["hero_evidence_level"] for record in hero_records if record["hero_evidence_level"]})
+    repeated_spheres = sorted(
+        sphere for sphere, count in selected_sphere_counts.items() if count >= 2
+    )
+    return {
+        "schema_version": "today-convergence-physical-signature.v1",
+        "target_date": target_date,
+        "state": state,
+        "dayTone": day_tone,
+        "canonical_event_ids": significant_event_ids,
+        "group_ids": group_ids,
+        "groups": group_signatures,
+        "driver_keys": sorted(set(event_driver_keys.values())),
+        "independence_keys": sorted(
+            {key for record in group_signatures for key in record["independence_keys"]}
+        ),
+        "hero_anchor_ids": [record["hero_anchor_id"] for record in hero_records if record["hero_anchor_id"]],
+        "hero_confirmation_ids": [
+            record["hero_confirmation_id"]
+            for record in hero_records
+            if record["hero_confirmation_id"]
+        ],
+        "hero_evidence_level": hero_levels[0] if len(hero_levels) == 1 else hero_levels or None,
+        "group_polarity": {
+            record["group_id"]: record["polarity"] for record in group_signatures
+        },
+        "selected_group_ids": selected_group_ids,
+        "selected_event_ids": selected_event_ids,
+        "selected_sphere_counts": dict(selected_sphere_counts),
+        "sphere_counts": dict(all_sphere_counts),
+        "repeated_spheres": repeated_spheres,
+        "repeated_sphere_selected_count": sum(selected_sphere_counts[sphere] for sphere in repeated_spheres),
+        "facet_counts": dict(facet_counts),
+        "facet_null_count": facet_null_count,
+        "invalid_facet_count": invalid_facet_count,
+        "selected_facet_counts": dict(selected_facet_counts),
+        "selected_facet_null_count": selected_facet_null_count,
+        "selected_invalid_facet_count": selected_invalid_facet_count,
+        "group_without_sphere_count": sum(
+            not _sphere_values(group) for group in (result.get("groups", ()) or ())
+        ),
+        "unmapped_count": sum(not _sphere_values(unit) for unit in public_units),
+        "legacy_key_occurrences": dict(_legacy_key_counts(public_units)),
+    }
+
+
 def _chart_input(raw: Mapping[str, Any]) -> ChartInput:
     return ChartInput(
         chart_id=str(raw["chart_id"]),
@@ -150,10 +365,18 @@ def _state_result(
     )
     hero_spheres = sorted(
         {
-            str(sphere)
+            sphere
             for group in result.get("hero_groups", [])
-            for sphere in group.get("spheres", ())
+            for sphere in _sphere_values(group)
         }
+    )
+    physical_signature = _physical_signature(
+        public,
+        result,
+        tone,
+        state=public_state,
+        day_tone=tone["day_tone"],
+        target_date=target_date,
     )
     return {
         "state": public_state,
@@ -183,6 +406,7 @@ def _state_result(
         "hero_spheres": hero_spheres,
         "public_ids": sorted(published_ids(public)),
         "excluded_reasons": dict(Counter(str(item.get("exclusion_reason") or "unspecified") for item in excluded)),
+        "physical_signature": physical_signature,
     }
 
 
@@ -261,11 +485,34 @@ def _empty_mode_metrics() -> dict[str, Any]:
         "invalid_ledger": 0,
         "duplicate_ledger": 0,
         "timing_deferred": 0,
+        "selected_sphere_counts": Counter(),
+        "sphere_counts": Counter(),
+        "facet_counts": Counter(),
+        "selected_facet_counts": Counter(),
+        "facet_null_count": 0,
+        "selected_facet_null_count": 0,
+        "invalid_facet_count": 0,
+        "selected_invalid_facet_count": 0,
+        "repeated_sphere_days": 0,
+        "repeated_sphere_selected_count": 0,
+        "repeated_spheres": Counter(),
+        "group_without_sphere_count": 0,
+        "unmapped_count": 0,
+        "legacy_key_occurrences": Counter(),
+        "physical_signatures": [],
         "daily": [],
     }
 
 
-def _add_mode_metrics(metrics: dict[str, Any], date_text: str, state: dict[str, Any], days: Sequence[Mapping[str, Any]]) -> None:
+def _add_mode_metrics(
+    metrics: dict[str, Any],
+    date_text: str,
+    state: dict[str, Any],
+    days: Sequence[Mapping[str, Any]],
+    *,
+    chart_id: str | None = None,
+    birth_mode: str | None = None,
+) -> None:
     metrics["n_days"] += 1
     metrics["state_distribution"][state["state"]] += 1
     metrics["diagnostic_state_distribution"][state["diagnostic_state"]] += 1
@@ -288,6 +535,50 @@ def _add_mode_metrics(metrics: dict[str, Any], date_text: str, state: dict[str, 
         metrics["invalid_ledger"] += int(day["invalid_ledger_count"])
         metrics["duplicate_ledger"] += int(day["duplicate_ledger_count"])
         metrics["timing_deferred"] += int(day["timing_deferred_count"])
+    signature = dict(state["physical_signature"])
+    signature["chart_id"] = chart_id
+    signature["birth_mode"] = birth_mode
+    signature["mode"] = birth_mode
+    signature["date"] = date_text
+    metrics["selected_sphere_counts"].update(signature.get("selected_sphere_counts") or {})
+    metrics["sphere_counts"].update(signature.get("sphere_counts") or {})
+    metrics["facet_counts"].update(signature.get("facet_counts") or {})
+    metrics["selected_facet_counts"].update(signature.get("selected_facet_counts") or {})
+    metrics["facet_null_count"] += int(signature.get("facet_null_count", 0))
+    metrics["selected_facet_null_count"] += int(signature.get("selected_facet_null_count", 0))
+    metrics["invalid_facet_count"] += int(signature.get("invalid_facet_count", 0))
+    metrics["selected_invalid_facet_count"] += int(signature.get("selected_invalid_facet_count", 0))
+    repeated_spheres = signature.get("repeated_spheres") or []
+    metrics["repeated_sphere_days"] += int(bool(repeated_spheres))
+    metrics["repeated_sphere_selected_count"] += int(
+        signature.get("repeated_sphere_selected_count", 0)
+    )
+    metrics["repeated_spheres"].update(repeated_spheres)
+    metrics["group_without_sphere_count"] += int(signature.get("group_without_sphere_count", 0))
+    metrics["unmapped_count"] += int(signature.get("unmapped_count", 0))
+    metrics["legacy_key_occurrences"].update(signature.get("legacy_key_occurrences") or {})
+    # Per-day JSONL is the baseline identity artifact.  Aggregate-only audit
+    # counters stay in the mode report and are deliberately omitted here to
+    # keep the full 120-chart replay compact.
+    metrics["physical_signatures"].append(
+        {
+            key: value
+            for key, value in signature.items()
+            if key
+            not in {
+                "sphere_counts",
+                "facet_counts",
+                "facet_null_count",
+                "invalid_facet_count",
+                "selected_facet_counts",
+                "selected_facet_null_count",
+                "selected_invalid_facet_count",
+                "group_without_sphere_count",
+                "unmapped_count",
+                "legacy_key_occurrences",
+            }
+        }
+    )
     metrics["daily"].append({
         "date": date_text,
         "state": state["state"],
@@ -352,6 +643,23 @@ def _finalize_mode(metrics: dict[str, Any]) -> dict[str, Any]:
         "invalid_ledger": metrics["invalid_ledger"],
         "duplicate_ledger": metrics["duplicate_ledger"],
         "timing_deferred": metrics["timing_deferred"],
+        "selected_sphere_counts": dict(metrics["selected_sphere_counts"].most_common()),
+        "sphere_counts": dict(metrics["sphere_counts"].most_common()),
+        "facet_counts": dict(metrics["facet_counts"].most_common()),
+        "selected_facet_counts": dict(metrics["selected_facet_counts"].most_common()),
+        "facet_null_count": metrics["facet_null_count"],
+        "selected_facet_null_count": metrics["selected_facet_null_count"],
+        "invalid_facet_count": metrics["invalid_facet_count"],
+        "selected_invalid_facet_count": metrics["selected_invalid_facet_count"],
+        "repeated_sphere_days": metrics["repeated_sphere_days"],
+        "repeated_sphere_selected_count": metrics["repeated_sphere_selected_count"],
+        "repeated_spheres": dict(metrics["repeated_spheres"].most_common()),
+        "group_without_sphere_count": metrics["group_without_sphere_count"],
+        "unmapped_count": metrics["unmapped_count"],
+        "unmapped_factor_count": metrics["unmapped_count"],
+        "legacy_key_occurrences": dict(metrics["legacy_key_occurrences"].most_common()),
+        "old_key_occurrences": dict(metrics["legacy_key_occurrences"].most_common()),
+        "physical_signatures": metrics["physical_signatures"],
         "daily": metrics["daily"],
     }
 # END_BLOCK: METRICS
@@ -420,7 +728,14 @@ def run_chart(config: Mapping[str, Any]) -> dict[str, Any]:
             try:
                 state, _audit = _classify_mode(mode, day_by_time, times)
                 states_by_mode[mode] = state
-                _add_mode_metrics(metrics[mode], date_text, state, [day_by_time[t] for t in set(times)])
+                _add_mode_metrics(
+                    metrics[mode],
+                    date_text,
+                    state,
+                    [day_by_time[t] for t in set(times)],
+                    chart_id=chart.chart_id,
+                    birth_mode=mode,
+                )
             except Exception as exc:  # noqa: BLE001
                 errors.append({"date": date_text, "mode": mode, "error": repr(exc)})
         if include_shifted:
@@ -517,6 +832,17 @@ def aggregate_checkpoints(paths: Sequence[Path]) -> dict[str, Any]:
         day_tones: Counter[str] = Counter()
         tone_triggers = 0
         raw_activations = raw_ledger = invalid = duplicate = deferred = 0
+        selected_sphere_counts: Counter[str] = Counter()
+        sphere_counts: Counter[str] = Counter()
+        facet_counts: Counter[str] = Counter()
+        selected_facet_counts: Counter[str] = Counter()
+        facet_null_count = selected_facet_null_count = 0
+        invalid_facet_count = selected_invalid_facet_count = 0
+        repeated_sphere_days = repeated_sphere_selected_count = 0
+        repeated_spheres: Counter[str] = Counter()
+        group_without_sphere_count = unmapped_count = 0
+        legacy_key_occurrences: Counter[str] = Counter()
+        physical_signatures_count = 0
         for row in rows:
             n_days += int(row.get("n_days", 0))
             states.update(row.get("state_distribution", {}))
@@ -541,6 +867,23 @@ def aggregate_checkpoints(paths: Sequence[Path]) -> dict[str, Any]:
             invalid += int(row.get("invalid_ledger", 0))
             duplicate += int(row.get("duplicate_ledger", 0))
             deferred += int(row.get("timing_deferred", 0))
+            selected_sphere_counts.update(row.get("selected_sphere_counts") or {})
+            sphere_counts.update(row.get("sphere_counts") or {})
+            facet_counts.update(row.get("facet_counts") or {})
+            selected_facet_counts.update(row.get("selected_facet_counts") or {})
+            facet_null_count += int(row.get("facet_null_count", 0))
+            selected_facet_null_count += int(row.get("selected_facet_null_count", 0))
+            invalid_facet_count += int(row.get("invalid_facet_count", 0))
+            selected_invalid_facet_count += int(row.get("selected_invalid_facet_count", 0))
+            repeated_sphere_days += int(row.get("repeated_sphere_days", 0))
+            repeated_sphere_selected_count += int(row.get("repeated_sphere_selected_count", 0))
+            repeated_spheres.update(row.get("repeated_spheres") or {})
+            group_without_sphere_count += int(row.get("group_without_sphere_count", 0))
+            unmapped_count += int(row.get("unmapped_count", row.get("unmapped_factor_count", 0)))
+            legacy_key_occurrences.update(
+                row.get("legacy_key_occurrences", row.get("old_key_occurrences", {})) or {}
+            )
+            physical_signatures_count += len(row.get("physical_signatures") or ())
         aggregate_modes[mode] = {
             "charts_ok": len(rows),
             "charts_error": len(errors),
@@ -567,6 +910,23 @@ def aggregate_checkpoints(paths: Sequence[Path]) -> dict[str, Any]:
             "invalid_ledger": invalid,
             "duplicate_ledger": duplicate,
             "timing_deferred": deferred,
+            "selected_sphere_counts": dict(selected_sphere_counts.most_common()),
+            "sphere_counts": dict(sphere_counts.most_common()),
+            "facet_counts": dict(facet_counts.most_common()),
+            "selected_facet_counts": dict(selected_facet_counts.most_common()),
+            "facet_null_count": facet_null_count,
+            "selected_facet_null_count": selected_facet_null_count,
+            "invalid_facet_count": invalid_facet_count,
+            "selected_invalid_facet_count": selected_invalid_facet_count,
+            "repeated_sphere_days": repeated_sphere_days,
+            "repeated_sphere_selected_count": repeated_sphere_selected_count,
+            "repeated_spheres": dict(repeated_spheres.most_common()),
+            "group_without_sphere_count": group_without_sphere_count,
+            "unmapped_count": unmapped_count,
+            "unmapped_factor_count": unmapped_count,
+            "legacy_key_occurrences": dict(legacy_key_occurrences.most_common()),
+            "old_key_occurrences": dict(legacy_key_occurrences.most_common()),
+            "physical_signatures_count": physical_signatures_count,
         }
     shifted_aggregate: dict[str, Any] = {}
     for name in BUCKETS:
@@ -596,9 +956,45 @@ def aggregate_checkpoints(paths: Sequence[Path]) -> dict[str, Any]:
         "error_chart_ids": [str(chart.get("chart", {}).get("chart_id")) for chart in errors],
         "modes": aggregate_modes,
         "fixtures": {"diagnostic_shifted_grid_sensitivity": shifted_aggregate},
+        "physical_signatures_count": sum(
+            int(row.get("physical_signatures_count", 0))
+            for row in aggregate_modes.values()
+        ),
         "chart_elapsed_s": round(sum(float(chart.get("elapsed_s", 0.0)) for chart in charts), 3),
         "wall_clock_note": "sum of chart times is not wall-clock time when workers > 1",
     }
+
+
+def write_physical_signatures(path: Path, paths: Sequence[Path]) -> int:
+    """Write stable one-record-per-chart/day/birth-mode baseline signatures."""
+    rows: list[dict[str, Any]] = []
+    for checkpoint_path in paths:
+        chart = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        if chart.get("status") != "ok":
+            continue
+        chart_id = str(chart.get("chart", {}).get("chart_id") or "")
+        for mode, mode_result in chart.get("modes", {}).items():
+            for raw_signature in mode_result.get("physical_signatures", ()) or ():
+                signature = dict(raw_signature)
+                signature["chart_id"] = signature.get("chart_id") or chart_id
+                signature["birth_mode"] = signature.get("birth_mode") or mode
+                signature["mode"] = signature.get("mode") or mode
+                signature["target_date"] = signature.get("target_date") or signature.get("date")
+                rows.append(signature)
+    rows.sort(
+        key=lambda row: (
+            str(row.get("chart_id") or ""),
+            str(row.get("birth_mode") or ""),
+            str(row.get("target_date") or ""),
+        )
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+    temporary.replace(path)
+    return len(rows)
 
 
 def write_markdown(path: Path, run_meta: Mapping[str, Any], aggregate: Mapping[str, Any]) -> None:
@@ -622,6 +1018,18 @@ def write_markdown(path: Path, run_meta: Mapping[str, Any], aggregate: Mapping[s
             f"{row.get('legacy_tense_rate')} | {row.get('tense_rate')} | "
             f"{row['median_of_chart_medians']} | "
             f"{row['median_of_chart_independent_medians']} |"
+        )
+    lines.extend(["", "## Replay instrumentation", ""])
+    for mode, row in aggregate["modes"].items():
+        lines.append(
+            f"- {mode}: selected spheres {row.get('selected_sphere_counts', {})}; "
+            f"repeated-sphere days {row.get('repeated_sphere_days', 0)}; "
+            f"legacy keys {row.get('old_key_occurrences', {})}; "
+            f"unmapped {row.get('unmapped_count', 0)}; "
+            f"group-without-sphere {row.get('group_without_sphere_count', 0)}; "
+            f"facet/null/invalid {row.get('facet_counts', {})}/"
+            f"{row.get('facet_null_count', 0)}/"
+            f"{row.get('invalid_facet_count', 0)}."
         )
     lines.extend([
         "",
@@ -676,6 +1084,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "timing_scope": args.timing_scope,
         "include_shifted": args.include_shifted,
         "chart_ids": [chart["chart_id"] for chart in charts],
+        "physical_signatures_file": "physical_signatures.jsonl",
         "started_at_epoch": time.time(),
     }
     _atomic_write(output_dir / "run_meta.json", run_meta)
@@ -694,6 +1103,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     and cached.get("date_range") == [start.isoformat(), end.isoformat()]
                     and cached.get("source_fingerprint_sha256")
                     == manifest.get("current_source_fingerprint_sha256")
+                    and all(
+                        "physical_signatures" in mode_result
+                        for mode_result in (cached.get("modes") or {}).values()
+                    )
                 ):
                     continue
             except (OSError, json.JSONDecodeError):
@@ -744,6 +1157,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     existing = [path for path in checkpoint_paths if path.exists()]
     aggregate = aggregate_checkpoints(existing)
     aggregate["run_meta"] = run_meta
+    signature_path = output_dir / "physical_signatures.jsonl"
+    aggregate["physical_signatures_file"] = signature_path.name
+    aggregate["physical_signatures_count"] = write_physical_signatures(
+        signature_path,
+        existing,
+    )
     _atomic_write(output_dir / "aggregate.json", aggregate)
     write_markdown(output_dir / "report.md", run_meta, aggregate)
     print(json.dumps({"aggregate": aggregate, "failures": failures}, ensure_ascii=False, indent=2))

@@ -19,7 +19,8 @@
 #   - All chart data is synthetic and contains no user/profile identifiers.
 #   - Same seed and source tree produce byte-identical chart entries.
 #   - Every location contributes exactly five charts.
-# failure_policy: raises on missing source, invalid timezone, or wrong chart count.
+# failure_policy: raises on missing required source, invalid timezone, or wrong
+#   chart count; future-slice fingerprint sources are included when present.
 # END_MODULE_CONTRACT: M-GENERATE-CORPUS-MANIFEST
 
 # START_MODULE_MAP: M-GENERATE-CORPUS-MANIFEST
@@ -84,6 +85,8 @@ FINGERPRINT_FILES: tuple[str, ...] = (
     "grace/canon/activation_rules.v1.yml",
     "grace/canon/firdar.v1.yml",
     "grace/canon/today_convergence.v1.yml",
+    "grace/canon/today_convergence_themes.v1.yml",
+    "grace/canon/product_spheres.v1.yml",
     "packages/py-contracts/solarsage_contracts/versions.py",
     "apps/solarsage/solarsage/core/ephemeris_runtime.py",
     "apps/solarsage/solarsage/utils/ephemeris.py",
@@ -94,6 +97,11 @@ FINGERPRINT_FILES: tuple[str, ...] = (
     "apps/api/app/services/day_delta_service.py",
     "apps/api/app/services/day_factor_ledger.py",
     "apps/api/app/services/today_focus_builder.py",
+    "apps/api/app/services/today_convergence_canon.py",
+    "apps/api/app/services/today_convergence_units.py",
+    "apps/api/app/services/today_convergence_groups.py",
+    "apps/api/app/services/today_convergence_selection.py",
+    "apps/api/app/services/today_convergence_tone.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/ablation_harness.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/birthtime_replay.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/convergence_canon.py",
@@ -102,11 +110,28 @@ FINGERPRINT_FILES: tuple[str, ...] = (
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/tone_policy_candidate.py",
 )
 
+# These files are intentionally part of the lineage even before the later
+# product-sphere slices create them.  A missing optional entry is not the same
+# as a missing existing calculation source: the latter remains fail-closed.
+OPTIONAL_FINGERPRINT_FILES = frozenset(
+    {
+        "grace/canon/today_convergence_themes.v1.yml",
+        "grace/canon/product_spheres.v1.yml",
+        "apps/api/app/services/today_convergence_canon.py",
+        "apps/api/app/services/today_convergence_units.py",
+        "apps/api/app/services/today_convergence_groups.py",
+        "apps/api/app/services/today_convergence_selection.py",
+        "apps/api/app/services/today_convergence_tone.py",
+    }
+)
+
 
 def source_fingerprint() -> str:
     digest = hashlib.sha256()
     for relative in FINGERPRINT_FILES:
         path = REPO / relative
+        if not path.exists() and relative in OPTIONAL_FINGERPRINT_FILES:
+            continue
         data = path.read_bytes()
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
