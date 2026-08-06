@@ -34,7 +34,13 @@ const nextConfig = {
     proxyTimeout: 600_000,
   },
   ...(process.env.NODE_ENV !== "production"
-    ? { allowedDevOrigins: ["127.0.0.1"] }
+    ? {
+        allowedDevOrigins: [
+          "127.0.0.1",
+          // Optional Cloudflare quick-tunnel hostname for sandbox previews (no scheme).
+          ...(process.env.SANDBOX_ALLOWED_DEV_ORIGIN ? [process.env.SANDBOX_ALLOWED_DEV_ORIGIN] : []),
+        ],
+      }
     : {}),
   typescript: {
     ignoreBuildErrors: true,

@@ -21,23 +21,55 @@
 //   - SandboxTodayClient
 // semantic_blocks:
 //   - FRAME: app-shell-like container, wide canvas like /day routes.
+//   - THEME: ?theme= override / prefers-color-scheme dark toggle for the preview.
 // owned_tests:
 //   - none (dev tooling)
 // END_MODULE_MAP: M-SANDBOX-TODAY-CLIENT
 
 "use client";
 
+import { useEffect } from "react";
 import type { TodayConvergencePayload } from "@/packages/contracts";
+import type { TodayScreenProps } from "@/components/today-convergence/today-screen";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import { TabBar } from "@/components/today/tab-bar";
 
 type Props = {
   payload: unknown;
   fixtureName: string;
+  /** Optional hero variant from ?hero=full|band|unified (prototype comparison). */
+  heroVariant?: "full" | "band" | "unified";
+  /** Fixture-provided sphere context payloads (replaces the /api/spheres fetch in sandbox). */
+  sphereContexts?: Record<string, unknown>;
+  /** Fixture-provided natal chart for the HowCalculated wheel (sandbox only). */
+  natalChart?: unknown;
 };
 
+// START_BLOCK: THEME
+// ?theme=dark|light forces the html.dark class (as telegram-init does in production);
+// without the param the preview follows prefers-color-scheme.
+function useSandboxTheme() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const param = new URLSearchParams(window.location.search).get("theme");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const dark = param ? param === "dark" : media.matches;
+      root.classList.toggle("dark", dark);
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => {
+      media.removeEventListener("change", apply);
+      root.classList.remove("dark");
+    };
+  }, []);
+}
+// END_BLOCK: THEME
+
 // START_BLOCK: FRAME
-export function SandboxTodayClient({ payload, fixtureName }: Props) {
+export function SandboxTodayClient({ payload, fixtureName, heroVariant, sphereContexts, natalChart }: Props) {
+  useSandboxTheme();
   return (
     <main className="h-[var(--app-height)] overflow-hidden bg-background">
       <div className="mx-auto flex h-full max-w-md flex-col border-x border-border/50 bg-background lg:max-w-[1120px]">
@@ -51,6 +83,9 @@ export function SandboxTodayClient({ payload, fixtureName }: Props) {
             onRetry={() => {}}
             birthTimeDismissed={false}
             onBirthTimeDismiss={() => {}}
+            heroVariant={heroVariant}
+            sphereContexts={sphereContexts as TodayScreenProps["sphereContexts"]}
+            natalChart={natalChart as TodayScreenProps["natalChart"]}
           />
         </div>
         <TabBar />

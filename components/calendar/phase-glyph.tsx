@@ -33,15 +33,17 @@
 //   - e2e/mock-visual/calendar.spec.ts
 // END_MODULE_MAP: M-CALENDAR-PHASE-GLYPH
 
+// Phase accents reference the --phase-* tokens from app/globals.css so the
+// palette adapts to .dark; the token values keep the legacy light appearance.
 const PHASE_COLORS: Record<number, string> = {
-  0: "oklch(0.30 0.02 295)",
-  1: "oklch(0.60 0.04 295)",
-  2: "oklch(0.55 0.06 305)",
-  3: "oklch(0.65 0.05 305)",
-  4: "oklch(0.72 0.08 85)",
-  5: "oklch(0.65 0.05 305)",
-  6: "oklch(0.55 0.06 305)",
-  7: "oklch(0.60 0.04 295)",
+  0: "var(--phase-0)",
+  1: "var(--phase-1)",
+  2: "var(--phase-2)",
+  3: "var(--phase-3)",
+  4: "var(--phase-4)",
+  5: "var(--phase-5)",
+  6: "var(--phase-6)",
+  7: "var(--phase-7)",
 }
 
 // START_BLOCK: PHASE_SVG_PRESENTATION
@@ -93,15 +95,17 @@ export function PhaseGlyph({
   // END_FUNCTION_CONTRACT: F-M-CALENDAR-PHASE-GLYPH.PhaseGlyph
   const index = normalizePhaseIndex(phaseIndex)
   const r = size / 2
-  const litColor = "oklch(0.92 0.015 85)"
-  const darkColor = "oklch(0.35 0.02 295)"
-  const strokeColor = "oklch(0.5 0.02 295)"
+  // var() tokens resolve only in the CSS cascade, so themed colors go through
+  // style props (SVG presentation attributes do not evaluate custom properties).
+  const litColor = "var(--phase-glyph-lit)"
+  const darkColor = "var(--phase-glyph-dark)"
+  const strokeColor = "var(--phase-glyph-stroke)"
 
   if (index === 0) {
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} aria-hidden>
-        <circle cx={r} cy={r} r={r - 0.5} fill={darkColor} />
-        <circle cx={r} cy={r} r={r - 0.5} fill="none" stroke={strokeColor} strokeWidth={0.5} strokeOpacity={0.4} />
+        <circle cx={r} cy={r} r={r - 0.5} style={{ fill: darkColor }} />
+        <circle cx={r} cy={r} r={r - 0.5} fill="none" style={{ stroke: strokeColor }} strokeWidth={0.5} strokeOpacity={0.4} />
       </svg>
     )
   }
@@ -109,7 +113,7 @@ export function PhaseGlyph({
   if (index === 4) {
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} aria-hidden>
-        <circle cx={r} cy={r} r={r - 0.5} fill={litColor} />
+        <circle cx={r} cy={r} r={r - 0.5} style={{ fill: litColor }} />
         {size >= 16 ? (
           <>
             <circle cx={r - size * 0.15} cy={r - size * 0.1} r={size * 0.08} fill="oklch(0.82 0.015 85)" opacity={0.5} />
@@ -124,12 +128,12 @@ export function PhaseGlyph({
     const litOnRight = index === 2
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} aria-hidden>
-        <circle cx={r} cy={r} r={r - 0.5} fill={darkColor} />
+        <circle cx={r} cy={r} r={r - 0.5} style={{ fill: darkColor }} />
         <path
           d={litOnRight
             ? `M ${r} 0.5 A ${r - 0.5} ${r - 0.5} 0 0 1 ${r} ${size - 0.5} Z`
             : `M ${r} 0.5 A ${r - 0.5} ${r - 0.5} 0 0 0 ${r} ${size - 0.5} Z`}
-          fill={litColor}
+          style={{ fill: litColor }}
         />
       </svg>
     )
@@ -144,7 +148,7 @@ export function PhaseGlyph({
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} aria-hidden>
-      <circle cx={r} cy={r} r={r - 0.5} fill={darkColor} />
+      <circle cx={r} cy={r} r={r - 0.5} style={{ fill: darkColor }} />
       <defs>
         <clipPath id={clipId}>
           {isCrescent ? (
@@ -162,7 +166,7 @@ export function PhaseGlyph({
           )}
         </clipPath>
       </defs>
-      <circle cx={r} cy={r} r={r - 0.5} fill={litColor} clipPath={`url(#${clipId})`} />
+      <circle cx={r} cy={r} r={r - 0.5} style={{ fill: litColor }} clipPath={`url(#${clipId})`} />
     </svg>
   )
 }

@@ -1,0 +1,940 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "snap_v1_00000000000000000000000000000051",
+  "targetDate": "2026-08-06",
+  "timezone": "Europe/Moscow",
+  "publishedAt": "2026-08-05T21:00:00+03:00",
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "exact",
+    "bucket": null,
+    "rangeStart": "08:20",
+    "rangeEnd": "08:20",
+    "capabilities": {
+      "houses": true,
+      "angles": true,
+      "lots": true,
+      "exactTiming": true
+    }
+  },
+  "state": "convergence_today",
+  "dayTone": "mixed",
+  "personal": true,
+  "previewTeaser": null,
+  "convergences": [
+    {
+      "id": "cvg_v1_00000000000000000000000000000051",
+      "primarySphere": "finance",
+      "secondarySphere": null,
+      "facet": "personal_money",
+      "polarity": "supportive",
+      "evidenceLevel": "high",
+      "eventIds": [
+        "evt_v1_00000000000000000000000000000051"
+      ],
+      "summary": {
+        "text": "Личные деньги получают поддержку: доход, возврат или удачная трата складываются легче обычного.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000051"
+        ]
+      },
+      "meaning": {
+        "text": "День помогает навести порядок именно в личных средствах, не затрагивая общие обязательства.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000051"
+        ]
+      },
+      "action": {
+        "text": "Проверь поступления и отложи часть суммы, пока день этому способствует.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000051"
+        ]
+      }
+    },
+    {
+      "id": "cvg_v1_00000000000000000000000000000052",
+      "primarySphere": "finance",
+      "secondarySphere": null,
+      "facet": "financial_obligations",
+      "polarity": "tense",
+      "evidenceLevel": "medium",
+      "eventIds": [
+        "evt_v1_00000000000000000000000000000052"
+      ],
+      "summary": {
+        "text": "Финансовые обязательства требуют внимания: возможны напоминание о платеже или жёсткий срок по долгу.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000052"
+        ]
+      },
+      "meaning": {
+        "text": "Напряжение касается только кредитов и долгов, а не всех финансов дня.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000052"
+        ]
+      },
+      "action": {
+        "text": "Сверь даты платежей и закрой самый срочный вопрос до вечера.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000052"
+        ]
+      }
+    },
+    {
+      "id": "cvg_v1_00000000000000000000000000000053",
+      "primarySphere": "work",
+      "secondarySphere": null,
+      "facet": "daily_work",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "eventIds": [
+        "evt_v1_00000000000000000000000000000053"
+      ],
+      "summary": {
+        "text": "Текущие рабочие задачи движутся без трения: рутина складывается в заметный результат.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000053"
+        ]
+      },
+      "meaning": {
+        "text": "Спокойный темп сегодня продуктивнее попытки перестроить весь процесс разом.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000053"
+        ]
+      },
+      "action": {
+        "text": "Закрой одну повседневную задачу полностью, прежде чем брать следующую.",
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000053"
+        ]
+      }
+    }
+  ],
+  "mainEvent": null,
+  "impulses": [],
+  "periodContext": null,
+  "lookahead": null,
+  "events": [
+    {
+      "id": "evt_v1_00000000000000000000000000000051",
+      "title": "Венера поддерживает твой 2-й дом",
+      "kind": "structural",
+      "sphere": "finance",
+      "facet": "personal_money",
+      "polarity": "supportive",
+      "evidenceLevel": "high",
+      "time": {
+        "mode": "exact",
+        "peak": "10:40",
+        "start": "09:00",
+        "end": "12:30",
+        "partOfDay": null
+      },
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000051"
+      ]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000052",
+      "title": "Сатурн в твоём 8-м доме",
+      "kind": "structural",
+      "sphere": "finance",
+      "facet": "financial_obligations",
+      "polarity": "tense",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "14:15",
+        "start": null,
+        "end": null,
+        "partOfDay": null
+      },
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000052"
+      ]
+    },
+    {
+      "id": "evt_v1_00000000000000000000000000000053",
+      "title": "Марс в твоём 6-м доме",
+      "kind": "structural",
+      "sphere": "work",
+      "facet": "daily_work",
+      "polarity": "supportive",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "17:30",
+        "start": "16:00",
+        "end": "19:00",
+        "partOfDay": null
+      },
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000053"
+      ]
+    }
+  ],
+  "contentState": "ready",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0",
+  "__sandboxSphereContext": {
+    "finance": {
+      "sphere": "finance",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-finance-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "2-й дом отвечает за личные деньги: доход, траты, накопления. У тебя там Венера — деньги приходят ровнее, когда решения о покупках принимаются без спешки и эмоций.",
+            "sourceFactIds": [
+              "natal:planet:VENUS",
+              "natal:house:2"
+            ]
+          },
+          {
+            "text": "8-й дом — чужие и общие деньги: кредиты, долги, общий бюджет, налоги. Сатурн здесь делает тему обязательств чувствительной: сроки и суммы лучше фиксировать письменно и не тянуть с возвратами.",
+            "sourceFactIds": [
+              "natal:planet:SATURN",
+              "natal:house:8"
+            ]
+          },
+          {
+            "text": "Меркурий в напряжённом аспекте к Сатурну: финансовые документы и договорённости требуют перепроверки — именно из-за этого дни вроде сегодняшнего ощущаются как «надо сверить всё дважды».",
+            "sourceFactIds": [
+              "natal:aspect:MERCURY-SATURN"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_fin_major",
+          "title": "Большой фирдар Венеры",
+          "technique": "firdar_major",
+          "activeFrom": "2021-01-15",
+          "activeUntil": "2030-01-14",
+          "note": "Венера — планета денег, ценностей и того, что приносит удовольствие. Большой фирдар — это фон на годы: до 2030-го твоя финансовая жизнь в целом строится через накопление и комфорт, а не через риск."
+        },
+        {
+          "id": "per_demo_fin_minor",
+          "title": "Малый фирдар Меркурия",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Меркурий отвечает за расчёты, документы и договорённости. Малый фирдар — акцент на ближайший год с небольшим: до лета 2027-го деньги особенно зависят от того, насколько точно ты считаешь и фиксируешь условия."
+        },
+        {
+          "id": "per_demo_fin_profection",
+          "title": "Год профекции: 2-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 2-го дома — год, когда главная тема бюджета: доход, траты, накопления. С апреля 2026-го по апрель 2027-го личные деньги требуют больше внимания, чем обычно, — и дают больше отдачи."
+        },
+        {
+          "id": "per_demo_fin_solar",
+          "title": "Соляр: акцент на 8-м доме",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр — сюжет от дня рождения до следующего. 8-й дом — это общие деньги, кредиты и обязательства: в этом личном году они будут всплывать чаще обычного, лучше держать их в порядке заранее."
+        }
+      ],
+      "periodSynthesis": "Сейчас одновременно действуют четыре фоновых периода по деньгам — редкое наложение. Их сумма: год в целом про личные ресурсы и порядок в обязательствах одновременно, поэтому темы дохода и долгов идут рука об руку и усиливают друг друга, а не по отдельности."
+    },
+    "work": {
+      "sphere": "work",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-work-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "6-й дом отвечает за текущие задачи и служебную рутину. Марс здесь даёт выносливость: длинные задачи идут легче, когда разбиты на короткие заходы.",
+            "sourceFactIds": [
+              "natal:planet:MARS",
+              "natal:house:6"
+            ]
+          },
+          {
+            "text": "10-й дом — карьера и статус. Сатурн на вершине карты: продвижение у тебя строится медленно, но закрепляется надолго — репутация работает сильнее разовых рывков.",
+            "sourceFactIds": [
+              "natal:planet:SATURN",
+              "natal:house:10"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_work_major",
+          "title": "Большой фирдар Сатурна",
+          "technique": "firdar_major",
+          "activeFrom": "2021-01-15",
+          "activeUntil": "2030-01-14",
+          "note": "Сатурн — планета дисциплины и долгих конструкций. До 2030-го рабочий фон строится через систему и ответственность: медленно, но результаты закрепляются надолго."
+        },
+        {
+          "id": "per_demo_work_minor",
+          "title": "Малый фирдар Марса",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Марс — про темп и действие. До лета 2027-го в работе выигрывает скорость реакции: короткие решительные заходы дают больше, чем долгие раскачки."
+        },
+        {
+          "id": "per_demo_work_prof",
+          "title": "Год профекции: 6-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 6-го дома — год текущих задач и рутины. С апреля 2026-го по апрель 2027-го именно ежедневная работа, а не статусные вопросы, даёт главный результат."
+        }
+      ],
+      "periodSynthesis": "Сейчас по работе совпали три периода: длинный фон про дисциплину, короткий — про темп, и год — про текущие задачи. Сумма: год, когда рутина заметна сильнее рывков, и результаты копятся через систему, а не через авралы."
+    },
+    "health": {
+      "sphere": "health",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-health-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "1-й дом — общее состояние и тонус. Асцендент в земном знаке: тело лучше всего откликается на регулярность — сон, еда и нагрузка по расписанию дают больше, чем разовые усилия.",
+            "sourceFactIds": [
+              "natal:angle:ASC"
+            ]
+          },
+          {
+            "text": "6-й дом отвечает за симптомы и режим. Луна здесь: самочувствие заметно зависит от эмоционального фона и качества сна.",
+            "sourceFactIds": [
+              "natal:planet:MOON",
+              "natal:house:6"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_health_prof",
+          "title": "Год профекции: 6-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 6-го дома: с апреля 2026-го по апрель 2027-го фон года — режим и профилактика. Тело в этот период благодарит за порядок и быстро мстит за его отсутствие."
+        }
+      ],
+      "periodSynthesis": "Один годовой период по 6-му дому: фон года — режим и профилактика. Сумма простая: тело в этом году реагирует на порядок, а не на героизм."
+    },
+    "documents": {
+      "sphere": "documents",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-documents-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "3-й дом отвечает за обычные документы, заявления и переписку. Меркурий здесь в сильном положении: бумаги даются легче, когда их разбирать сразу, а не откладывать стопкой.",
+            "sourceFactIds": [
+              "natal:planet:MERCURY",
+              "natal:house:3"
+            ]
+          },
+          {
+            "text": "9-й дом — юридические, иностранные и образовательные документы. Юпитер в 9-м: сложные юридические темы разрешаются в твою пользу чаще, когда ты идёшь официальным путём.",
+            "sourceFactIds": [
+              "natal:planet:JUPITER",
+              "natal:house:9"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_docs_prof",
+          "title": "Год профекции: 3-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 3-го дома: с апреля 2026-го по апрель 2027-го центральная тема — повседневные бумаги, заявления, переписка. Они будут идти фоном весь год, поэтому стоит наладить систему."
+        },
+        {
+          "id": "per_demo_docs_solar",
+          "title": "Соляр: Меркурий на вершине",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр с Меркурием на вершине: личный год от дня рождения про переговоры и подписи. Хороший год закрывать юридические вопросы официально — они решаются легче обычного."
+        }
+      ],
+      "periodSynthesis": "Два активных периода оба подсвечивают документы: годовой — повседневные бумаги, соляр — переговоры и подписи. Сумма: в этом году документная тема идёт фоном постоянно, а не от случая к случаю."
+    },
+    "relationships": {
+      "sphere": "relationships",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-relationships-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "7-й дом отвечает за пару и устойчивое партнёрство. Венера здесь: отношения укрепляются через равный обмен и прямой разговор, а не через проверки.",
+            "sourceFactIds": [
+              "natal:planet:VENUS",
+              "natal:house:7"
+            ]
+          },
+          {
+            "text": "5-й дом — симпатии и романтика. Луна в 5-м: влюблённость у тебя связана с ощущением заботы; когда её нет, интерес гаснет быстро.",
+            "sourceFactIds": [
+              "natal:planet:MOON",
+              "natal:house:5"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_rel_major",
+          "title": "Большой фирдар Венеры",
+          "technique": "firdar_major",
+          "activeFrom": "2021-01-15",
+          "activeUntil": "2030-01-14",
+          "note": "Венера — планета симпатий и союзов. До 2030-го фон в отношениях про гармонию через равный обмен: что вкладываешь, то и возвращается."
+        },
+        {
+          "id": "per_demo_rel_prof",
+          "title": "Год профекции: 7-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 7-го дома: с апреля 2026-го по апрель 2027-го тема пары выходит на первый план. Разговоры о статусе и правилах отношений в этот год особенно значимы."
+        }
+      ],
+      "periodSynthesis": "Длинный фирдар Венеры и год профекции 7-го дома совпали: тема пары сейчас не фон, а главная линия года. Сумма: решения в отношениях, принятые в этот период, имеют длинные последствия."
+    },
+    "sport": {
+      "sphere": "sport",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-sport-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "1-й дом отвечает за тело и базовый тонус. Марс в 1-м доме даёт высокий физический заряд: активность в первой половине дня работает заметно лучше, чем вечером.",
+            "sourceFactIds": [
+              "natal:planet:MARS",
+              "natal:house:1"
+            ]
+          },
+          {
+            "text": "6-й дом — режим и повторяющиеся тренировки. Сатурн здесь: прогресс приходит через регулярность, а не через интенсивность; пропуски откатывают форму быстрее обычного.",
+            "sourceFactIds": [
+              "natal:planet:SATURN",
+              "natal:house:6"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_sport_minor",
+          "title": "Малый фирдар Марса",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Марс — планета физической энергии. До лета 2027-го тело откликается на нагрузку быстро: и форма растёт быстрее, и перегруз заметен раньше — слушай сигналы."
+        },
+        {
+          "id": "per_demo_sport_prof",
+          "title": "Год профекции: 1-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 1-го дома — год тела и личного тонуса. С апреля 2026-го по апрель 2027-го физическая форма напрямую влияет на то, как складывается всё остальное."
+        }
+      ],
+      "periodSynthesis": "Малый фирдар Марса и год 1-го дома оба про тело и энергию. Сумма: год, когда физическая нагрузка даёт быстрый видимый отклик — хорошее время строить спортивную привычку."
+    },
+    "communication": {
+      "sphere": "communication",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-communication-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "3-й дом отвечает за повседневные разговоры и переписку. Сильный Меркурий: короткие контакты заряжают, когда у них есть конкретная тема, и утомляют, когда это пустая болтовня.",
+            "sourceFactIds": [
+              "natal:planet:MERCURY",
+              "natal:house:3"
+            ]
+          },
+          {
+            "text": "11-й дом — группы и аудитория. Уран здесь: в коллективных обсуждениях ты чаще источник неожиданной идеи, чем стабилизатор.",
+            "sourceFactIds": [
+              "natal:planet:URANUS",
+              "natal:house:11"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_comm_solar",
+          "title": "Соляр: акцент на 3-м доме",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр с акцентом на 3-м доме: личный год про разговоры, поездки и контакты. Договорённости этого года стоит фиксировать письменно — устное забывается быстрее обычного."
+        },
+        {
+          "id": "per_demo_comm_minor",
+          "title": "Малый фирдар Меркурия",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Меркурий — планета общения и информации. До лета 2027-го именно разговоры решают больше документов: прямой звонок эффективнее длинной переписки."
+        }
+      ],
+      "periodSynthesis": "Соляр и малый фирдар оба держат фокус на коммуникации. Сумма: год, когда разговоры решают больше, чем документы, — договорённости стоит фиксировать сразу."
+    },
+    "travel": {
+      "sphere": "travel",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-travel-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "9-й дом отвечает за дальние поездки и заграницу. Доминирующий Юпитер: дальняя дорога для тебя — способ перезагрузки, а не стресс.",
+            "sourceFactIds": [
+              "natal:planet:JUPITER",
+              "natal:house:9"
+            ]
+          },
+          {
+            "text": "3-й дом — короткие локальные поездки. Луна здесь: частые маленькие выезды поддерживают твой фон лучше, чем редкие большие.",
+            "sourceFactIds": [
+              "natal:planet:MOON",
+              "natal:house:3"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_travel_prof",
+          "title": "Год профекции: 9-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 9-го дома: с апреля 2026-го по апрель 2027-го центральная тема — дальние поездки и новые места. Год поддерживает большую поездку, если её планировать заранее."
+        },
+        {
+          "id": "per_demo_travel_solar",
+          "title": "Соляр: Юпитер в движении",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр с Юпитером в движении: личный год про расширение географии. Даже короткие выезды в этот период дают больше восстановления, чем обычно."
+        }
+      ],
+      "periodSynthesis": "Год 9-го дома и соляр с Юпитером совпали: год благоприятен для дальних поездок и расширения географии. Сумма: если планировать большую поездку — этот период поддерживает."
+    },
+    "creativity": {
+      "sphere": "creativity",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-creativity-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "5-й дом отвечает за творчество и авторское проявление. Солнце здесь: создание нового — не хобби, а способ восстановления; без него дни ощущаются плоскими.",
+            "sourceFactIds": [
+              "natal:planet:SUN",
+              "natal:house:5"
+            ]
+          },
+          {
+            "text": "Нептун в аспекте к Венере: сильный образный строй; идеи приходят через музыку, картинки и сны, а не через логику.",
+            "sourceFactIds": [
+              "natal:aspect:VENUS-NEPTUNE"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_creat_major",
+          "title": "Большой фирдар Солнца",
+          "technique": "firdar_major",
+          "activeFrom": "2021-01-15",
+          "activeUntil": "2030-01-14",
+          "note": "Солнце — про самовыражение. До 2030-го длинный фон: творчество — не отдых, а основной способ быть собой; периоды без него ощущаются тяжелее."
+        },
+        {
+          "id": "per_demo_creat_prof",
+          "title": "Год профекции: 5-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 5-го дома: с апреля 2026-го по апрель 2027-го тема авторского проявления на первом плане. То, что начнёшь создавать в этот год, имеет шанс стать долгим проектом."
+        }
+      ],
+      "periodSynthesis": "Фирдар Солнца и год 5-го дома вместе: творчество сейчас не отдых, а основной канал. Сумма: то, что создашь в этот период, имеет шанс стать долгим проектом."
+    },
+    "study": {
+      "sphere": "study",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-study-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "9-й дом отвечает за сложные системы знания и высшее образование. Юпитер здесь: большие темы усваиваются системно — курс и книга работают лучше, чем короткие ролики.",
+            "sourceFactIds": [
+              "natal:planet:JUPITER",
+              "natal:house:9"
+            ]
+          },
+          {
+            "text": "3-й дом — навыки и базовое обучение. Меркурий в 3-м: новый навык садится быстро, если сразу есть практика.",
+            "sourceFactIds": [
+              "natal:planet:MERCURY",
+              "natal:house:3"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_study_minor",
+          "title": "Малый фирдар Юпитера",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Юпитер — планета больших знаний и смыслов. До лета 2027-го обучение идёт легче через систему: курс, наставник, программа — а не набор роликов."
+        },
+        {
+          "id": "per_demo_study_solar",
+          "title": "Соляр: акцент на 9-м доме",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр с акцентом на 9-м доме: личный год прямо про учёбу и мировоззрение. Вложения в образование в этот период окупаются быстрее обычного."
+        }
+      ],
+      "periodSynthesis": "Фирдар Юпитера и соляр 9-го дома: год прямо про обучение. Сумма: вложения в образование в этот период окупаются быстрее обычного."
+    },
+    "home_family": {
+      "sphere": "home_family",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-home_family-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "4-й дом отвечает за семью, корни и домашнюю базу. Луна в 4-м доме: дом для тебя — точка опоры; порядок в быту напрямую влияет на фон дня.",
+            "sourceFactIds": [
+              "natal:planet:MOON",
+              "natal:house:4"
+            ]
+          },
+          {
+            "text": "Луна в аспекте к Сатурну: ответственность за близких ощущается рано; важно не путать заботу и контроль.",
+            "sourceFactIds": [
+              "natal:aspect:MOON-SATURN"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_home_prof",
+          "title": "Год профекции: 4-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 4-го дома: с апреля 2026-го по апрель 2027-го центральная тема — дом, семья, жильё. Решения про быт и переезд в этот год имеют длинные последствия."
+        },
+        {
+          "id": "per_demo_home_solar",
+          "title": "Соляр: Луна у основания",
+          "technique": "solar_return",
+          "activeFrom": "2026-01-15",
+          "activeUntil": "2027-01-15",
+          "note": "Соляр с Луной у основания карты: личный год про опору и близких. Домашние вопросы будут требовать времени — и возвращать спокойствие."
+        }
+      ],
+      "periodSynthesis": "Год 4-го дома и соляр с Луной у основания карты: тема дома и семьи — центральная в этом году. Сумма: решения про жильё и семью, принятые сейчас, зададут быт на годы."
+    },
+    "friends_goals": {
+      "sphere": "friends_goals",
+      "birthTimeMode": "exact",
+      "housesAvailable": true,
+      "periodIdentity": "demo-friends_goals-rich",
+      "periodUnavailable": false,
+      "natal": {
+        "state": "ready",
+        "paragraphs": [
+          {
+            "text": "11-й дом отвечает за друзей, сообщества и долгосрочные планы. Сильный 11-й дом: общие цели дают энергию, когда у встреч есть смысл, а не только повод.",
+            "sourceFactIds": [
+              "natal:house:11"
+            ]
+          },
+          {
+            "text": "Юпитер в аспекте к Урану: через знакомства приходят неожиданные возможности; круг стоит расширять сознательно.",
+            "sourceFactIds": [
+              "natal:aspect:JUPITER-URANUS"
+            ]
+          }
+        ]
+      },
+      "period": [
+        {
+          "id": "per_demo_friends_prof",
+          "title": "Год профекции: 11-й дом",
+          "technique": "annual_profection",
+          "activeFrom": "2026-04-10",
+          "activeUntil": "2027-04-10",
+          "note": "Год профекции 11-го дома: с апреля 2026-го по апрель 2027-го центральная тема — друзья, сообщества и долгосрочные планы. Хороший год пересмотреть цели и круг."
+        },
+        {
+          "id": "per_demo_friends_minor",
+          "title": "Малый фирдар Урана",
+          "technique": "firdar_minor",
+          "activeFrom": "2026-03-09",
+          "activeUntil": "2027-06-20",
+          "note": "Уран — планета обновлений и неожиданных поворотов. До лета 2027-го новые люди приносят новые планы: знакомства этого периода могут сменить траекторию."
+        }
+      ],
+      "periodSynthesis": "Год 11-го дома и фирдар Урана: планы и сообщества обновляются одновременно. Сумма: год, когда новые люди приносят новые цели, а старые цели стоит пересмотреть."
+    }
+  },
+  "__sandboxChart": {
+    "planets": [
+      {
+        "name": "Sun",
+        "sign": "Leo",
+        "degree": 0,
+        "house": 4,
+        "retrograde": false,
+        "longitude": 120
+      },
+      {
+        "name": "Moon",
+        "sign": "Sagittarius",
+        "degree": 0,
+        "house": 7,
+        "retrograde": false,
+        "longitude": 240
+      },
+      {
+        "name": "Mercury",
+        "sign": "Taurus",
+        "degree": 25,
+        "house": 1,
+        "retrograde": false,
+        "longitude": 55
+      },
+      {
+        "name": "Venus",
+        "sign": "Taurus",
+        "degree": 20,
+        "house": 2,
+        "retrograde": false,
+        "longitude": 50
+      },
+      {
+        "name": "Mars",
+        "sign": "Libra",
+        "degree": 20,
+        "house": 6,
+        "retrograde": false,
+        "longitude": 200
+      },
+      {
+        "name": "Jupiter",
+        "sign": "Capricorn",
+        "degree": 15,
+        "house": 9,
+        "retrograde": false,
+        "longitude": 285
+      },
+      {
+        "name": "Saturn",
+        "sign": "Sagittarius",
+        "degree": 20,
+        "house": 8,
+        "retrograde": false,
+        "longitude": 260
+      },
+      {
+        "name": "Uranus",
+        "sign": "Aries",
+        "degree": 15,
+        "house": 12,
+        "retrograde": false,
+        "longitude": 15
+      },
+      {
+        "name": "Neptune",
+        "sign": "Pisces",
+        "degree": 10,
+        "house": 10,
+        "retrograde": false,
+        "longitude": 340
+      },
+      {
+        "name": "Pluto",
+        "sign": "Aquarius",
+        "degree": 0,
+        "house": 9,
+        "retrograde": true,
+        "longitude": 300
+      }
+    ],
+    "houses": [
+      {
+        "number": 1,
+        "sign": "Taurus",
+        "degree": 15,
+        "longitude": 45
+      },
+      {
+        "number": 2,
+        "sign": "Gemini",
+        "degree": 15,
+        "longitude": 75
+      },
+      {
+        "number": 3,
+        "sign": "Cancer",
+        "degree": 15,
+        "longitude": 105
+      },
+      {
+        "number": 4,
+        "sign": "Leo",
+        "degree": 15,
+        "longitude": 135
+      },
+      {
+        "number": 5,
+        "sign": "Virgo",
+        "degree": 15,
+        "longitude": 165
+      },
+      {
+        "number": 6,
+        "sign": "Libra",
+        "degree": 15,
+        "longitude": 195
+      },
+      {
+        "number": 7,
+        "sign": "Scorpio",
+        "degree": 15,
+        "longitude": 225
+      },
+      {
+        "number": 8,
+        "sign": "Sagittarius",
+        "degree": 15,
+        "longitude": 255
+      },
+      {
+        "number": 9,
+        "sign": "Capricorn",
+        "degree": 15,
+        "longitude": 285
+      },
+      {
+        "number": 10,
+        "sign": "Aquarius",
+        "degree": 15,
+        "longitude": 315
+      },
+      {
+        "number": 11,
+        "sign": "Pisces",
+        "degree": 15,
+        "longitude": 345
+      },
+      {
+        "number": 12,
+        "sign": "Aries",
+        "degree": 15,
+        "longitude": 15
+      }
+    ],
+    "aspects": [
+      {
+        "planetA": "Venus",
+        "planetB": "Moon",
+        "aspectType": "trine",
+        "orb": 1.5,
+        "applying": true
+      },
+      {
+        "planetA": "Mercury",
+        "planetB": "Saturn",
+        "aspectType": "square",
+        "orb": 2.1,
+        "applying": false
+      },
+      {
+        "planetA": "Sun",
+        "planetB": "Mars",
+        "aspectType": "sextile",
+        "orb": 3.0,
+        "applying": true
+      }
+    ],
+    "angles": [
+      {
+        "name": "ASC",
+        "sign": "Taurus",
+        "degree": 15.0,
+        "longitude": 45
+      },
+      {
+        "name": "MC",
+        "sign": "Aquarius",
+        "degree": 0.0,
+        "longitude": 315
+      }
+    ],
+    "houseSystem": "Placidus"
+  }
+}

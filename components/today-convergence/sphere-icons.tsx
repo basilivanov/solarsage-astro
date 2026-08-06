@@ -73,7 +73,7 @@ export function SphereIcon({ sphere, ...props }: IconProps & { sphere: SphereIco
             <path d="M10 12v2h4v-2" />
           </>
         );
-      case "money":
+      case "finance":
         return (
           <>
             <circle cx="12" cy="12" r="8" />
@@ -111,11 +111,12 @@ export function SphereIcon({ sphere, ...props }: IconProps & { sphere: SphereIco
             <path d="M12 10v5M9.5 12.5h5" />
           </>
         );
-      case "decisions":
+      case "home_family":
         return (
           <>
-            <path d="M12 5v13M6 18h12M4 7h16" />
-            <path d="m4 7 3 6H1zM20 7l3 6h-6z" />
+            <path d="M4 11 12 4l8 7" />
+            <path d="M6.5 9.5V20h11V9.5" />
+            <path d="M10 20v-5h4v5" />
           </>
         );
       case "travel":
@@ -129,11 +130,12 @@ export function SphereIcon({ sphere, ...props }: IconProps & { sphere: SphereIco
             <path d="M20 5.5c-2.5-1-5.5-.3-8 1.5v12c2.5-1.8 5.5-2.5 8-1.5z" />
           </>
         );
-      case "shopping":
+      case "friends_goals":
         return (
           <>
-            <path d="M5 8h14l-1 12H6z" />
-            <path d="M9 9V6a3 3 0 0 1 6 0v3" />
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="4.5" />
+            <circle cx="12" cy="12" r="1" />
           </>
         );
     }

@@ -37,13 +37,16 @@ import {
   formatTargetDateRu,
   getTodaySphereLabel,
 } from "./today-formatters";
-import { TodayNarrative } from "./today-narrative";
+import { getFacetLabel, readSignalFacet } from "@/lib/display/facet-labels";
+import { TodayNarrative, type TodayNarrativeBlock } from "./today-narrative";
 
 type Props = {
   groups: readonly TodayConvergenceGroup[];
   targetDate: TodayConvergencePayload["targetDate"];
   dayTone: TodayConvergencePayload["dayTone"];
   contentState: TodayConvergencePayload["contentState"];
+  /** "full" — tone tint on the whole card (production); "band" — tint only on the header band. */
+  heroVariant?: "full" | "band";
   onRetry?: () => void;
 };
 
@@ -78,7 +81,7 @@ function SphereLink({
 }
 
 // START_BLOCK: HERO
-export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onRetry }: Props) {
+export function ConvergenceHero({ groups, targetDate, dayTone, contentState, heroVariant = "full", onRetry }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-HERO.ConvergenceHero
   // purpose: Render the primary convergence group, secondary rows, and bound LLM zone.
   // inputs: groups — selected generated convergence groups; targetDate — payload date for exact copy; dayTone/contentState — root axes; onRetry — LLM retry.
@@ -92,16 +95,33 @@ export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onR
 
   const secondaryGroups = groups.slice(1);
   const claims = groups.flatMap(groupClaims);
+  const narrativeBlocks: TodayNarrativeBlock[] = groups
+    .map((group) => {
+      const facet = readSignalFacet(group);
+      return {
+        key: group.id,
+        title: getFacetLabel(facet) ?? getTodaySphereLabel(group.primarySphere),
+        facet,
+        polarity: group.polarity,
+        claims: groupClaims(group).filter(
+          (claim): claim is NonNullable<typeof claim> => claim != null,
+        ),
+      };
+    })
+    .filter((block) => block.claims.length > 0);
   const toneBackgroundClass = getDayToneBackgroundClass(dayTone);
   const targetDateLabel = formatTargetDateRu(targetDate);
+  const isBand = heroVariant === "band" && toneBackgroundClass !== "";
 
   return (
     <section
       data-testid="convergence-hero"
       data-day-tone={dayTone ?? undefined}
       data-evidence-level={hero.evidenceLevel}
-      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${toneBackgroundClass || "bg-card"} p-5 shadow-(--shadow-card)`}
+      data-hero-variant={heroVariant}
+      className={`overflow-hidden rounded-[24px] border-[1.5px] border-(--primary) ${isBand ? "bg-card" : toneBackgroundClass || "bg-card"} p-5 shadow-(--shadow-card)`}
     >
+      <div className={isBand ? `-m-5 mb-5 p-5 ${toneBackgroundClass}` : ""}>
       <h2 className="font-serif text-[28px] leading-[34px] text-foreground">
         Что сошлось {targetDateLabel}
       </h2>
@@ -139,7 +159,8 @@ export function ConvergenceHero({ groups, targetDate, dayTone, contentState, onR
         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary/60" />
         <span>Доказательность: {hero.evidenceLevel === "high" ? "высокая" : "средняя"}</span>
       </div>
-      <TodayNarrative state={contentState} claims={claims} onRetry={onRetry} />
+      </div>
+      <TodayNarrative state={contentState} claims={claims} blocks={narrativeBlocks} onRetry={onRetry} />
     </section>
   );
 }

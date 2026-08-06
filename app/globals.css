@@ -131,6 +131,14 @@
   --syn-bad-bg: #2d1c20;
   --syn-ink: #f1e9f4;
   --syn-lavender: #2d2233;
+
+  /* Today Convergence polarity tones, dark: same hues, dimmed bg + light fg. */
+  --tone-supportive-bg: #1e2f27;
+  --tone-supportive-fg: #93c9ae;
+  --tone-tense-bg: #2d261a;
+  --tone-tense-fg: #d9b877;
+  --tone-mixed-bg: #2b2723;
+  --tone-mixed-fg: #b8aea2;
   --sidebar-primary-foreground: oklch(0.18 0.015 295);
   --sidebar-accent: oklch(0.32 0.03 305);
   --sidebar-accent-foreground: oklch(0.96 0.005 85);
@@ -447,4 +455,34 @@
   .font-serif {
     word-spacing: 0.09em;
   }
+}
+
+/*
+ * Лунная палитра календаря как theme-aware токены (2026-08-06).
+ * Light сохраняет legacy-значения glyph/phase цветов из phase-glyph.tsx;
+ * dark поднимает глубокие фазы и тёмную часть диска, иначе новолуние
+ * и его чипы растворяются в тёмном фоне.
+ */
+:root {
+  --phase-glyph-lit: oklch(0.92 0.015 85);
+  --phase-glyph-dark: oklch(0.35 0.02 295);
+  --phase-glyph-stroke: oklch(0.5 0.02 295);
+  --phase-0: oklch(0.30 0.02 295);
+  --phase-1: oklch(0.60 0.04 295);
+  --phase-2: oklch(0.55 0.06 305);
+  --phase-3: oklch(0.65 0.05 305);
+  --phase-4: oklch(0.72 0.08 85);
+  --phase-5: oklch(0.65 0.05 305);
+  --phase-6: oklch(0.55 0.06 305);
+  --phase-7: oklch(0.60 0.04 295);
+}
+
+.dark {
+  --phase-glyph-dark: oklch(0.52 0.025 295);
+  --phase-glyph-stroke: oklch(0.68 0.02 295);
+  --phase-0: oklch(0.78 0.03 295);
+  --phase-1: oklch(0.74 0.04 295);
+  --phase-2: oklch(0.72 0.05 305);
+  --phase-6: oklch(0.72 0.05 305);
+  --phase-7: oklch(0.74 0.04 295);
 }

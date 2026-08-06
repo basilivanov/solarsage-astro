@@ -41,17 +41,6 @@ type Props = {
   days: CalendarDayReadModel[]
 }
 
-const PHASE_COLORS: Record<number, string> = {
-  0: "oklch(0.30 0.02 295)", // new moon — deep
-  1: "oklch(0.60 0.04 295)", // waxing crescent
-  2: "oklch(0.55 0.06 305)", // first quarter — plum
-  3: "oklch(0.65 0.05 305)", // waxing gibbous
-  4: "oklch(0.72 0.08 85)",  // full moon — gold
-  5: "oklch(0.65 0.05 305)", // waning gibbous
-  6: "oklch(0.55 0.06 305)", // last quarter — plum
-  7: "oklch(0.60 0.04 295)", // waning crescent
-}
-
 const PHASE_DESCRIPTIONS: Record<number, string> = {
   0: "Время начинаний и намерений",
   1: "Рост, первые шаги к цели",
@@ -182,8 +171,8 @@ export function LunarCalendarStrip({ days }: Props) {
                   onClick={() => setSelectedDate(day.date)}
                   className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium transition active:scale-95"
                   style={{
-                    borderColor: `${color}30`,
-                    background: `${color}0d`,
+                    borderColor: `color-mix(in oklch, ${color} 19%, transparent)`,
+                    background: `color-mix(in oklch, ${color} 5%, transparent)`,
                     color,
                   }}
                   aria-label={`${label} ${day.dayNumber}`}
@@ -212,8 +201,8 @@ export function LunarCalendarStrip({ days }: Props) {
                   onClick={() => setSelectedDate(day.date)}
                   className="flex w-9 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-center transition active:scale-95"
                   style={{
-                    outline: isSelected || isEvent ? `1px solid ${color}30` : "none",
-                    background: isSelected ? `${color}14` : "transparent",
+                    outline: isSelected || isEvent ? `1px solid color-mix(in oklch, ${color} 19%, transparent)` : "none",
+                    background: isSelected ? `color-mix(in oklch, ${color} 8%, transparent)` : "transparent",
                   }}
                   aria-label={[
                     day.dayNumber,
@@ -251,7 +240,7 @@ export function LunarCalendarStrip({ days }: Props) {
                 const dateParts = selected.date.split("-").map(Number)
                 const month = dateParts[1]
                 const phaseIdx = selected.lunar.phaseIndex ?? 7
-                const phaseColorVal = PHASE_COLORS[phaseIdx] ?? "oklch(0.60 0.04 295)"
+                const phaseColorVal = phaseColor(selected.lunar.phaseIndex)
                 const phaseDesc = PHASE_DESCRIPTIONS[phaseIdx] ?? ""
                 const zodiac = getZodiacDetails(selected.lunar.moonSignLabel, selected.lunar.moonSign)
                 const phaseName = lunarPhaseLabel(selected.lunar) ?? "Луна"
@@ -279,7 +268,7 @@ export function LunarCalendarStrip({ days }: Props) {
                             className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium"
                             style={{
                               color: phaseColorVal,
-                              background: `${phaseColorVal}14`,
+                              background: `color-mix(in oklch, ${phaseColorVal} 8%, transparent)`,
                             }}
                           >
                             {zodiac.symbol} {zodiac.name}

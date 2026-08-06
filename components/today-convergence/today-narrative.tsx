@@ -7,7 +7,7 @@
 // purpose: Render the Today LLM zone for ready, pending, unavailable, or not-needed content without blocking deterministic facts.
 // owns:
 //   - components/today-convergence/today-narrative.tsx
-// inputs: generated narrative claims, contentState, and optional retry callback.
+// inputs: generated narrative claims, contentState, optional per-signal blocks, and optional retry callback.
 // outputs: accessible data-testid=today-narrative DOM contract.
 // dependencies: packages/contracts/today-convergence.ts.
 // side_effects: invokes onRetry only after an explicit user click.
@@ -26,18 +26,31 @@
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-NARRATIVE
 
 import type {
+  TodayConvergenceGroup,
   TodayConvergenceNarrativeClaim,
   TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
+import { getPolarityLabel, getPolarityToneClasses } from "./today-formatters";
+
+/** One selected signal's narrative: facet/sphere header, its polarity, its claims. */
+export type TodayNarrativeBlock = {
+  key: string;
+  title: string;
+  facet: string | null;
+  polarity: TodayConvergenceGroup["polarity"];
+  claims: readonly TodayConvergenceNarrativeClaim[];
+};
 
 type Props = {
   state: TodayConvergencePayload["contentState"];
   claims: readonly (TodayConvergenceNarrativeClaim | null | undefined)[];
+  /** Structured per-signal blocks; when present, ready state renders blocks instead of the flat claim list. */
+  blocks?: readonly TodayNarrativeBlock[];
   onRetry?: () => void;
 };
 
 // START_BLOCK: NARRATIVE_STATE
-export function TodayNarrative({ state, claims, onRetry }: Props) {
+export function TodayNarrative({ state, claims, blocks, onRetry }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-NARRATIVE.TodayNarrative
   // purpose: Render only the LLM-owned state permitted by the payload.
   // inputs: state — generated contentState; claims — nullable bound claims; onRetry — optional retry callback.
@@ -52,7 +65,7 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
     (claim): claim is TodayConvergenceNarrativeClaim => claim != null,
   );
 
-  if (state === "ready" && visibleClaims.length === 0) return null;
+  if (state === "ready" && visibleClaims.length === 0 && (!blocks || blocks.length === 0)) return null;
 
   return (
     <section
@@ -62,11 +75,38 @@ export function TodayNarrative({ state, claims, onRetry }: Props) {
       className="rounded-[24px] border border-border/40 bg-card p-4 text-[15px] leading-[24px] text-pretty text-foreground/90 shadow-(--shadow-card)"
     >
       {state === "ready" ? (
-        <div className="space-y-3">
-          {visibleClaims.map((claim, index) => (
-            <p key={`${claim.sourceEventIds.join("-")}-${index}`}>{claim.text}</p>
-          ))}
-        </div>
+        blocks && blocks.length > 0 ? (
+          <div className="space-y-5">
+            {blocks.map((block) => (
+              <div
+                key={block.key}
+                data-testid="today-narrative-block"
+                data-polarity={block.polarity}
+                data-facet={block.facet ?? undefined}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-foreground">{block.title}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[12px] leading-[18px] ${getPolarityToneClasses(block.polarity)}`}
+                  >
+                    {getPolarityLabel(block.polarity)}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-3">
+                  {block.claims.map((claim, index) => (
+                    <p key={`${claim.sourceEventIds.join("-")}-${index}`}>{claim.text}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleClaims.map((claim, index) => (
+              <p key={`${claim.sourceEventIds.join("-")}-${index}`}>{claim.text}</p>
+            ))}
+          </div>
+        )
       ) : null}
 
       {state === "pending" ? (

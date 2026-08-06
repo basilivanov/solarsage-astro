@@ -211,7 +211,13 @@ export function CheckinScreen({
         energy,
         tags,
         note: note.trim() || null,
-        ...(observedSpheres.length ? { observedSpheres } : {}),
+        ...(observedSpheres.length
+          ? {
+              // Generated check-in contracts still declare the legacy sphere
+              // union; the backend check-in migration is TZ 2026-08-06 §8.4.
+              observedSpheres: observedSpheres as unknown as Parameters<typeof createCheckin>[0]["observedSpheres"],
+            }
+          : {}),
       })
       setExisting(result)
       setSubmittedResult(result)

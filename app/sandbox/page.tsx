@@ -29,18 +29,23 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 
 const FIXTURE_DIR = path.join(process.cwd(), "__tests__", "fixtures", "today_convergence_v2");
+const CALENDAR_FIXTURE_DIR = path.join(process.cwd(), "__tests__", "fixtures", "calendar_v1");
 
-// START_BLOCK: DIRECTORY
-export default function SandboxIndexPage() {
-  let fixtures: string[] = [];
+function listFixtureNames(dir: string): string[] {
   try {
-    fixtures = readdirSync(FIXTURE_DIR)
+    return readdirSync(dir)
       .filter((name) => name.endsWith(".json"))
       .map((name) => name.replace(/\.json$/, ""))
       .sort();
   } catch {
-    fixtures = [];
+    return [];
   }
+}
+
+// START_BLOCK: DIRECTORY
+export default function SandboxIndexPage() {
+  const fixtures = listFixtureNames(FIXTURE_DIR);
+  const calendarFixtures = listFixtureNames(CALENDAR_FIXTURE_DIR);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-8 font-sans">
@@ -57,6 +62,21 @@ export default function SandboxIndexPage() {
             <a
               className="text-[14px] leading-6 text-primary underline-offset-4 hover:underline"
               href={`/sandbox/today?fixture=${encodeURIComponent(name)}`}
+            >
+              {name}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <h2 className="mt-6 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+        Календарь (calendar)
+      </h2>
+      <ul className="mt-2 space-y-1">
+        {calendarFixtures.map((name) => (
+          <li key={name}>
+            <a
+              className="text-[14px] leading-6 text-primary underline-offset-4 hover:underline"
+              href={`/sandbox/calendar?fixture=${encodeURIComponent(name)}`}
             >
               {name}
             </a>

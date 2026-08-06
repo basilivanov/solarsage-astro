@@ -24,35 +24,39 @@
 
 export type ProductSphereKey =
   | "work"
-  | "money"
+  | "finance"
   | "documents"
   | "relationships"
   | "sport"
   | "communication"
   | "health"
-  | "decisions"
+  | "home_family"
   | "travel"
   | "creativity"
   | "study"
-  | "shopping"
+  | "friends_goals"
 
-/** Canonical product sphere list and order */
+/** Canonical product sphere list and order (TZ 2026-08-06 §3) */
 export const CANONICAL_PRODUCT_ORDER: { key: ProductSphereKey; label: string; iconName: string }[] = [
   { key: "work", label: "Работа", iconName: "briefcase" },
-  { key: "money", label: "Деньги", iconName: "building" },
+  { key: "finance", label: "Финансы", iconName: "coins" },
   { key: "documents", label: "Документы", iconName: "list-checks" },
   { key: "relationships", label: "Отношения", iconName: "sparkle" },
   { key: "sport", label: "Спорт", iconName: "leaf" },
   { key: "communication", label: "Общение", iconName: "telescope" },
   { key: "health", label: "Здоровье", iconName: "compass" },
-  { key: "decisions", label: "Решения", iconName: "target" },
+  { key: "home_family", label: "Дом и семья", iconName: "home" },
   { key: "travel", label: "Поездки", iconName: "hourglass" },
   { key: "creativity", label: "Творчество", iconName: "grid" },
   { key: "study", label: "Учёба", iconName: "layers" },
-  { key: "shopping", label: "Покупки", iconName: "zap" },
+  { key: "friends_goals", label: "Друзья и планы", iconName: "users" },
 ]
 
-/** Maps backend sphere keys directly to canonical ProductSphereKey */
+/**
+ * Maps legacy backend sphere keys directly to canonical ProductSphereKey.
+ * Prototype-era mapping: the authoritative resolver moves to the backend
+ * (product_spheres.v1.yml); this map only keeps old technical keys renderable.
+ */
 export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
   // 1. Работа
   work_status_achievement: "work",
@@ -60,21 +64,25 @@ export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
   career_social_status: "work",
   public_image: "work",
   technology_innovation: "work",
+  career_ambition: "work",
 
-  // 2. Деньги
-  finance_money: "money",
-  money_security_resources: "money",
+  // 2. Финансы
+  finance_money: "finance",
+  money_security_resources: "finance",
+  joint_finance: "finance",
+  debts: "finance",
+  investment: "finance",
+  inheritance: "finance",
+  crisis_transformation: "finance",
+  crisis_transformation_control: "finance",
 
   // 3. Документы
   legal_affairs: "documents",
   partnerships_contracts: "documents",
 
-  // 4. Отношения (includes family/home keys per architect instruction)
+  // 4. Отношения
   relationships_partnership: "relationships",
   relationships: "relationships",
-  home_family_roots: "relationships",
-  home_family: "relationships",
-  inheritance: "relationships",
 
   // 5. Спорт
   body_energy_health: "sport",
@@ -84,7 +92,6 @@ export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
   // 6. Общение
   communication_learning: "communication",
   thinking_speech_learning: "communication",
-  friendship_social: "communication",
 
   // 7. Здоровье
   spirituality_inner_growth: "health",
@@ -92,11 +99,9 @@ export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
   healing: "health",
   hidden_matters: "health",
 
-  // 8. Решения
-  career_ambition: "decisions",
-  crisis_transformation: "decisions",
-  crisis_transformation_control: "decisions",
-  philosophy: "decisions",
+  // 8. Дом и семья
+  home_family_roots: "home_family",
+  home_family: "home_family",
 
   // 9. Поездки
   travel_adventure: "travel",
@@ -109,27 +114,26 @@ export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
   // 11. Учёба
   education: "study",
   higher_education: "study",
+  philosophy: "study",
 
-  // 12. Покупки
-  joint_finance: "shopping",
-  debts: "shopping",
-  investment: "shopping",
+  // 12. Друзья и планы
+  friendship_social: "friends_goals",
 }
 
 /** Product key -> label/icon map */
 export const PRODUCT_SPHERE_META: Record<ProductSphereKey, { label: string; icon: string }> = {
   work: { label: "Работа", icon: "💼" },
-  money: { label: "Деньги", icon: "💰" },
+  finance: { label: "Финансы", icon: "💰" },
   documents: { label: "Документы", icon: "📝" },
   relationships: { label: "Отношения", icon: "💖" },
   sport: { label: "Спорт", icon: "🏃" },
   communication: { label: "Общение", icon: "💬" },
   health: { label: "Здоровье", icon: "🌿" },
-  decisions: { label: "Решения", icon: "🎯" },
+  home_family: { label: "Дом и семья", icon: "🏠" },
   travel: { label: "Поездки", icon: "✈️" },
   creativity: { label: "Творчество", icon: "🎨" },
   study: { label: "Учёба", icon: "📚" },
-  shopping: { label: "Покупки", icon: "🛍️" },
+  friends_goals: { label: "Друзья и планы", icon: "👥" },
 }
 
 const KNOWN_SPHERE_LABELS: Record<string, string> = {

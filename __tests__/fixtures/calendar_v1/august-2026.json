@@ -1,0 +1,1107 @@
+{
+  "meta": {
+    "schemaVersion": "calendar/v2",
+    "contractVersion": 2,
+    "generatedAt": "2026-08-06T03:00:00Z"
+  },
+  "month": "2026-08",
+  "title": "August 2026",
+  "allowedRange": {
+    "from": "2026-08-01",
+    "to": "2026-08-31"
+  },
+  "days": [
+    {
+      "date": "2026-07-27",
+      "dayNumber": 27,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "tense",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "first_quarter",
+        "phaseIndex": 2,
+        "phaseLabel": "перв. четв.",
+        "illumination": 85,
+        "moonSign": "Taurus",
+        "moonSignLabel": "Телец",
+        "lunarDay": 12,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-07-28",
+      "dayNumber": 28,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 92,
+        "moonSign": "Gemini",
+        "moonSignLabel": "Близнецы",
+        "lunarDay": 13,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-07-29",
+      "dayNumber": 29,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 97,
+        "moonSign": "Gemini",
+        "moonSignLabel": "Близнецы",
+        "lunarDay": 14,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-07-30",
+      "dayNumber": 30,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 99,
+        "moonSign": "Cancer",
+        "moonSignLabel": "Рак",
+        "lunarDay": 15,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-07-31",
+      "dayNumber": 31,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 100,
+        "moonSign": "Cancer",
+        "moonSignLabel": "Рак",
+        "lunarDay": 16,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-01",
+      "dayNumber": 1,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 98,
+        "moonSign": "Leo",
+        "moonSignLabel": "Лев",
+        "lunarDay": 17,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-02",
+      "dayNumber": 2,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 94,
+        "moonSign": "Leo",
+        "moonSignLabel": "Лев",
+        "lunarDay": 18,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-03",
+      "dayNumber": 3,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "hero",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 89,
+        "moonSign": "Leo",
+        "moonSignLabel": "Лев",
+        "lunarDay": 19,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-04",
+      "dayNumber": 4,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 81,
+        "moonSign": "Virgo",
+        "moonSignLabel": "Дева",
+        "lunarDay": 20,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-05",
+      "dayNumber": 5,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 72,
+        "moonSign": "Virgo",
+        "moonSignLabel": "Дева",
+        "lunarDay": 21,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-06",
+      "dayNumber": 6,
+      "isCurrentMonth": true,
+      "isToday": true,
+      "disabled": false,
+      "dayState": "hero",
+      "dayTone": "tense",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 62,
+        "moonSign": "Libra",
+        "moonSignLabel": "Весы",
+        "lunarDay": 22,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-07",
+      "dayNumber": 7,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 52,
+        "moonSign": "Libra",
+        "moonSignLabel": "Весы",
+        "lunarDay": 23,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-08",
+      "dayNumber": 8,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "tense",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "last_quarter",
+        "phaseIndex": 6,
+        "phaseLabel": "посл. четв.",
+        "illumination": 41,
+        "moonSign": "Libra",
+        "moonSignLabel": "Весы",
+        "lunarDay": 24,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-09",
+      "dayNumber": 9,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "last_quarter",
+        "phaseIndex": 6,
+        "phaseLabel": "посл. четв.",
+        "illumination": 31,
+        "moonSign": "Scorpio",
+        "moonSignLabel": "Скорпион",
+        "lunarDay": 25,
+        "voidOfCourse": true
+      }
+    },
+    {
+      "date": "2026-08-10",
+      "dayNumber": 10,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "last_quarter",
+        "phaseIndex": 6,
+        "phaseLabel": "посл. четв.",
+        "illumination": 21,
+        "moonSign": "Scorpio",
+        "moonSignLabel": "Скорпион",
+        "lunarDay": 26,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-11",
+      "dayNumber": 11,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "hero",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_crescent",
+        "phaseIndex": 7,
+        "phaseLabel": "убыв. серп",
+        "illumination": 13,
+        "moonSign": "Sagittarius",
+        "moonSignLabel": "Стрелец",
+        "lunarDay": 27,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-12",
+      "dayNumber": 12,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_crescent",
+        "phaseIndex": 7,
+        "phaseLabel": "убыв. серп",
+        "illumination": 7,
+        "moonSign": "Sagittarius",
+        "moonSignLabel": "Стрелец",
+        "lunarDay": 28,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-13",
+      "dayNumber": 13,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_crescent",
+        "phaseIndex": 7,
+        "phaseLabel": "убыв. серп",
+        "illumination": 3,
+        "moonSign": "Sagittarius",
+        "moonSignLabel": "Стрелец",
+        "lunarDay": 29,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-14",
+      "dayNumber": 14,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "new_moon",
+        "phaseIndex": 0,
+        "phaseLabel": "новолуние",
+        "illumination": 0,
+        "moonSign": "Capricorn",
+        "moonSignLabel": "Козерог",
+        "lunarDay": 1,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-15",
+      "dayNumber": 15,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "new_moon",
+        "phaseIndex": 0,
+        "phaseLabel": "новолуние",
+        "illumination": 1,
+        "moonSign": "Capricorn",
+        "moonSignLabel": "Козерог",
+        "lunarDay": 2,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-16",
+      "dayNumber": 16,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "new_moon",
+        "phaseIndex": 0,
+        "phaseLabel": "новолуние",
+        "illumination": 4,
+        "moonSign": "Aquarius",
+        "moonSignLabel": "Водолей",
+        "lunarDay": 3,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-17",
+      "dayNumber": 17,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "new_moon",
+        "phaseIndex": 0,
+        "phaseLabel": "новолуние",
+        "illumination": 10,
+        "moonSign": "Aquarius",
+        "moonSignLabel": "Водолей",
+        "lunarDay": 4,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-18",
+      "dayNumber": 18,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "tense",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_crescent",
+        "phaseIndex": 1,
+        "phaseLabel": "раст. серп",
+        "illumination": 17,
+        "moonSign": "Aquarius",
+        "moonSignLabel": "Водолей",
+        "lunarDay": 5,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-19",
+      "dayNumber": 19,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "hero",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_crescent",
+        "phaseIndex": 1,
+        "phaseLabel": "раст. серп",
+        "illumination": 26,
+        "moonSign": "Pisces",
+        "moonSignLabel": "Рыбы",
+        "lunarDay": 6,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-20",
+      "dayNumber": 20,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_crescent",
+        "phaseIndex": 1,
+        "phaseLabel": "раст. серп",
+        "illumination": 36,
+        "moonSign": "Pisces",
+        "moonSignLabel": "Рыбы",
+        "lunarDay": 7,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-21",
+      "dayNumber": 21,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_crescent",
+        "phaseIndex": 1,
+        "phaseLabel": "раст. серп",
+        "illumination": 46,
+        "moonSign": "Aries",
+        "moonSignLabel": "Овен",
+        "lunarDay": 8,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-22",
+      "dayNumber": 22,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "first_quarter",
+        "phaseIndex": 2,
+        "phaseLabel": "перв. четв.",
+        "illumination": 57,
+        "moonSign": "Aries",
+        "moonSignLabel": "Овен",
+        "lunarDay": 9,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-23",
+      "dayNumber": 23,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "first_quarter",
+        "phaseIndex": 2,
+        "phaseLabel": "перв. четв.",
+        "illumination": 67,
+        "moonSign": "Aries",
+        "moonSignLabel": "Овен",
+        "lunarDay": 10,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-24",
+      "dayNumber": 24,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "tense",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "first_quarter",
+        "phaseIndex": 2,
+        "phaseLabel": "перв. четв.",
+        "illumination": 76,
+        "moonSign": "Taurus",
+        "moonSignLabel": "Телец",
+        "lunarDay": 11,
+        "voidOfCourse": true
+      }
+    },
+    {
+      "date": "2026-08-25",
+      "dayNumber": 25,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "first_quarter",
+        "phaseIndex": 2,
+        "phaseLabel": "перв. четв.",
+        "illumination": 85,
+        "moonSign": "Taurus",
+        "moonSignLabel": "Телец",
+        "lunarDay": 12,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-26",
+      "dayNumber": 26,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 92,
+        "moonSign": "Gemini",
+        "moonSignLabel": "Близнецы",
+        "lunarDay": 13,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-27",
+      "dayNumber": 27,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "hero",
+      "dayTone": "tense",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 97,
+        "moonSign": "Gemini",
+        "moonSignLabel": "Близнецы",
+        "lunarDay": 14,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-28",
+      "dayNumber": 28,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waxing_gibbous",
+        "phaseIndex": 3,
+        "phaseLabel": "раст. Луна",
+        "illumination": 99,
+        "moonSign": "Gemini",
+        "moonSignLabel": "Близнецы",
+        "lunarDay": 15,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-29",
+      "dayNumber": 29,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 100,
+        "moonSign": "Cancer",
+        "moonSignLabel": "Рак",
+        "lunarDay": 16,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-30",
+      "dayNumber": 30,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "not-computed",
+      "dayTone": null,
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 98,
+        "moonSign": "Cancer",
+        "moonSignLabel": "Рак",
+        "lunarDay": 17,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-08-31",
+      "dayNumber": 31,
+      "isCurrentMonth": true,
+      "isToday": false,
+      "disabled": false,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "locked",
+        "reason": "outside_access_window",
+        "referralDaysLeft": 0,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 94,
+        "moonSign": "Leo",
+        "moonSignLabel": "Лев",
+        "lunarDay": 18,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-01",
+      "dayNumber": 1,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "steady",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "full_moon",
+        "phaseIndex": 4,
+        "phaseLabel": "полнолуние",
+        "illumination": 89,
+        "moonSign": "Leo",
+        "moonSignLabel": "Лев",
+        "lunarDay": 19,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-02",
+      "dayNumber": 2,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 81,
+        "moonSign": "Virgo",
+        "moonSignLabel": "Дева",
+        "lunarDay": 20,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-03",
+      "dayNumber": 3,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "supportive",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 72,
+        "moonSign": "Virgo",
+        "moonSignLabel": "Дева",
+        "lunarDay": 21,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-04",
+      "dayNumber": 4,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": null,
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 62,
+        "moonSign": "Virgo",
+        "moonSignLabel": "Дева",
+        "lunarDay": 22,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-05",
+      "dayNumber": 5,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "mixed",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "waning_gibbous",
+        "phaseIndex": 5,
+        "phaseLabel": "убыв. Луна",
+        "illumination": 52,
+        "moonSign": "Libra",
+        "moonSignLabel": "Весы",
+        "lunarDay": 23,
+        "voidOfCourse": false
+      }
+    },
+    {
+      "date": "2026-09-06",
+      "dayNumber": 6,
+      "isCurrentMonth": false,
+      "isToday": false,
+      "disabled": true,
+      "dayState": "ordinary",
+      "dayTone": "tense",
+      "access": {
+        "state": "full",
+        "reason": "active_referral_days",
+        "referralDaysLeft": 16,
+        "subscriptionActive": false,
+        "accessUntil": "2026-08-22"
+      },
+      "lunar": {
+        "phase": "last_quarter",
+        "phaseIndex": 6,
+        "phaseLabel": "посл. четв.",
+        "illumination": 41,
+        "moonSign": "Libra",
+        "moonSignLabel": "Весы",
+        "lunarDay": 24,
+        "voidOfCourse": false
+      }
+    }
+  ]
+}

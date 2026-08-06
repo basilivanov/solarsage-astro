@@ -59,10 +59,22 @@ function loadFixture(name: string): unknown | null {
 export default async function SandboxTodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fixture?: string }>;
+  searchParams: Promise<{ fixture?: string; hero?: string }>;
 }) {
-  const { fixture } = await searchParams;
-  const payload = fixture ? loadFixture(fixture) : null;
+  const { fixture, hero } = await searchParams;
+  const heroVariant = hero === "band" ? "band" : hero === "unified" ? "unified" : "full";
+  const raw = fixture ? loadFixture(fixture) : null;
+  let payload: unknown = null;
+  let sphereContexts: Record<string, unknown> | undefined;
+  let natalChart: unknown;
+  if (raw && typeof raw === "object") {
+    const envelope = { ...(raw as Record<string, unknown>) };
+    sphereContexts = envelope.__sandboxSphereContext as Record<string, unknown> | undefined;
+    natalChart = envelope.__sandboxChart;
+    delete envelope.__sandboxSphereContext;
+    delete envelope.__sandboxChart;
+    payload = envelope;
+  }
 
   if (!payload) {
     const names = listFixtures();
@@ -88,5 +100,5 @@ export default async function SandboxTodayPage({
     );
   }
 
-  return <SandboxTodayClient payload={payload} fixtureName={fixture ?? "unknown"} />;
+  return <SandboxTodayClient payload={payload} fixtureName={fixture ?? "unknown"} heroVariant={heroVariant} sphereContexts={sphereContexts} natalChart={natalChart} />;
 }

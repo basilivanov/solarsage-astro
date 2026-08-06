@@ -37,20 +37,21 @@ import type {
   TodayConvergenceGroup,
   TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
+import type { ProductSphereKey } from "@/lib/display/sphere-labels";
 
-const SPHERE_LABELS: Record<TodayConvergenceGroup["primarySphere"], string> = {
+const SPHERE_LABELS: Record<ProductSphereKey, string> = {
   work: "Работа",
-  money: "Деньги",
+  finance: "Финансы",
   documents: "Документы",
   relationships: "Отношения",
   sport: "Спорт",
   communication: "Общение",
   health: "Здоровье",
-  decisions: "Решения",
+  home_family: "Дом и семья",
   travel: "Поездки",
   creativity: "Творчество",
   study: "Учёба",
-  shopping: "Покупки",
+  friends_goals: "Друзья и планы",
 };
 
 const POLARITY_LABELS: Record<"supportive" | "tense" | "mixed", string> = {
@@ -128,16 +129,16 @@ const DAY_TONE_BACKGROUND_CLASSES: Record<NonNullable<TodayConvergencePayload["d
 };
 
 // START_BLOCK: CANONICAL_LABELS
-export function getTodaySphereLabel(key: TodayConvergenceGroup["primarySphere"]): string {
+export function getTodaySphereLabel(key: string): string {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getTodaySphereLabel
   // purpose: Return the approved human-readable label for a canonical sphere key.
-  // inputs: key — generated canonical Today sphere key.
-  // returns: stable Russian sphere label.
+  // inputs: key — wire sphere key (string; generated union still lags the new 12 keys).
+  // returns: stable Russian sphere label; "Другая сфера" for keys outside the new union.
   // side_effects: none.
   // emitted_logs: none.
-  // error_behavior: generated union typing prevents unknown keys at call sites.
+  // error_behavior: unknown keys degrade to a safe generic Russian label.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.getTodaySphereLabel
-  return SPHERE_LABELS[key];
+  return SPHERE_LABELS[key as ProductSphereKey] ?? "Другая сфера";
 }
 
 export function getPolarityLabel(polarity: "supportive" | "tense" | "mixed"): string {

@@ -25,14 +25,14 @@
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR
 
-import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels";
+import { CANONICAL_PRODUCT_ORDER, type ProductSphereKey } from "@/lib/display/sphere-labels";
 import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
 import { SphereIcon } from "./sphere-icons";
 
 type Props = {
   payload: TodayConvergencePayload;
   rail?: boolean;
-  onOpenDrilldown: (sphere: TodayConvergencePayload["events"][number]["sphere"]) => void;
+  onOpenDrilldown: (sphere: ProductSphereKey) => void;
 };
 
 type SphereTodaySummary = {
@@ -88,11 +88,16 @@ function signalCountLabel(count: number): string {
 }
 
 function activeSummary(summary: SphereTodaySummary | undefined): string | null {
+  // Tile summary (TZ 2026-08-06 §8.3): all supportive → «поддержка», all tense →
+  // «напряжение»; both sides present or at least one mixed signal → the single
+  // combined label «поддержка + напряжение». The old separate «смешанно» tile
+  // label is removed; per-signal polarity stays visible in the drilldown.
   if (!summary) return null;
+  const hasSupportiveSide = summary.hasSupportive || summary.hasMixed;
+  const hasTenseSide = summary.hasTense || summary.hasMixed;
   const polarities = [
-    summary.hasSupportive ? "поддержка" : null,
-    summary.hasTense ? "напряжение" : null,
-    summary.hasMixed ? "смешанно" : null,
+    hasSupportiveSide ? "поддержка" : null,
+    hasTenseSide ? "напряжение" : null,
   ].filter((label): label is string => label !== null);
   return `${signalCountLabel(summary.count)}${polarities.length > 0 ? ` · ${polarities.join(" + ")}` : ""}`;
 }
@@ -125,12 +130,12 @@ export function SphereNavigator({ payload, rail = false, onOpenDrilldown }: Prop
           const hasToday = Boolean(summary);
           return (
             <li key={sphere.key}>
-              {hasToday ? <button
+              <button
                 type="button"
                 aria-haspopup="dialog"
                 onClick={() => onOpenDrilldown(sphere.key)}
                 data-testid={`sphere-tile-${sphere.key}`}
-                data-has-today="true"
+                data-has-today={hasToday ? "true" : "false"}
                 data-today-count={String(summary?.count ?? 0)}
                 data-today-summary={todaySummary ?? undefined}
                 aria-label={todaySummary ? `${sphere.label}: ${todaySummary}` : sphere.label}
@@ -141,19 +146,8 @@ export function SphereNavigator({ payload, rail = false, onOpenDrilldown }: Prop
                 {todaySummary ? (
                   <span data-testid={`sphere-tile-summary-${sphere.key}`} className="max-w-full text-[11px] leading-4 text-muted-foreground">{todaySummary}</span>
                 ) : null}
-                <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" />
-              </button> : <a
-                href={`/day/spheres/${sphere.key}`}
-                data-testid={`sphere-tile-${sphere.key}`}
-                data-has-today="false"
-                data-today-count="0"
-                aria-label={sphere.label}
-                className="relative flex h-full min-h-[88px] min-w-0 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/40 bg-card px-1.5 py-2 text-center text-[12.5px] font-medium leading-4 text-foreground transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none motion-reduce:transition-none"
-              >
-                <SphereIcon sphere={sphere.key} className="h-6 w-6 shrink-0 text-foreground/75" />
-                <span className="max-w-full whitespace-nowrap text-[12.5px] font-medium">{sphere.label}</span>
-                <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" style={{ opacity: 0 }} />
-              </a>}
+                <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" style={hasToday ? undefined : { opacity: 0 }} />
+              </button>
             </li>
           );
         })}

@@ -43,7 +43,7 @@ type Props = {
   impulses: readonly TodayConvergenceImpulse[];
   events?: readonly TodayConvergenceEvent[];
   timezone?: string | null;
-  onOpenDrilldown: (sphere: TodayConvergenceImpulse["sphere"]) => void;
+  onOpenDrilldown: (sphere: string) => void;
 };
 
 function groupImpulses(

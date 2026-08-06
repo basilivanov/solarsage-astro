@@ -7,10 +7,10 @@
 // purpose: Render the legacy calendar layout with generated calendar/v2 dayState markers, deterministic dayTone dots, lunar facts, and a safe-area-aware top header.
 // owns:
 //   - components/calendar/calendar-screen.tsx
-// inputs: optional access/onOpenDay compatibility props; current local month.
+// inputs: optional access/onOpenDay compatibility props; optional sandbox-only initialPayload; current local month.
 // outputs: calendar-screen root, safe-area-aware month navigation, day/moon toggle, calendar grid, and selected-day action.
 // dependencies: getMonthCalendar; lunar presentation components; generated CalendarPayload; date utilities.
-// side_effects: Credentialed monthly calendar fetches; onOpenDay callback when the selected day is opened.
+// side_effects: Credentialed monthly calendar fetches (skipped when initialPayload is provided); onOpenDay callback when the selected day is opened.
 // emitted_logs: Delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_response_invalid.
 // invariants:
 //   - Calendar data is read from generated CalendarPayload; dayState is never projected to valence labels and tone dots render only for a non-null dayTone.
@@ -57,6 +57,8 @@ import { cn } from "@/lib/utils"
 type Props = {
   access?: AccessInfo
   onOpenDay?: (_date: Date) => void
+  /** Dev-only sandbox seam: a validated month payload that replaces the GET /api/calendar fetch. */
+  initialPayload?: CalendarPayloadReadModel
 }
 
 type ViewMode = "day" | "moon"
@@ -66,9 +68,9 @@ type CalendarDayTone = NonNullable<CalendarDay["dayTone"]>
 
 const DAY_TONE_DOTS: Record<CalendarDayTone, { dotClass: string; label: string }> = {
   steady: { dotClass: "bg-foreground/25", label: "ровный тон дня" },
-  supportive: { dotClass: "bg-[#43806d]", label: "поддерживающий тон дня" },
+  supportive: { dotClass: "bg-(--syn-good)", label: "поддерживающий тон дня" },
   mixed: { dotClass: "bg-foreground/55", label: "смешанный тон дня" },
-  tense: { dotClass: "bg-[#b07b36]", label: "напряжённый тон дня" },
+  tense: { dotClass: "bg-(--syn-mid)", label: "напряжённый тон дня" },
 }
 
 function accessAllowed(day: CalendarDay | undefined): boolean {
@@ -152,25 +154,34 @@ function withLunarDefaults(days: CalendarDay[]): CalendarDayReadModel[] {
 }
 
 // START_BLOCK: CALENDAR_FETCH
-export function CalendarScreen({ onOpenDay }: Props = {}) {
+export function CalendarScreen({ onOpenDay, initialPayload }: Props = {}) {
   // START_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.CalendarScreen
   // purpose: Load the selected month and render the restored calendar lifecycle.
-  // inputs: onOpenDay — optional callback for the selected day; access is accepted for route compatibility.
+  // inputs: onOpenDay — optional callback for the selected day; access is accepted for route compatibility;
+  //         initialPayload — optional sandbox-only payload that replaces the monthly fetch.
   // returns: calendar-screen DOM contract with dayState cells, dayTone icons, and day/moon presentation modes.
-  // side_effects: GET /api/calendar?month=YYYY-MM whenever the cursor changes; invokes onOpenDay on CTA activation.
+  // side_effects: GET /api/calendar?month=YYYY-MM whenever the cursor changes (skipped when initialPayload is set); invokes onOpenDay on CTA activation.
   // emitted_logs: Delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_response_invalid.
   // error_behavior: failed requests render role=alert with data-state=error.
   // END_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.CalendarScreen
-  const [cursor, setCursor] = useState(
-    () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
-  )
+  const [cursor, setCursor] = useState(() => {
+    const payloadMonth = initialPayload ? fromDateParam(`${initialPayload.month}-01`) : null
+    return payloadMonth ?? new Date(TODAY.getFullYear(), TODAY.getMonth(), 1)
+  })
   const [selected, setSelected] = useState<Date>(TODAY)
-  const [payload, setPayload] = useState<CalendarPayloadReadModel | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [payload, setPayload] = useState<CalendarPayloadReadModel | null>(initialPayload ?? null)
+  const [isLoading, setIsLoading] = useState(!initialPayload)
   const [payloadError, setPayloadError] = useState(false)
   const [view, setView] = useState<ViewMode>("day")
 
   useEffect(() => {
+    if (initialPayload) {
+      // Sandbox seam: the provided payload replaces the monthly fetch.
+      setPayload(initialPayload)
+      setPayloadError(false)
+      setIsLoading(false)
+      return
+    }
     let alive = true
     setIsLoading(true)
     setPayload(null)
@@ -193,7 +204,7 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
     return () => {
       alive = false
     }
-  }, [cursor])
+  }, [cursor, initialPayload])
   // END_BLOCK: CALENDAR_FETCH
 
   // START_BLOCK: CALENDAR_NAVIGATION

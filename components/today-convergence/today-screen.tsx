@@ -32,17 +32,21 @@
 
 import { useState } from "react";
 import { Paywall } from "@/components/paywall";
+import { readSignalFacet } from "@/lib/display/facet-labels";
 import type {
-  TodayConvergenceImpulse,
   TodayConvergenceNarrativeClaim,
   TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
+import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
+import type { NatalPreviewChart } from "@/lib/contracts/natal";
 import { BirthTimeBanner } from "./birth-time-banner";
 import { ConvergenceHero } from "./convergence-hero";
+import { ConvergenceUnifiedList } from "./convergence-unified-list";
 import { DayGeneralSky } from "./day-general-sky";
 import { HowCalculated } from "./how-calculated";
 import {
   ImpulseDrilldownSheet,
+  type DrilldownImpulse,
   type ImpulseDrilldownGroup,
 } from "./impulse-drilldown-sheet";
 import { ImpulsesList } from "./impulses-list";
@@ -62,6 +66,12 @@ export type TodayScreenProps = {
   onRetry?: () => void;
   birthTimeDismissed?: boolean;
   onBirthTimeDismiss?: () => void;
+  /** Prototype seam (sandbox only): "band" renders the tone tint as a header band; "unified" replaces the hero with the quiet-day-style signal list. */
+  heroVariant?: "full" | "band" | "unified";
+  /** Prototype seam (sandbox only): fixture-provided sphere context payloads replacing the /api/spheres fetch. */
+  sphereContexts?: Record<string, TodaySpherePagePayload>;
+  /** Prototype seam (sandbox only): natal chart data for the HowCalculated wheel. */
+  natalChart?: NatalPreviewChart | null;
 };
 
 function narrativeClaims(payload: TodayConvergencePayload): TodayConvergenceNarrativeClaim[] {
@@ -93,11 +103,11 @@ function narrativeClaims(payload: TodayConvergencePayload): TodayConvergenceNarr
 
 function drilldownGroup(
   payload: TodayConvergencePayload,
-  sphere: TodayConvergenceImpulse["sphere"],
+  sphere: string,
 ): ImpulseDrilldownGroup | null {
   const events = payload.events.filter((event) => event.sphere === sphere);
   const eventIds = new Set(events.map((event) => event.id));
-  const selected = payload.impulses.filter((impulse) => impulse.sphere === sphere);
+  const selected: DrilldownImpulse[] = payload.impulses.filter((impulse) => impulse.sphere === sphere);
   if (payload.mainEvent?.sphere === sphere && !selected.some((item) => item.eventId === payload.mainEvent?.eventId)) {
     selected.unshift(payload.mainEvent);
   }
@@ -106,6 +116,7 @@ function drilldownGroup(
     selected.push({
       eventId: event.id,
       sphere: event.sphere,
+      facet: readSignalFacet(event),
       polarity: event.polarity,
       evidenceLevel: event.evidenceLevel,
       time: event.time,
@@ -115,7 +126,7 @@ function drilldownGroup(
     });
   }
   const impulses = selected.filter((item) => eventIds.size === 0 || eventIds.has(item.eventId));
-  return impulses.length > 0 ? { sphere, impulses, events } : null;
+  return { sphere, impulses, events };
 }
 
 function PreviewTeaser({ payload }: { payload: TodayConvergencePayload }) {
@@ -168,8 +179,11 @@ function ReadyContent({
   onRetry,
   birthTimeDismissed,
   onBirthTimeDismiss,
+  heroVariant,
+  sphereContexts,
+  natalChart,
 }: Omit<TodayScreenProps, "screenState">) {
-  const [openSphere, setOpenSphere] = useState<TodayConvergenceImpulse["sphere"] | null>(null);
+  const [openSphere, setOpenSphere] = useState<string | null>(null);
   const claims = narrativeClaims(payload);
   const isUnavailable = payload.state === "unavailable";
   const isLocked = payload.access.state === "locked";
@@ -213,13 +227,26 @@ function ReadyContent({
         ) : null}
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "convergence_today" ? (
-          <ConvergenceHero
-            groups={payload.convergences}
-            targetDate={payload.targetDate}
-            dayTone={payload.dayTone}
-            contentState={payload.contentState}
-            onRetry={onRetry}
-          />
+          heroVariant === "unified" ? (
+            <ConvergenceUnifiedList
+              groups={payload.convergences}
+              events={payload.events}
+              targetDate={payload.targetDate}
+              timezone={payload.timezone}
+              contentState={payload.contentState}
+              onOpenDrilldown={setOpenSphere}
+              onRetry={onRetry}
+            />
+          ) : (
+            <ConvergenceHero
+              groups={payload.convergences}
+              targetDate={payload.targetDate}
+              dayTone={payload.dayTone}
+              contentState={payload.contentState}
+              heroVariant={heroVariant === "band" ? "band" : "full"}
+              onRetry={onRetry}
+            />
+          )
         ) : null}
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
@@ -249,13 +276,14 @@ function ReadyContent({
       >
         {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
         <SphereNavigator payload={payload} onOpenDrilldown={setOpenSphere} />
-        {isFullCalculation ? <HowCalculated /> : null}
+        {isFullCalculation ? <HowCalculated payload={payload} chart={natalChart} /> : null}
       </aside>
       {activeGroup ? (
         <ImpulseDrilldownSheet
           group={activeGroup}
           targetDate={payload.targetDate}
           timezone={payload.timezone}
+          contextOverride={sphereContexts?.[activeGroup.sphere]}
           onClose={() => setOpenSphere(null)}
         />
       ) : null}
@@ -271,6 +299,9 @@ export function TodayScreen({
   onRetry,
   birthTimeDismissed = false,
   onBirthTimeDismiss,
+  heroVariant,
+  sphereContexts,
+  natalChart,
 }: TodayScreenProps) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SCREEN.TodayScreen
   // purpose: Project transport and generated Today state into the public screen DOM contract.
@@ -304,6 +335,9 @@ export function TodayScreen({
           onRetry={onRetry}
           birthTimeDismissed={birthTimeDismissed}
           onBirthTimeDismiss={onBirthTimeDismiss}
+          heroVariant={heroVariant}
+          sphereContexts={sphereContexts}
+          natalChart={natalChart}
         />
       ) : null}
     </section>

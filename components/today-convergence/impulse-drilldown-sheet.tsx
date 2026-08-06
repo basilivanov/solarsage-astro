@@ -8,7 +8,7 @@
 // owns:
 //   - components/today-convergence/impulse-drilldown-sheet.tsx
 // inputs: grouped generated impulses, their Today event ledger entries, target date/timezone, and close callback.
-// outputs: role=dialog sheet with event-first deterministic facts, optional meaning/action, collapsed context transport states, and a context-preserving full-analysis link.
+// outputs: role=dialog sheet with event-first deterministic facts, optional meaning/action, and collapsed context transport states.
 // dependencies: fetchSpherePage; generated Today and sphere contracts; Today formatters.
 // side_effects: credentialed GET /api/spheres/{sphere} on open; aborts the request on close/unmount.
 // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
@@ -36,6 +36,7 @@ import type {
 } from "@/packages/contracts/today-convergence";
 import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
 import { fetchSpherePage } from "@/lib/api/spheres";
+import { getFacetLabel } from "@/lib/display/facet-labels";
 import {
   formatEventTime,
   getEventTimeDateTime,
@@ -45,9 +46,18 @@ import {
 } from "./today-formatters";
 import { getPeriodTechniqueCopy } from "./period-technique-copy";
 
+/**
+ * Wire signals carry the additive nullable `facet` (TZ 2026-08-06 §4) before
+ * the generated contracts expose it; the optional intersection keeps both
+ * shapes assignable.
+ */
+export type DrilldownImpulse = TodayConvergenceImpulse & {
+  facet?: string | null;
+};
+
 export type ImpulseDrilldownGroup = {
-  sphere: TodayConvergenceImpulse["sphere"];
-  impulses: readonly TodayConvergenceImpulse[];
+  sphere: string;
+  impulses: readonly DrilldownImpulse[];
   events: readonly TodayConvergenceEvent[];
 };
 
@@ -55,6 +65,8 @@ type Props = {
   group: ImpulseDrilldownGroup;
   targetDate?: string | null;
   timezone?: string | null;
+  /** Sandbox seam: fixture-provided context payload replaces the /api/spheres fetch. */
+  contextOverride?: TodaySpherePagePayload;
   onClose: () => void;
 };
 
@@ -80,6 +92,23 @@ function targetDateLabel(targetDate: string | null | undefined): string | null {
   const [year, month, day] = targetDate.split("-").map(Number);
   if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
   return `${day} ${MONTHS_RU_GEN[month - 1]} ${year}`;
+}
+
+function periodDateRu(isoDate: string): string {
+  return targetDateLabel(isoDate) ?? isoDate;
+}
+
+function readPeriodSynthesis(payload: TodaySpherePagePayload): string | null {
+  // Additive prototype field (sphere context synthesis) until contracts expose it.
+  const value = (payload as { periodSynthesis?: unknown }).periodSynthesis;
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readPeriodNote(period: TodaySpherePagePayload["period"][number]): string | null {
+  // Additive prototype field: plain-language explanation of what this period's
+  // planet/technique means for this sphere, until contracts expose it.
+  const value = (period as { note?: unknown }).note;
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function errorStatus(error: unknown): number | undefined {
@@ -196,6 +225,14 @@ function ContextLayer({
       {periods.length > 0 ? (
         <div data-testid="impulse-drilldown-periods" className="space-y-2">
           <h4 className="text-[14px] font-medium">Сейчас действует</h4>
+          {readPeriodSynthesis(payload) ? (
+            <p
+              data-testid="impulse-drilldown-period-synthesis"
+              className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-[13px] leading-5 text-foreground/85"
+            >
+              {readPeriodSynthesis(payload)}
+            </p>
+          ) : null}
           <ul className="space-y-2">
             {periods.map((period) => {
               const copy = getPeriodTechniqueCopy(period.technique);
@@ -209,8 +246,16 @@ function ContextLayer({
                 >
                   <span className="font-medium">{period.title}</span>
                   <time dateTime={period.activeUntil} className="mt-0.5 block text-muted-foreground">
-                    {period.activeFrom} — {period.activeUntil}
+                    {periodDateRu(period.activeFrom)} — {periodDateRu(period.activeUntil)}
                   </time>
+                  {readPeriodNote(period) ? (
+                    <p
+                      data-testid={`impulse-drilldown-period-note-${period.id}`}
+                      className="mt-2 text-[13px] leading-5 text-foreground/85"
+                    >
+                      {readPeriodNote(period)}
+                    </p>
+                  ) : null}
                   <section
                     data-testid={`impulse-drilldown-period-technique-copy-${period.id}`}
                     data-technique={period.technique ?? "unknown"}
@@ -259,6 +304,7 @@ export function ImpulseDrilldownSheet({
   group,
   targetDate,
   timezone,
+  contextOverride,
   onClose,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.ImpulseDrilldownSheet
@@ -275,9 +321,14 @@ export function ImpulseDrilldownSheet({
   const [contextStatus, setContextStatus] = useState<number>();
   const titleId = `impulse-drilldown-title-${group.sphere}`;
   const dateLabel = targetDateLabel(targetDate);
-  const fullHref = `/day/spheres/${group.sphere}`;
 
   useEffect(() => {
+    if (contextOverride) {
+      setContextPayload(contextOverride);
+      setContextStatus(undefined);
+      setContextState("ready");
+      return;
+    }
     const controller = new AbortController();
     let active = true;
     setContextState("loading");
@@ -300,7 +351,7 @@ export function ImpulseDrilldownSheet({
       active = false;
       controller.abort();
     };
-  }, [group.sphere]);
+  }, [group.sphere, contextOverride]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -354,12 +405,25 @@ export function ImpulseDrilldownSheet({
             <h3 className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Факты сегодняшнего дня
             </h3>
+            {group.impulses.length === 0 ? (
+              <div
+                data-testid="impulse-drilldown-empty"
+                data-state="empty"
+                className="rounded-2xl border border-border/60 bg-muted/30 p-4"
+              >
+                <p className="text-[14px] font-medium leading-5">Сегодня сигналов нет</p>
+                <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                  День не требует здесь особого внимания. Ниже можно посмотреть постоянный контекст сферы.
+                </p>
+              </div>
+            ) : null}
             <ul className="space-y-3">
               {group.impulses.map((impulse) => (
                 <li
                   key={impulse.eventId}
                   data-testid={`impulse-drilldown-fact-${impulse.eventId}`}
                   data-polarity={impulse.polarity}
+                  data-facet={impulse.facet ?? undefined}
                   data-time-mode={impulse.time.mode}
                   data-has-event-title={eventTitle(group, impulse.eventId) ? "true" : "false"}
                   className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
@@ -372,14 +436,16 @@ export function ImpulseDrilldownSheet({
                       {eventTitle(group, impulse.eventId)}
                     </h4>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
+                  <div className="mt-3 text-[13px] font-medium leading-[18px] text-foreground/80" data-testid={`impulse-drilldown-signal-label-${impulse.eventId}`}>
+                    {getFacetLabel(impulse.facet) ?? getTodaySphereLabel(impulse.sphere)}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
                     <time
                       className="tabular-nums"
                       dateTime={getEventTimeDateTime(impulse.time)}
                     >
                       {formatEventTime(impulse.time, timezone)}
                     </time>
-                    <span className="font-medium">{getTodaySphereLabel(impulse.sphere)}</span>
                     <span className={`rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
                       {getPolarityLabel(impulse.polarity)}
                     </span>
@@ -442,14 +508,6 @@ export function ImpulseDrilldownSheet({
           >
             <ContextLayer state={contextState} payload={contextPayload} status={contextStatus} />
           </div>
-
-          <a
-            data-testid="impulse-drilldown-full-link"
-            href={fullHref}
-            className="inline-flex min-h-11 items-center rounded-full border border-border/70 px-4 py-2 text-[13px] font-medium transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Полный разбор сферы
-          </a>
         </div>
       </section>
     </div>
