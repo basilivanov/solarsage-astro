@@ -1,8 +1,8 @@
 # MASTER ТЗ: пересборка 12 продуктовых сфер и проявлений внутри сфер
 
 Дата: 2026-08-06  
-Статус: REVISED после проверки против repository main; готово к реализации  
-Область: Today Convergence, страницы сфер, narrative, check-in, frontend и generated contracts
+Статус: REVISED после проверки против repository main + UX-решения владельца по прототипу (`01_UX_DECISIONS_FROM_PROTOTYPE.md`, обязателен совместно); готово к реализации  
+Область: Today Convergence, страницы сфер (decommission), narrative, check-in, frontend и generated contracts
 
 ## 1. Контекст и принятые решения
 
