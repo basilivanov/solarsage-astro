@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
-// purpose: Render the legacy calendar layout with generated calendar/v2 dayState markers, deterministic dayTone icons, lunar facts, and a safe-area-aware top header.
+// purpose: Render the legacy calendar layout with generated calendar/v2 dayState markers, deterministic dayTone dots, lunar facts, and a safe-area-aware top header.
 // owns:
 //   - components/calendar/calendar-screen.tsx
 // inputs: optional access/onOpenDay compatibility props; current local month.
@@ -13,9 +13,9 @@
 // side_effects: Credentialed monthly calendar fetches; onOpenDay callback when the selected day is opened.
 // emitted_logs: Delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_response_invalid.
 // invariants:
-//   - Calendar data is read from generated CalendarPayload; dayState is never projected to valence labels and tone icons render only for a non-null dayTone.
+//   - Calendar data is read from generated CalendarPayload; dayState is never projected to valence labels and tone dots render only for a non-null dayTone.
 //   - The restored layout owns one month heading and one calendar grid.
-//   - hero and not-computed markers are neutral structural dots; ordinary days have no state marker.
+//   - Every day cell reserves a fixed marker slot, so day numbers never shift vertically; hero = ring + tone dot, not-computed = empty circle, ordinary = tone dot.
 //   - access.state !== full renders a locked day with reduced opacity and a lock icon.
 // failure_policy: HTTP/schema failures render the public error state and no partial grid.
 // END_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
@@ -36,16 +36,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import {
-  AlertTriangle,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Circle,
-  CircleDot,
   Lock,
-  Sparkles,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
@@ -69,11 +64,11 @@ type LoadState = "loading" | "ready" | "error"
 type CalendarDay = CalendarPayloadReadModel["days"][number]
 type CalendarDayTone = NonNullable<CalendarDay["dayTone"]>
 
-const DAY_TONE_ICONS: Record<CalendarDayTone, { Icon: LucideIcon; label: string }> = {
-  steady: { Icon: Circle, label: "ровный тон дня" },
-  supportive: { Icon: Sparkles, label: "поддерживающий тон дня" },
-  mixed: { Icon: CircleDot, label: "смешанный тон дня" },
-  tense: { Icon: AlertTriangle, label: "напряжённый тон дня" },
+const DAY_TONE_DOTS: Record<CalendarDayTone, { dotClass: string; label: string }> = {
+  steady: { dotClass: "bg-foreground/25", label: "ровный тон дня" },
+  supportive: { dotClass: "bg-[#43806d]", label: "поддерживающий тон дня" },
+  mixed: { dotClass: "bg-foreground/55", label: "смешанный тон дня" },
+  tense: { dotClass: "bg-[#b07b36]", label: "напряжённый тон дня" },
 }
 
 function accessAllowed(day: CalendarDay | undefined): boolean {
@@ -115,17 +110,17 @@ function lunarAria(date: Date, day: CalendarDay | undefined): string {
   return parts.join(", ")
 }
 
-function dayTonePresentation(dayTone: CalendarDay["dayTone"]): { Icon: LucideIcon; label: string } | null {
+function dayTonePresentation(dayTone: CalendarDay["dayTone"]): { dotClass: string; label: string } | null {
   // START_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.dayTonePresentation
-  // purpose: Resolve one compact icon from the generated dayTone enum.
+  // purpose: Resolve the colored tone dot from the generated dayTone enum.
   // inputs: nullable CalendarDay.dayTone from the validated calendar payload.
-  // returns: icon metadata for a known tone, or null when the snapshot has no tone.
+  // returns: dot class and aria label for a known tone, or null when the snapshot has no tone.
   // side_effects: none.
   // emitted_logs: none.
-  // error_behavior: no icon is rendered for null; unknown runtime values are ignored.
+  // error_behavior: no dot is rendered for null; unknown runtime values are ignored.
   // END_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.dayTonePresentation
   if (!dayTone) return null
-  return DAY_TONE_ICONS[dayTone] ?? null
+  return DAY_TONE_DOTS[dayTone] ?? null
 }
 
 function parseCalendarDayDate(raw: string): Date | null {
@@ -484,31 +479,30 @@ export function CalendarScreen({ onOpenDay }: Props = {}) {
                           {day.dayNumber}
                         </span>
 
-                        {day.isCurrentMonth && day.dayState === "hero" ? (
-                          <span
-                            className="mt-0.5 h-1.5 w-1.5 rounded-full bg-foreground"
-                            data-testid="calendar-day-hero-dot"
-                            aria-hidden
-                          />
-                        ) : null}
+                        <span className="mt-0.5 flex h-2 items-center justify-center" aria-hidden>
+                          {day.isCurrentMonth && day.dayState === "not-computed" ? (
+                            <span
+                              className="h-1.5 w-1.5 rounded-full border-[1.5px] border-muted-foreground/45"
+                              data-testid="calendar-day-not-computed"
+                            />
+                          ) : null}
 
-                        {day.isCurrentMonth && day.dayState === "not-computed" ? (
-                          <span
-                            className="mt-0.5 h-1.5 w-1.5 rounded-full border-[1.5px] border-muted-foreground/45"
-                            data-testid="calendar-day-not-computed"
-                            aria-hidden
-                          />
-                        ) : null}
-
-                        {day.isCurrentMonth && tone ? (
-                          <tone.Icon
-                            aria-hidden
-                            className="absolute left-1.5 top-1.5 h-[10px] w-[10px] text-foreground/55"
-                            data-testid="calendar-day-tone-icon"
-                            data-tone={day.dayTone}
-                            strokeWidth={1.75}
-                          />
-                        ) : null}
+                          {day.isCurrentMonth && day.dayState !== "not-computed" && (tone || day.dayState === "hero") ? (
+                            <span
+                              className="relative flex items-center justify-center"
+                              data-testid="calendar-day-tone-icon"
+                              data-tone={day.dayTone ?? undefined}
+                            >
+                              {day.dayState === "hero" ? (
+                                <span
+                                  className="absolute h-3 w-3 rounded-full border border-foreground/50"
+                                  data-testid="calendar-day-hero-dot"
+                                />
+                              ) : null}
+                              <span className={`h-1.5 w-1.5 rounded-full ${tone ? tone.dotClass : "bg-foreground"}`} />
+                            </span>
+                          ) : null}
+                        </span>
 
                         {day.isCurrentMonth && !accessible ? (
                           <Lock
