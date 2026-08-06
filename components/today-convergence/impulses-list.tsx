@@ -4,14 +4,14 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-IMPULSES
-// purpose: Group selected quiet-day impulses by sphere, resolve event titles from the Today ledger, and render a modal CTA.
+// purpose: Group selected quiet-day impulses by sphere, resolve event titles from the Today ledger, and expose each card as a dialog trigger.
 // owns:
 //   - components/today-convergence/impulses-list.tsx
-// inputs: generated TodayConvergenceImpulse array, TodayConvergenceEvent ledger, optional snapshot/date/timezone context.
+// inputs: generated TodayConvergenceImpulse array, TodayConvergenceEvent ledger, timezone, and parent-owned drilldown callback.
 // outputs: grouped sphere cards with exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, impulse-event-meta-{eventId} and impulse-event-time-{eventId} selectors, and drilldown triggers.
-// dependencies: today-formatters, impulse-drilldown-sheet, packages/contracts/today-convergence.ts.
-// side_effects: opens the child sheet; the child lazily fetches sphere context.
-// emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed from the child sheet.
+// dependencies: today-formatters, packages/contracts/today-convergence.ts.
+// side_effects: delegates the selected sphere to the parent sheet host.
+// emitted_logs: none.
 // invariants: no list is rendered for an empty array; every original impulse keeps its public test and semantic attributes.
 // failure_policy: caller omits the component for zero impulses.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-IMPULSES
@@ -25,7 +25,6 @@
 //   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-IMPULSES
 
-import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type {
   TodayConvergenceEvent,
@@ -38,17 +37,13 @@ import {
   getPolarityToneClasses,
   getTodaySphereLabel,
 } from "./today-formatters";
-import {
-  ImpulseDrilldownSheet,
-  type ImpulseDrilldownGroup,
-} from "./impulse-drilldown-sheet";
+import type { ImpulseDrilldownGroup } from "./impulse-drilldown-sheet";
 
 type Props = {
   impulses: readonly TodayConvergenceImpulse[];
   events?: readonly TodayConvergenceEvent[];
-  snapshotId?: string | null;
-  targetDate?: string | null;
   timezone?: string | null;
+  onOpenDrilldown: (sphere: TodayConvergenceImpulse["sphere"]) => void;
 };
 
 function groupImpulses(
@@ -73,21 +68,19 @@ function groupImpulses(
 }
 
 // START_BLOCK: IMPULSES
-export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, timezone }: Props) {
+export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-IMPULSES.ImpulsesList
   // purpose: Render the quiet-day impulse list.
-  // inputs: impulses — generated selected impulse rows; events — matching Today event ledger; snapshotId/targetDate/timezone — modal context.
+  // inputs: impulses — generated selected impulse rows; events — matching Today event ledger; timezone — display context; onOpenDrilldown — parent sheet action.
   // returns: grouped list DOM or null when the array is empty.
-  // side_effects: opens the selected sphere sheet; lazy network work is delegated to the sheet.
+  // side_effects: delegates the selected sphere to the parent sheet host.
   // emitted_logs: none.
   // error_behavior: empty input renders no block, preserving the quiet period context.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-IMPULSES.ImpulsesList
-  const [openSphere, setOpenSphere] = useState<TodayConvergenceImpulse["sphere"] | null>(null);
   if (impulses.length === 0) return null;
 
   const eventById = new Map(events.map((event) => [event.id, event] as const));
   const groups = groupImpulses(impulses, events);
-  const activeGroup = openSphere ? groups.find((group) => group.sphere === openSphere) : undefined;
 
   return (
     <section data-testid="impulses-list" data-count={String(impulses.length)} data-group-count={String(groups.length)} className="space-y-3">
@@ -116,15 +109,7 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
             <ul className="mt-4 space-y-2">
               {group.impulses.map((impulse) => {
                 const eventTitle = eventById.get(impulse.eventId)?.title;
-                const cardHref = snapshotId
-                  ? `/day/snapshots/${encodeURIComponent(snapshotId)}/spheres/${impulse.sphere}`
-                  : null;
-                const cardClassName = [
-                  "relative block rounded-[20px] border border-border/40 bg-card p-4 shadow-(--shadow-card)",
-                  cardHref
-                    ? "pr-10 transition-[border-color,box-shadow] duration-150 hover:border-primary/30 hover:shadow-(--shadow-lift) motion-reduce:transition-none"
-                    : "",
-                ].join(" ");
+                const cardClassName = "relative block w-full rounded-[20px] border border-border/40 bg-card p-4 pr-10 text-left shadow-(--shadow-card) transition-[border-color,box-shadow] duration-150 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none";
                 const cardContent = (
                   <>
                     <div
@@ -157,12 +142,10 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
                         {impulse.summary.text}
                       </p>
                     ) : null}
-                    {cardHref ? (
-                      <ChevronRight
-                        aria-hidden
-                        className="absolute right-3 top-4 h-4 w-4 text-muted-foreground/50"
-                      />
-                    ) : null}
+                    <ChevronRight
+                      aria-hidden
+                      className="absolute right-3 top-4 h-4 w-4 text-muted-foreground/50"
+                    />
                   </>
                 );
                 return (
@@ -175,44 +158,23 @@ export function ImpulsesList({ impulses, events = [], snapshotId, targetDate, ti
                     data-has-event-title={eventTitle ? "true" : "false"}
                     className="min-w-0"
                   >
-                    {cardHref ? (
-                      <a
-                        href={cardHref}
-                        aria-label={`Открыть разбор сферы «${getTodaySphereLabel(impulse.sphere)}»`}
-                        className={cardClassName}
-                      >
-                        {cardContent}
-                      </a>
-                    ) : (
-                      <div className={cardClassName}>{cardContent}</div>
-                    )}
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-label={`Открыть разбор сферы «${getTodaySphereLabel(impulse.sphere)}»`}
+                      onClick={() => onOpenDrilldown(group.sphere)}
+                      className={cardClassName}
+                    >
+                      {cardContent}
+                    </button>
                   </li>
                 );
               })}
             </ul>
 
-            <button
-              type="button"
-              data-testid={`impulse-drilldown-trigger-${group.sphere}`}
-              aria-haspopup="dialog"
-              onClick={() => setOpenSphere(group.sphere)}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-foreground/80 px-4 py-2 text-[13px] font-medium transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Разобрать, как это может проявиться
-            </button>
           </article>
         ))}
       </div>
-
-      {activeGroup ? (
-        <ImpulseDrilldownSheet
-          group={activeGroup}
-          snapshotId={snapshotId}
-          targetDate={targetDate}
-          timezone={timezone}
-          onClose={() => setOpenSphere(null)}
-        />
-      ) : null}
     </section>
   );
 }

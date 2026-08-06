@@ -7,7 +7,7 @@
 // purpose: Render a quiet-day main event without merging it into convergence content.
 // owns:
 //   - components/today-convergence/main-event.tsx
-// inputs: generated TodayConvergenceMainEvent, optional published snapshot id, and payload timezone.
+// inputs: generated TodayConvergenceMainEvent and payload timezone.
 // outputs: data-testid=main-event block with public polarity and time attributes.
 // dependencies: today-formatters, packages/contracts/today-convergence.ts.
 // side_effects: none.
@@ -36,23 +36,20 @@ import {
 
 type Props = {
   event: TodayConvergenceMainEvent;
-  snapshotId?: string | null;
   timezone?: string | null;
 };
 
 // START_BLOCK: MAIN_EVENT
-export function MainEvent({ event, snapshotId, timezone }: Props) {
+export function MainEvent({ event, timezone }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
   // purpose: Render the deterministic main event block.
-  // inputs: event — generated main event payload; snapshotId — published snapshot identity for drilldown; timezone — payload timezone for absolute event time.
+  // inputs: event — generated main event payload; timezone — payload timezone for absolute event time.
   // returns: accessible main-event article.
   // side_effects: none.
   // emitted_logs: none.
   // error_behavior: generated event fields are rendered as received.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
-  const href = snapshotId
-    ? `/day/snapshots/${encodeURIComponent(snapshotId)}/spheres/${event.sphere}`
-    : null;
+  const href = `/day/spheres/${event.sphere}`;
   const content = (
     <>
       <p className="text-[11px] font-medium uppercase leading-[18px] tracking-[0.18em] text-muted-foreground/80">
@@ -80,14 +77,12 @@ export function MainEvent({ event, snapshotId, timezone }: Props) {
       data-has-summary={event.summary ? "true" : "false"}
       className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
     >
-      {href ? (
-        <a
-          href={href}
-          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          {content}
-        </a>
-      ) : content}
+      <a
+        href={href}
+        className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {content}
+      </a>
     </article>
   );
 }

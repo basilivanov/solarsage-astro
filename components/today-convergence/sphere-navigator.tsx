@@ -8,9 +8,9 @@
 // owns:
 //   - components/today-convergence/sphere-navigator.tsx
 // inputs: generated TodayConvergencePayload.
-// outputs: nav, 12 tile selectors, visible active summaries, snapshot drilldown links for marked tiles, and static sphere links otherwise.
+// outputs: nav, 12 tile selectors, visible active summaries, dialog triggers for marked tiles, and static sphere links otherwise.
 // dependencies: lib/display/sphere-labels, packages/contracts/today-convergence.ts.
-// side_effects: browser navigation through ordinary links only.
+// side_effects: delegates marked-sphere drilldown; unmarked tiles use ordinary navigation.
 // emitted_logs: none.
 // invariants: order is canonical; active state is conveyed by text as well as a neutral supplementary dot; inactive tiles have no Today summary.
 // failure_policy: absent selected blocks mean all markers are false.
@@ -32,6 +32,7 @@ import { SphereIcon } from "./sphere-icons";
 type Props = {
   payload: TodayConvergencePayload;
   rail?: boolean;
+  onOpenDrilldown: (sphere: TodayConvergencePayload["events"][number]["sphere"]) => void;
 };
 
 type SphereTodaySummary = {
@@ -97,12 +98,12 @@ function activeSummary(summary: SphereTodaySummary | undefined): string | null {
 }
 
 // START_BLOCK: NAVIGATOR
-export function SphereNavigator({ payload, rail = false }: Props) {
+export function SphereNavigator({ payload, rail = false, onOpenDrilldown }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR.SphereNavigator
   // purpose: Render all twelve canonical sphere links and visible summaries for spheres with Today facts.
   // inputs: payload — generated Today Convergence envelope.
-  // returns: accessible sphere navigation.
-  // side_effects: ordinary link navigation only.
+  // returns: accessible sphere navigation and marked-sphere dialog triggers.
+  // side_effects: delegates marked-sphere drilldown or performs ordinary link navigation.
   // emitted_logs: none.
   // error_behavior: absent Today facts render twelve unmarked tiles; period/lookahead context alone never marks a sphere.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR.SphereNavigator
@@ -124,15 +125,13 @@ export function SphereNavigator({ payload, rail = false }: Props) {
           const hasToday = Boolean(summary);
           return (
             <li key={sphere.key}>
-              <a
-                href={
-                  hasToday && payload.snapshotId
-                    ? `/day/snapshots/${encodeURIComponent(payload.snapshotId)}/spheres/${sphere.key}`
-                    : `/day/spheres/${sphere.key}`
-                }
+              {hasToday ? <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => onOpenDrilldown(sphere.key)}
                 data-testid={`sphere-tile-${sphere.key}`}
-                data-has-today={String(hasToday)}
-                data-today-count={summary ? String(summary.count) : "0"}
+                data-has-today="true"
+                data-today-count={String(summary?.count ?? 0)}
                 data-today-summary={todaySummary ?? undefined}
                 aria-label={todaySummary ? `${sphere.label}: ${todaySummary}` : sphere.label}
                 className="relative flex h-full min-h-[88px] min-w-0 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/40 bg-card px-1.5 py-2 text-center text-[12.5px] font-medium leading-4 text-foreground transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none motion-reduce:transition-none"
@@ -140,19 +139,21 @@ export function SphereNavigator({ payload, rail = false }: Props) {
                 <SphereIcon sphere={sphere.key} className="h-6 w-6 shrink-0 text-foreground/75" />
                 <span className="max-w-full whitespace-nowrap text-[12.5px] font-medium">{sphere.label}</span>
                 {todaySummary ? (
-                  <span
-                    data-testid={`sphere-tile-summary-${sphere.key}`}
-                    className="max-w-full text-[11px] leading-4 text-muted-foreground"
-                  >
-                    {todaySummary}
-                  </span>
+                  <span data-testid={`sphere-tile-summary-${sphere.key}`} className="max-w-full text-[11px] leading-4 text-muted-foreground">{todaySummary}</span>
                 ) : null}
-                <span
-                  aria-hidden
-                  className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground"
-                  style={{ opacity: hasToday ? 1 : 0 }}
-                />
-              </a>
+                <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" />
+              </button> : <a
+                href={`/day/spheres/${sphere.key}`}
+                data-testid={`sphere-tile-${sphere.key}`}
+                data-has-today="false"
+                data-today-count="0"
+                aria-label={sphere.label}
+                className="relative flex h-full min-h-[88px] min-w-0 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/40 bg-card px-1.5 py-2 text-center text-[12.5px] font-medium leading-4 text-foreground transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none motion-reduce:transition-none"
+              >
+                <SphereIcon sphere={sphere.key} className="h-6 w-6 shrink-0 text-foreground/75" />
+                <span className="max-w-full whitespace-nowrap text-[12.5px] font-medium">{sphere.label}</span>
+                <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-foreground" style={{ opacity: 0 }} />
+              </a>}
             </li>
           );
         })}

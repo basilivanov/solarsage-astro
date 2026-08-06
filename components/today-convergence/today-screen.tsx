@@ -30,8 +30,10 @@
 
 "use client";
 
+import { useState } from "react";
 import { Paywall } from "@/components/paywall";
 import type {
+  TodayConvergenceImpulse,
   TodayConvergenceNarrativeClaim,
   TodayConvergencePayload,
 } from "@/packages/contracts/today-convergence";
@@ -39,6 +41,10 @@ import { BirthTimeBanner } from "./birth-time-banner";
 import { ConvergenceHero } from "./convergence-hero";
 import { DayGeneralSky } from "./day-general-sky";
 import { HowCalculated } from "./how-calculated";
+import {
+  ImpulseDrilldownSheet,
+  type ImpulseDrilldownGroup,
+} from "./impulse-drilldown-sheet";
 import { ImpulsesList } from "./impulses-list";
 import { MainEvent } from "./main-event";
 import { PeriodContext } from "./period-context";
@@ -83,6 +89,33 @@ function narrativeClaims(payload: TodayConvergencePayload): TodayConvergenceNarr
     add(impulse.action);
   }
   return claims;
+}
+
+function drilldownGroup(
+  payload: TodayConvergencePayload,
+  sphere: TodayConvergenceImpulse["sphere"],
+): ImpulseDrilldownGroup | null {
+  const events = payload.events.filter((event) => event.sphere === sphere);
+  const eventIds = new Set(events.map((event) => event.id));
+  const selected = payload.impulses.filter((impulse) => impulse.sphere === sphere);
+  if (payload.mainEvent?.sphere === sphere && !selected.some((item) => item.eventId === payload.mainEvent?.eventId)) {
+    selected.unshift(payload.mainEvent);
+  }
+  for (const event of events) {
+    if (selected.some((item) => item.eventId === event.id)) continue;
+    selected.push({
+      eventId: event.id,
+      sphere: event.sphere,
+      polarity: event.polarity,
+      evidenceLevel: event.evidenceLevel,
+      time: event.time,
+      summary: null,
+      meaning: null,
+      action: null,
+    });
+  }
+  const impulses = selected.filter((item) => eventIds.size === 0 || eventIds.has(item.eventId));
+  return impulses.length > 0 ? { sphere, impulses, events } : null;
 }
 
 function PreviewTeaser({ payload }: { payload: TodayConvergencePayload }) {
@@ -136,11 +169,13 @@ function ReadyContent({
   birthTimeDismissed,
   onBirthTimeDismiss,
 }: Omit<TodayScreenProps, "screenState">) {
+  const [openSphere, setOpenSphere] = useState<TodayConvergenceImpulse["sphere"] | null>(null);
   const claims = narrativeClaims(payload);
   const isUnavailable = payload.state === "unavailable";
   const isLocked = payload.access.state === "locked";
   const isPreview = payload.access.state === "preview";
   const isFullCalculation = payload.access.state === "full" && !isUnavailable;
+  const activeGroup = openSphere ? drilldownGroup(payload, openSphere) : null;
 
   return (
     <div
@@ -192,16 +227,14 @@ function ReadyContent({
             {payload.mainEvent ? (
               <MainEvent
                 event={payload.mainEvent}
-                snapshotId={payload.snapshotId}
                 timezone={payload.timezone}
               />
             ) : null}
             <ImpulsesList
               impulses={payload.impulses}
               events={payload.events}
-              snapshotId={payload.snapshotId}
-              targetDate={payload.targetDate}
               timezone={payload.timezone}
+              onOpenDrilldown={setOpenSphere}
             />
             <TodayNarrative state={payload.contentState} claims={claims} onRetry={onRetry} />
             {payload.lookahead ? <TodayLookahead lookahead={payload.lookahead} /> : null}
@@ -215,9 +248,17 @@ function ReadyContent({
         className="min-w-0 space-y-4"
       >
         {payload.periodContext ? <PeriodContext context={payload.periodContext} /> : null}
-        <SphereNavigator payload={payload} />
+        <SphereNavigator payload={payload} onOpenDrilldown={setOpenSphere} />
         {isFullCalculation ? <HowCalculated /> : null}
       </aside>
+      {activeGroup ? (
+        <ImpulseDrilldownSheet
+          group={activeGroup}
+          targetDate={payload.targetDate}
+          timezone={payload.timezone}
+          onClose={() => setOpenSphere(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -337,7 +337,7 @@ describe("Today Convergence public time and access projections", () => {
     expect(event.getAttribute("data-time-mode")).toBe("exact");
   });
 
-  it("groups impulses by sphere and exposes a clear drilldown CTA", () => {
+  it("groups impulses by sphere and exposes each card as the only drilldown trigger", () => {
     renderToday(quietSteady);
     const impulse = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
     const summary = quietSteady.impulses[0].summary?.text ?? "";
@@ -346,9 +346,8 @@ describe("Today Convergence public time and access projections", () => {
     expect(impulse.getAttribute("data-has-summary")).toBe("true");
     expect(impulse.textContent).toContain(summary);
     expect(screen.getByTestId("impulse-group-work").getAttribute("data-impulse-count")).toBe("1");
-    expect(screen.getByTestId("impulse-drilldown-trigger-work").textContent).toBe(
-      "Разобрать, как это может проявиться",
-    );
+    expect(impulse.querySelector("button")?.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(screen.queryByText("Разобрать, как это может проявиться")).toBeNull();
     expect(screen.queryByTestId("today-narrative")).toBeNull();
   });
 
@@ -369,7 +368,7 @@ describe("Today Convergence public time and access projections", () => {
     renderToday(quietSteady);
 
     expect(mockFetchSpherePage).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+    fireEvent.click(screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`).querySelector("button")!);
 
     const dialog = screen.getByTestId("impulse-drilldown-sheet");
     const event = quietSteady.events.find((candidate) => candidate.id === quietSteady.impulses[0].eventId);
@@ -415,7 +414,7 @@ describe("Today Convergence public time and access projections", () => {
       periodCopy.whatYouMayNotice,
     );
     expect(screen.getByTestId("impulse-drilldown-full-link").getAttribute("href")).toBe(
-      `/day/snapshots/${encodeURIComponent(quietSteady.snapshotId!)}/spheres/work`,
+      "/day/spheres/work",
     );
 
     fireEvent.keyDown(document, { key: "Escape" });
@@ -439,7 +438,7 @@ describe("Today Convergence public time and access projections", () => {
       ],
     });
 
-    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+    fireEvent.click(screen.getByTestId(`impulse-${impulse.eventId}`).querySelector("button")!);
 
     expect(screen.getByTestId(`impulse-drilldown-event-title-${impulse.eventId}`).textContent).toBe(
       quietSteady.events.find((event) => event.id === impulse.eventId)?.title,
@@ -456,7 +455,7 @@ describe("Today Convergence public time and access projections", () => {
       impulses: [{ ...impulse, meaning: null }],
     });
 
-    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+    fireEvent.click(screen.getByTestId(`impulse-${impulse.eventId}`).querySelector("button")!);
 
     expect(screen.getByTestId(`impulse-drilldown-fallback-meaning-${impulse.eventId}`).textContent).toContain(
       "Возможное проявление",
@@ -467,7 +466,7 @@ describe("Today Convergence public time and access projections", () => {
   it("keeps Today facts visible when sphere context returns 403", async () => {
     mockFetchSpherePage.mockRejectedValueOnce({ status: 403 });
     renderToday(quietSteady);
-    fireEvent.click(screen.getByTestId("impulse-drilldown-trigger-work"));
+    fireEvent.click(screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`).querySelector("button")!);
 
     expect(screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`)).toBeTruthy();
     await waitFor(() => {
@@ -478,7 +477,7 @@ describe("Today Convergence public time and access projections", () => {
     expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
   });
 
-  it("keeps an impulse as a plain list item when summary and snapshot are absent", () => {
+  it("keeps an impulse card interactive when summary and snapshot are absent", () => {
     const payloadWithoutSummary: TodayConvergencePayload = {
       ...quietSteady,
       snapshotId: null,
@@ -490,17 +489,18 @@ describe("Today Convergence public time and access projections", () => {
     expect(impulse.tagName).toBe("LI");
     expect(impulse.getAttribute("data-has-summary")).toBe("false");
     expect(impulse.querySelector("a")).toBeNull();
+    expect(impulse.querySelector("button")?.getAttribute("aria-haspopup")).toBe("dialog");
     expect(impulse.textContent).not.toContain(quietSteady.impulses[0].summary?.text ?? "");
   });
 
-  it("renders the main-event summary with the same snapshot drilldown route", () => {
+  it("renders the main-event summary with the static sphere route", () => {
     renderToday(quietMainMax);
     const mainEvent = screen.getByTestId("main-event");
     const link = mainEvent.querySelector("a");
 
     expect(mainEvent.getAttribute("data-has-summary")).toBe("true");
     expect(link?.getAttribute("href")).toBe(
-      `/day/snapshots/${encodeURIComponent(quietMainMax.snapshotId!)}/spheres/decisions`,
+      "/day/spheres/decisions",
     );
     expect(mainEvent.textContent).toContain(quietMainMax.mainEvent?.summary?.text ?? "");
   });
@@ -594,9 +594,10 @@ describe("Today Convergence public time and access projections", () => {
   });
 
   it("renders the fixed twelve-tile navigator with neutral markers and real paths", () => {
+    mockFetchSpherePage.mockReturnValueOnce(new Promise(() => undefined));
     renderToday(heroSupportive);
     const navigator = screen.getByTestId("sphere-navigator");
-    const tiles = navigator.querySelectorAll("a[data-testid^='sphere-tile-']");
+    const tiles = navigator.querySelectorAll("li > [data-testid^='sphere-tile-']");
     const icons = navigator.querySelectorAll("svg[data-testid^='sphere-icon-']");
     expect(tiles).toHaveLength(12);
     expect(icons).toHaveLength(12);
@@ -609,10 +610,12 @@ describe("Today Convergence public time and access projections", () => {
     }
     expect(screen.getByTestId("sphere-tile-work").getAttribute("data-has-today")).toBe("true");
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("data-has-today")).toBe("false");
-    expect(screen.getByTestId("sphere-tile-work").getAttribute("href")).toBe(
-      `/day/snapshots/${encodeURIComponent(heroSupportive.snapshotId!)}/spheres/work`,
-    );
+    expect(screen.getByTestId("sphere-tile-work").tagName).toBe("BUTTON");
+    expect(screen.getByTestId("sphere-tile-work").getAttribute("aria-haspopup")).toBe("dialog");
     expect(screen.getByTestId("sphere-tile-shopping").getAttribute("href")).toBe("/day/spheres/shopping");
+
+    fireEvent.click(screen.getByTestId("sphere-tile-work"));
+    expect(screen.getByTestId("impulse-drilldown-sheet").getAttribute("data-sphere")).toBe("work");
   });
 
   it("shows a visible active summary for Today facts and keeps empty tiles unlabelled", () => {

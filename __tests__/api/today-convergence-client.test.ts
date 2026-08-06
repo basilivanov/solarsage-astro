@@ -41,7 +41,6 @@ vi.mock("@/lib/log", () => ({
 }))
 
 import {
-  fetchSphereDrilldown,
   fetchTodayConvergence,
   recordDayImpression,
   retryTodayConvergence,
@@ -135,42 +134,6 @@ describe("recordDayImpression", () => {
 })
 // END_BLOCK: IMPRESSION
 
-// START_BLOCK: DRILLDOWN
-describe("fetchSphereDrilldown", () => {
-  it("returns the validated drilldown payload", async () => {
-    const payload = {
-      snapshotId: "snap-1",
-      sphere: "work",
-      state: "convergence_today",
-      dayTone: "tense",
-      birthTimeMode: "exact",
-      events: [],
-      convergence: null,
-    }
-    mockInstrumentedFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify(payload), { status: 200 }),
-    )
-
-    const result = await fetchSphereDrilldown("snap-1", "work")
-
-    expect(result.sphere).toBe("work")
-    expect(mockInstrumentedFetch.mock.calls[0][0].url).toBe(
-      "/api/day/snapshots/snap-1/spheres/work",
-    )
-  })
-
-  it("throws a typed http error for 403", async () => {
-    mockInstrumentedFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: { code: "ACCESS_REQUIRED" } }), { status: 403 }),
-    )
-
-    const failure = await fetchSphereDrilldown("snap-1", "work").catch((error: unknown) => error)
-
-    expect((failure as { status: number }).status).toBe(403)
-  })
-})
-// END_BLOCK: DRILLDOWN
-
 // START_BLOCK: FETCH_DAY
 describe("fetchTodayConvergence", () => {
   it("returns the validated day payload", async () => {
@@ -205,14 +168,5 @@ describe("fetchTodayConvergence", () => {
     expect((failure as { kind: string }).kind).toBe("invalid")
   })
 
-  it("throws a typed invalid error for a malformed drilldown payload", async () => {
-    mockInstrumentedFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ nope: 1 }), { status: 200 }),
-    )
-
-    const failure = await fetchSphereDrilldown("snap-1", "work").catch((error: unknown) => error)
-
-    expect((failure as { kind: string }).kind).toBe("invalid")
-  })
 })
 // END_BLOCK: FETCH_DAY

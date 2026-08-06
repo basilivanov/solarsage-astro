@@ -1,6 +1,6 @@
 // ############################################################################
 // AI_HEADER: MODULE_E2E_MOCK_VISUAL_TODAY_CONVERGENCE_SPEC — Today convergence visual and structural gate.
-// ROLE: Exercises the generated Today payload matrix, snapshot drilldown, static sphere page, and check-in recap.
+// ROLE: Exercises the generated Today payload matrix, sheet drilldown, static sphere page, and check-in recap.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-TODAY-CONVERGENCE-SPEC
@@ -8,7 +8,7 @@
 // owns:
 //   - e2e/mock-visual/today-convergence.spec.ts
 // inputs: generated fixture barrel, inline sphere payloads, Playwright route interception, and E2E_BASE_URL.
-// outputs: structural assertions, curated Today/drilldown PNG baselines, and WebKit smoke coverage.
+// outputs: structural assertions, curated Today PNG baselines, sheet drilldown checks, and WebKit smoke coverage.
 // dependencies: @playwright/test; route-interception; screenshot; generated contracts.
 // side_effects: none outside Playwright snapshots.
 // emitted_logs: none.
@@ -25,7 +25,7 @@
 // public_entrypoints:
 //   - 16-fixture Today structural matrix
 //   - curated Today visual baselines
-//   - snapshot drilldown and static sphere navigation
+//   - sheet drilldown and static sphere navigation
 //   - Yesterday check-in pre/post/no-snapshot flows
 //   - WebKit ready/loading/error smoke tests
 // semantic_blocks:
@@ -33,7 +33,7 @@
 //   - TODAY_CONTRACT: state axes, hero/quiet/access and sphere navigation.
 //   - TODAY_LAYOUT: desktop single-column stack geometry.
 //   - IMPULSE_GEOMETRY: desktop title/time one-row visibility and mobile overflow safety.
-//   - VISUAL_BASELINES: key Today states and snapshot drilldown.
+//   - VISUAL_BASELINES: key Today states.
 //   - CHECKIN_AND_SPHERE: Yesterday recap and static sphere route wiring.
 //   - WEBKIT_SMOKE: minimal cross-engine transport/navigation proof.
 // owned_tests:
@@ -41,9 +41,6 @@
 // END_MODULE_MAP: M-E2E-MOCK-VISUAL-TODAY-CONVERGENCE-SPEC
 
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import type {
-  TodaySphereDrilldownPayload,
-} from "../../packages/contracts"
 import type { TodaySpherePagePayload } from "../../packages/contracts/today-sphere-page"
 import type { TodayConvergencePayload } from "../../packages/contracts/today-convergence"
 import {
@@ -68,7 +65,6 @@ import { profilePayload, referralPayload } from "./fixtures/profile"
 import { prepareForScreenshot } from "./screenshot"
 
 const TODAY_DATE = "2026-08-01"
-const DRILLDOWN_SNAPSHOT = heroTense.snapshotId!
 const LONG_IMPULSE_EVENT_ID = "evt_v1_long_title_time"
 const LONG_IMPULSE_TITLE = "Луна в гармонии с твоим жребием Брака"
 const LONG_IMPULSE_TIME_TEXT = "пик 2 августа, 18:48, окно: с 2 августа, 03:58 до 3 августа, 09:28"
@@ -134,42 +130,6 @@ const spherePagePayload: TodaySpherePagePayload = {
   sphere: "work",
 }
 
-const drilldownPayload: TodaySphereDrilldownPayload = {
-  birthTimeMode: "exact",
-  convergence: {
-    eventIds: ["evt-drill-1", "evt-drill-2"],
-    evidenceLevel: "high",
-    id: "cvg-drill-1",
-    polarity: "supportive",
-    primarySphere: "work",
-    secondarySphere: "communication",
-  },
-  dayTone: "tense",
-  events: [
-    {
-      evidenceLevel: "high",
-      id: "evt-drill-1",
-      kind: "aspect",
-      polarity: "supportive",
-      sphere: "work",
-      title: "Луна в гармонии с твоим Сатурном",
-      time: { mode: "exact", peak: "15:40", start: "13:00", end: "18:00", partOfDay: null },
-    },
-    {
-      evidenceLevel: "medium",
-      id: "evt-drill-2",
-      kind: "structural",
-      polarity: "tense",
-      sphere: "communication",
-      title: null,
-      time: { mode: "partofday", partOfDay: "evening", peak: null, start: null, end: null },
-    },
-  ],
-  snapshotId: DRILLDOWN_SNAPSHOT,
-  sphere: "work",
-  state: "convergence_today",
-}
-
 type YesterdayFixture = typeof yesterdayPreSubmit
 
 // START_BLOCK: FIXTURE_MATRIX
@@ -196,7 +156,6 @@ function buildTodayFixtures(
     "/api/referral": { body: referralPayload },
     "/api/payment/products": { body: { products: [] } },
     "/api/spheres/work": { body: spherePagePayload },
-    [`/api/day/snapshots/${DRILLDOWN_SNAPSHOT}/spheres/work`]: { body: drilldownPayload },
   }
 
   if (payload.snapshotId) {
@@ -342,7 +301,7 @@ test.describe("Mock Visual — Today Convergence", () => {
     }
   })
 
-  test("captures the navigator and opens snapshot drilldown", async ({ page }) => {
+  test("captures the navigator and opens sheet drilldown", async ({ page }) => {
     const tracker = await openToday(page, heroTense)
     await prepareForScreenshot(page)
     await expect(page).toHaveScreenshot("today-navigator.png", {
@@ -351,11 +310,10 @@ test.describe("Mock Visual — Today Convergence", () => {
     })
 
     await page.getByTestId("sphere-tile-work").click()
-    await expect(page).toHaveURL(new RegExp(`/day/snapshots/${DRILLDOWN_SNAPSHOT}/spheres/work$`))
-    await expect(page.getByTestId("sphere-drilldown")).toHaveAttribute("data-screen-state", "ready", { timeout: 15000 })
-    await expect(page.getByTestId("drilldown-evidence")).toBeVisible()
-    await prepareForScreenshot(page)
-    await expect(page).toHaveScreenshot("sphere-drilldown.png", { fullPage: true })
+    await expect(page).toHaveURL(new RegExp(`/day/${TODAY_DATE}$`))
+    await expect(page.getByTestId("impulse-drilldown-sheet")).toHaveAttribute("data-sphere", "work")
+    await expect(page.getByTestId("impulse-drilldown-today-facts")).toBeVisible()
+    await expect(page.getByTestId("impulse-drilldown-full-link")).toHaveAttribute("href", "/day/spheres/work")
     await expectNoMissingApiFixtures(page, tracker)
   })
 

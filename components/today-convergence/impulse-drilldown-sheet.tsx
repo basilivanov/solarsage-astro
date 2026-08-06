@@ -7,7 +7,7 @@
 // purpose: Render one sphere's exact event facts first in an accessible safe-area-aware modal and load optional natal/period context lazily.
 // owns:
 //   - components/today-convergence/impulse-drilldown-sheet.tsx
-// inputs: grouped generated impulses, their Today event ledger entries, target date/timezone, snapshot identity, and close callback.
+// inputs: grouped generated impulses, their Today event ledger entries, target date/timezone, and close callback.
 // outputs: role=dialog sheet with event-first deterministic facts, optional meaning/action, collapsed context transport states, and a context-preserving full-analysis link.
 // dependencies: fetchSpherePage; generated Today and sphere contracts; Today formatters.
 // side_effects: credentialed GET /api/spheres/{sphere} on open; aborts the request on close/unmount.
@@ -53,7 +53,6 @@ export type ImpulseDrilldownGroup = {
 
 type Props = {
   group: ImpulseDrilldownGroup;
-  snapshotId?: string | null;
   targetDate?: string | null;
   timezone?: string | null;
   onClose: () => void;
@@ -258,14 +257,13 @@ function ContextLayer({
 // START_BLOCK: DIALOG_SHELL
 export function ImpulseDrilldownSheet({
   group,
-  snapshotId,
   targetDate,
   timezone,
   onClose,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-IMPULSE-DRILLDOWN.ImpulseDrilldownSheet
   // purpose: Render deterministic grouped impulse facts and lazy sphere context in a responsive accessible dialog.
-  // inputs: group — one sphere, its Today impulses, and matched event ledger entries; snapshotId/targetDate/timezone — product context; onClose — parent close action.
+  // inputs: group — one sphere, its Today impulses, and matched event ledger entries; targetDate/timezone — product context; onClose — parent close action.
   // returns: dialog DOM with local facts immediately and context transport/content states.
   // side_effects: GET /api/spheres/{sphere} on mount; aborts that request on unmount; listens for Escape.
   // emitted_logs: delegated ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
@@ -277,9 +275,7 @@ export function ImpulseDrilldownSheet({
   const [contextStatus, setContextStatus] = useState<number>();
   const titleId = `impulse-drilldown-title-${group.sphere}`;
   const dateLabel = targetDateLabel(targetDate);
-  const fullHref = snapshotId
-    ? `/day/snapshots/${encodeURIComponent(snapshotId)}/spheres/${group.sphere}`
-    : `/day/spheres/${group.sphere}`;
+  const fullHref = `/day/spheres/${group.sphere}`;
 
   useEffect(() => {
     const controller = new AbortController();
