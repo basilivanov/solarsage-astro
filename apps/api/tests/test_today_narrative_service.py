@@ -26,6 +26,7 @@
 #   - FIXTURES: stable snapshots, factors, and fake provider.
 #   - HAPPY_PATH: convergence and quiet-day canonical content.
 #   - EVENT_TIME: date-aware absolute instants in bounded prompt evidence.
+#   - GROUNDING: deterministic titles/themes and fail-closed sphere/polarity claims.
 #   - VALIDATION: schema, binding, length, block identity, and capability gates.
 #   - OPERATIONS: deadline, provider error, prompt bounds, tokens, and logs.
 # owned_tests:
@@ -375,6 +376,65 @@ def _quiet_impulses_only_content(snapshot: TodaySnapshot) -> dict[str, object]:
 
 
 # START_BLOCK: HAPPY_PATH
+def _grounded_mercury_uranus_snapshot() -> TodaySnapshot:
+    event_id = "evt_v1_mercury_uranus"
+    factor = _factor(event_id, event_class="aspect", polarity="supportive")
+    factor.update(
+        {
+            "source_key": "MERCURY",
+            "target_key": "URANUS",
+            "target_type": "natal_planet",
+            "aspect_type": "trine",
+        }
+    )
+    return _snapshot(
+        state="quiet_day",
+        convergences=[],
+        main_event=None,
+        impulses=[_single(event_id, sphere="documents", polarity="supportive")],
+        factors=[factor],
+    )
+
+
+@pytest.mark.asyncio
+async def test_impulse_prompt_is_grounded_and_rejected_claim_becomes_null_after_one_retry() -> None:
+    snapshot = _grounded_mercury_uranus_snapshot()
+    prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
+
+    assert '"title":"Меркурий в гармонии с твоим Ураном"' in prompt
+    assert '"driverThemes":["Формулировки, обучение и договорённости","Изменение, свобода и новый способ"]' in prompt
+
+    event_id = "evt_v1_mercury_uranus"
+    bad_content = {
+        "convergences": {},
+        "main_event": None,
+        "impulses": {
+            event_id: {
+                "summary": _claim(
+                    "Встречи в сфере отношений могут стать более напряжёнными.",
+                    [event_id],
+                ),
+                "meaning": None,
+                "action": None,
+            }
+        },
+    }
+    fake = FakeLLM(json.dumps(bad_content, ensure_ascii=False))
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    assert len(fake.calls) == 2
+    assert result.content_json["impulses"][event_id]["summary"] is None  # type: ignore[index]
+    assert "отношений" not in json.dumps(result.content_json, ensure_ascii=False)
+    assert "напряжёнными" not in json.dumps(result.content_json, ensure_ascii=False)
+    assert "Проверка grounding отклонила" in str(fake.calls[1]["prompt"])
+
+
 @pytest.mark.asyncio
 async def test_convergence_today_three_groups_accepts_bound_claims() -> None:
     snapshot = _convergence_snapshot()

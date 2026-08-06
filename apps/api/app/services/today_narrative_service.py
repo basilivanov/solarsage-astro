@@ -1,12 +1,14 @@
 # ############################################################################
-# AI_HEADER: TODAY_NARRATIVE_SERVICE — bounded, claim-bound Today narrative generation.
-# ROLE: Builds a small public evidence prompt, performs one deadline-bounded
-#       strict-JSON provider call, and accepts the response only atomically.
+# AI_HEADER: TODAY_NARRATIVE_SERVICE — grounded, claim-bound Today narrative generation.
+# ROLE: Builds a small public evidence prompt from deterministic driver titles
+#       and themes, performs bounded strict-JSON provider calls, and publishes
+#       only sanitized, sphere/polarity-grounded claims.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TODAY-NARRATIVE
 # purpose: Generate bounded Russian narrative content for one published
-#   TodaySnapshot without touching persistence, leases, projections, or HTTP.
+#   TodaySnapshot without touching persistence, leases, projections, or HTTP;
+#   ground each claim on deterministic driver evidence before publication.
 # owns:
 #   - apps/api/app/services/today_narrative_service.py
 # inputs: TodaySnapshot-like row, prompt version, injectable LLM client, and
@@ -15,15 +17,17 @@
 #   TodayNarrativeFailure with a stable error code and latency.
 # dependencies: TodaySnapshot JSON shape, Settings, existing LLM provider layer,
 #   and structured backend logging.
-# side_effects: one bounded provider call and three guarded generation-boundary
-#   log events; no database writes, lease transitions, or template fallback.
+# side_effects: one bounded provider call, plus one regeneration only after a
+#   grounding rejection, and three guarded generation-boundary log events; no
+#   database writes, lease transitions, or template fallback.
 # emitted_logs: day.narrative_generation_started,
 #   day.narrative_generation_completed, day.narrative_generation_failed.
 # invariants: only selected public units enter the prompt; date-aware EventTime
 #   instants use the same local timezone semantics as the public projection;
 #   convergence evidence may overlap between groups and remains present in each
 #   group; selected IDs validate the union while main/impulse IDs stay disjoint;
-#   content is accepted atomically; claims bind to selected event IDs;
+#   content is accepted atomically after grounding; claims bind to selected
+#   event IDs and unsupported claims become honest nulls after one retry;
 #   unavailable is honest on any provider, schema, claim, capability, or
 #   deadline failure.
 # failure_policy: return TodayNarrativeFailure; never return partial content or
@@ -38,10 +42,10 @@
 #   - build_today_narrative_prompt
 #   - generate_today_narrative
 # semantic_blocks:
-#   - PROMPT: selected-unit and capability-bounded prompt construction.
+#   - PROMPT: selected-unit, deterministic-driver, and capability-bounded prompt construction.
 #   - EVENT_TIME: clock and absolute instant projection for prompt evidence.
 #   - CALL: injectable provider invocation and existing provider adapter.
-#   - VALIDATE: exact response shape and claim binding.
+#   - VALIDATE: exact response shape, claim binding, and grounding retry/nulling.
 #   - CAPABILITY: deterministic text restrictions by birth-time capability.
 #   - LOGGING: guarded generation lifecycle events without narrative text.
 # owned_tests:
@@ -60,6 +64,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timezone as dt_timezone
 from enum import StrEnum
+from functools import lru_cache
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -71,7 +76,14 @@ from app.core.logging import (
     log_event,
 )
 from app.services.llm_service import LLMService
-from app.services.narrative_sanitizer import sanitize_narrative_text
+from app.services.astro_utils import strip_prefix
+from app.services.horizon_content_canon_service import load_horizon_content_canons
+from app.services.narrative_sanitizer import (
+    has_narrative_grounding_violation,
+    sanitize_narrative_text,
+)
+from app.services.today_convergence_canon import load_today_convergence_canon
+from app.services.today_convergence_titles import build_today_convergence_event_title
 
 
 _MISSING = object()
@@ -81,6 +93,12 @@ _DAY_STATES = frozenset({"convergence_today", "quiet_day"})
 _DAY_TONES = frozenset({"steady", "supportive", "mixed", "tense"})
 _NARRATIVE_FIELDS = ("summary", "meaning", "action")
 _CAPABILITY_KEYS = ("houses", "angles", "lots", "exact_timing")
+_GROUNDING_RETRY_SUFFIX = """
+Проверка grounding отклонила предыдущую версию: claim должен оставаться в
+разрешённой сфере и соответствовать polarity. Повтори JSON один раз, опираясь
+на title и driverThemes. Если честный summary невозможен, поставь его в null;
+не заменяй его общей фразой и не показывай неподтверждённую сферу.
+"""
 
 
 class TodayNarrativeErrorCode(StrEnum):
@@ -89,6 +107,7 @@ class TodayNarrativeErrorCode(StrEnum):
     TIMEOUT = "timeout"
     SCHEMA_INVALID = "schema_invalid"
     CLAIM_BINDING = "claim_binding"
+    GROUNDING_VIOLATION = "grounding_violation"
     CAPABILITY_VIOLATION = "capability_violation"
     PROVIDER_ERROR = "provider_error"
     INTERNAL_ERROR = "internal_error"
@@ -148,6 +167,8 @@ class _PromptEvent:
     sphere: str
     polarity: str
     event_time: dict[str, Any]
+    title: str | None = None
+    driver_themes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -429,6 +450,93 @@ def _factor_units(snapshot: object) -> tuple[dict[str, Mapping[str, Any]], ZoneI
     return units, timezone
 
 
+# START_BLOCK: DRIVER_GROUNDING
+@lru_cache(maxsize=1)
+def _driver_theme_labels() -> Mapping[str, tuple[str, ...]]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._driver_theme_labels
+    # purpose: Join the frozen planet-to-theme mapping with the existing human
+    #   Russian theme labels used by the horizon language canon.
+    # inputs: none; repository canons are resolved by their own strict loaders.
+    # returns: uppercase planet key to ordered human theme labels.
+    # side_effects: cached filesystem reads through canonical loaders only.
+    # emitted_logs: none.
+    # error_behavior: canonical loader errors propagate to the snapshot input
+    #   boundary, where narrative generation fails closed.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._driver_theme_labels
+    convergence_canon = load_today_convergence_canon()
+    language_canon = load_horizon_content_canons().language
+    labels: dict[str, tuple[str, ...]] = {}
+    for planet, theme_keys in convergence_canon.target_planet_themes.items():
+        human_labels: list[str] = []
+        for theme_key in theme_keys:
+            theme = language_canon.themes.get(theme_key)
+            label = getattr(theme, "label", None)
+            if not isinstance(label, str) or not label.strip():
+                raise ValueError("driver_theme_label")
+            human_labels.append(label.strip())
+        if not human_labels:
+            raise ValueError("driver_theme_labels")
+        labels[planet] = tuple(dict.fromkeys(human_labels))
+    return labels
+
+
+def _driver_themes(unit: Mapping[str, Any]) -> tuple[str, ...]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._driver_themes
+    # purpose: Project only canonical human themes for the source and named
+    # target planets of one deterministic factor unit.
+    # inputs: normalized factor-unit mapping.
+    # returns: stable, deduplicated human theme labels; empty for non-planetary
+    #   or unknown drivers.
+    # side_effects: cached canon reads on first use.
+    # emitted_logs: none.
+    # error_behavior: malformed canon data raises the internal input error;
+    #   unknown driver keys simply have no themes.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._driver_themes
+    try:
+        labels = _driver_theme_labels()
+    except Exception as exc:
+        raise _NarrativeInputError("driver_themes") from exc
+
+    result: list[str] = []
+    for raw_key in (unit.get("source_key"), unit.get("target_key")):
+        if raw_key is None:
+            continue
+        normalized_key = strip_prefix(str(raw_key).strip()).upper()
+        for label in labels.get(normalized_key, ()):
+            if label not in result:
+                result.append(label)
+    return tuple(result)
+
+
+def _block_grounding(block: _NarrativeBlock) -> tuple[frozenset[str], str]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_grounding
+    # purpose: Collect all product spheres represented by one narrative block
+    #   and its canonical polarity for claim validation.
+    # inputs: validated narrative block.
+    # returns: (allowed spheres, polarity).
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: malformed internal block data raises the validation error.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_grounding
+    spheres = {event.sphere for event in block.events}
+    if block.primary_sphere is not None:
+        spheres.add(block.primary_sphere)
+    if block.secondary_sphere is not None:
+        spheres.add(block.secondary_sphere)
+    if len(spheres) == 0:
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
+    polarity = block.polarity or block.events[0].polarity
+    if polarity not in _POLARITIES:
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
+    if has_narrative_grounding_violation(
+        "",
+        allowed_spheres=spheres,
+        polarity=polarity,
+    ):
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
+    return frozenset(spheres), polarity
+
+
 def _event_for_selection(
     event_id: str,
     selection: Mapping[str, Any],
@@ -454,6 +562,8 @@ def _event_for_selection(
         sphere=selected_sphere,
         polarity=selected_polarity,
         event_time=_event_time(unit, birth_mode, timezone),
+        title=build_today_convergence_event_title(unit),
+        driver_themes=_driver_themes(unit),
     )
 
 
@@ -590,6 +700,30 @@ def _snapshot_context(snapshot: object) -> _SnapshotContext:
 
 
 # START_BLOCK: PROMPT
+def _prompt_event(event: _PromptEvent, *, include_event_id: bool = False) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._prompt_event
+    # purpose: Project one selected event into the bounded, human-readable
+    #   prompt evidence shape.
+    # inputs: validated prompt event and optional block event id flag.
+    # returns: prompt-safe mapping with title omitted when unavailable.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: none for validated input.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._prompt_event
+    result: dict[str, Any] = {
+        "kind": event.kind,
+        "sphere": event.sphere,
+        "polarity": event.polarity,
+        "eventTime": event.event_time,
+        "driverThemes": list(event.driver_themes),
+    }
+    if include_event_id:
+        result["eventId"] = event.event_id
+    if event.title is not None:
+        result["title"] = event.title
+    return result
+
+
 def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
     prompt_input: dict[str, Any] = {
         "promptVersion": prompt_version,
@@ -602,37 +736,17 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
                 "secondarySphere": group.secondary_sphere,
                 "polarity": group.polarity,
                 "evidenceEventIds": list(group.event_ids),
-                "evidence": [
-                    {
-                        "kind": event.kind,
-                        "sphere": event.sphere,
-                        "polarity": event.polarity,
-                        "eventTime": event.event_time,
-                    }
-                    for event in group.events
-                ],
+                "evidence": [_prompt_event(event) for event in group.events],
             }
             for group in context.convergences
         ],
         "mainEvent": (
             None
             if context.main_event is None
-            else {
-                "eventId": context.main_event.block_id,
-                "kind": context.main_event.events[0].kind,
-                "sphere": context.main_event.events[0].sphere,
-                "polarity": context.main_event.events[0].polarity,
-                "eventTime": context.main_event.events[0].event_time,
-            }
+            else _prompt_event(context.main_event.events[0], include_event_id=True)
         ),
         "impulses": [
-            {
-                "eventId": impulse.block_id,
-                "kind": impulse.events[0].kind,
-                "sphere": impulse.events[0].sphere,
-                "polarity": impulse.events[0].polarity,
-                "eventTime": impulse.events[0].event_time,
-            }
+            _prompt_event(impulse.events[0], include_event_id=True)
             for impulse in context.impulses
         ],
         "birthTime": {
@@ -679,6 +793,9 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 - Не изменяй state, dayTone, сферы, polarity, event IDs или EventTime.
 - В каждом ненулевом claim укажи один или несколько sourceEventIds только из
   соответствующего блока. Не выдумывай IDs и не оставляй список пустым.
+- Каждый summary обязан опираться на title события, если title передан, и на
+  driverThemes. Коротко объясни, что это за детерминированный фактор и почему
+  он относится к разрешённой сфере блока; не подменяй эту связь общей фразой.
 - Текст claim никогда не должен содержать часы, даты, окна или длительности:
   EventTime — только display-only данные для интерфейса. Формулируй текст claim
   только общими словами по kind, sphere и polarity; не упоминай house, angle или
@@ -836,7 +953,24 @@ def _provider_text(value: object) -> _ProviderText | None:
 
 
 # START_BLOCK: VALIDATE
-def _claim(value: object, allowed_event_ids: frozenset[str]) -> dict[str, Any] | None:
+def _claim(
+    value: object,
+    allowed_event_ids: frozenset[str],
+    *,
+    grounding: tuple[frozenset[str], str],
+    allow_grounding_nulls: bool,
+) -> dict[str, Any] | None:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._claim
+    # purpose: Sanitize, bind, and ground one provider claim.
+    # inputs: raw claim, selected event ids, block grounding context, and the
+    #   second-pass nulling policy.
+    # returns: canonical claim or None when the provider explicitly omitted it
+    #   or the second grounding pass withholds it.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: schema/binding errors raise typed validation errors;
+    #   grounding errors retry once at the generation boundary, then null.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._claim
     if value is None:
         return None
     if not isinstance(value, Mapping) or set(value) != {"text", "sourceEventIds"}:
@@ -854,18 +988,46 @@ def _claim(value: object, allowed_event_ids: frozenset[str]) -> dict[str, Any] |
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
     if len(source_ids) != len(set(source_ids)) or not set(source_ids).issubset(allowed_event_ids):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
+    allowed_spheres, polarity = grounding
+    if has_narrative_grounding_violation(
+        clean_text,
+        allowed_spheres=allowed_spheres,
+        polarity=polarity,
+    ):
+        if allow_grounding_nulls:
+            return None
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
     return {"text": clean_text, "sourceEventIds": list(source_ids)}
 
 
 def _block_content(
     value: object,
     expected_ids: tuple[str, ...],
+    block: _NarrativeBlock,
+    *,
+    allow_grounding_nulls: bool,
 ) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_content
+    # purpose: Validate one exact narrative block and apply its sphere/polarity
+    #   grounding policy to every claim field.
+    # inputs: raw provider block, its selected event ids, block evidence, and
+    #   whether grounding failures may become null claims.
+    # returns: canonical block with only sanitized, bound claims.
+    # side_effects: none.
+    # error_behavior: raises typed validation errors for all non-grounding
+    #   violations; grounding is retried/nullable according to the flag.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_content
     if not isinstance(value, Mapping) or set(value) != set(_NARRATIVE_FIELDS):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
     allowed_event_ids = frozenset(expected_ids)
+    grounding = _block_grounding(block)
     result = {
-        field: _claim(value[field], allowed_event_ids)
+        field: _claim(
+            value[field],
+            allowed_event_ids,
+            grounding=grounding,
+            allow_grounding_nulls=allow_grounding_nulls,
+        )
         for field in _NARRATIVE_FIELDS
     }
     summary = result["summary"]
@@ -874,7 +1036,22 @@ def _block_content(
     return result
 
 
-def _validate_response(raw_text: str, context: _SnapshotContext) -> dict[str, Any]:
+def _validate_response(
+    raw_text: str,
+    context: _SnapshotContext,
+    *,
+    allow_grounding_nulls: bool = False,
+) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._validate_response
+    # purpose: Parse and validate the exact provider envelope, including
+    #   grounding-aware claim handling.
+    # inputs: raw provider JSON, validated snapshot context, and the second
+    #   grounding-pass null policy.
+    # returns: canonical narrative content.
+    # side_effects: none.
+    # error_behavior: raises typed validation errors; only grounding can be
+    #   converted to null when explicitly enabled.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._validate_response
     try:
         parsed = json.loads(raw_text)
     except (TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -901,16 +1078,31 @@ def _validate_response(raw_text: str, context: _SnapshotContext) -> dict[str, An
     else:
         if main_value is None:
             raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
-        main_content = _block_content(main_value, context.main_event.event_ids)
+        main_content = _block_content(
+            main_value,
+            context.main_event.event_ids,
+            context.main_event,
+            allow_grounding_nulls=allow_grounding_nulls,
+        )
 
     content = {
         "convergences": {
-            group_id: _block_content(raw_convergences[group_id], group.event_ids)
+            group_id: _block_content(
+                raw_convergences[group_id],
+                group.event_ids,
+                group,
+                allow_grounding_nulls=allow_grounding_nulls,
+            )
             for group_id, group in expected_groups.items()
         },
         "main_event": main_content,
         "impulses": {
-            event_id: _block_content(raw_impulses[event_id], impulse.event_ids)
+            event_id: _block_content(
+                raw_impulses[event_id],
+                impulse.event_ids,
+                impulse,
+                allow_grounding_nulls=allow_grounding_nulls,
+            )
             for event_id, impulse in expected_impulses.items()
         },
     }
@@ -1051,13 +1243,16 @@ async def generate_today_narrative(
     clock: Callable[[], float] | None = None,
 ) -> TodayNarrativeSuccess | TodayNarrativeFailure:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.generate_today_narrative
-    # purpose: Generate and atomically validate one bounded Today narrative.
+    # purpose: Generate and atomically validate one bounded Today narrative;
+    #   grounding failures receive one bounded regeneration before unsafe claims
+    #   are withheld as null.
     # inputs: snapshot — published TodaySnapshot-like row; prompt_version — lease
     #   identity; llm — injectable provider; correlation_id — caller context;
     #   timeout_seconds/clock — optional test and deadline controls.
     # returns: TodayNarrativeSuccess with canonical content_json, or
     #   TodayNarrativeFailure with timeout/provider/schema/claim/capability code.
-    # side_effects: at most one bounded provider call and guarded lifecycle logs.
+    # side_effects: at most two bounded provider calls (only for grounding retry)
+    #   and guarded lifecycle logs.
     # emitted_logs: day.narrative_generation_started,
     #   day.narrative_generation_completed, day.narrative_generation_failed.
     # error_behavior: returns typed failure for all expected generation errors;
@@ -1099,40 +1294,57 @@ async def generate_today_narrative(
 
         prompt = _build_prompt(context, prompt_version)
         max_output_tokens = settings.today_narrative_max_output_tokens
-        try:
-            raw_response = await asyncio.wait_for(
-                _invoke_provider(
-                    llm,
-                    prompt,
-                    max_output_tokens=max_output_tokens,
-                    timeout_seconds=bounded_timeout,
-                ),
-                timeout=bounded_timeout,
-            )
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            error_code = _provider_error_code(exc).value
-            latency_ms = _latency_ms(active_clock, started_at)
-            _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
-            return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
+        provider_text: _ProviderText | None = None
+        content: dict[str, Any] | None = None
+        for attempt in range(2):
+            attempt_prompt = prompt if attempt == 0 else prompt + _GROUNDING_RETRY_SUFFIX
+            try:
+                raw_response = await asyncio.wait_for(
+                    _invoke_provider(
+                        llm,
+                        attempt_prompt,
+                        max_output_tokens=max_output_tokens,
+                        timeout_seconds=bounded_timeout,
+                    ),
+                    timeout=bounded_timeout,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                error_code = _provider_error_code(exc).value
+                latency_ms = _latency_ms(active_clock, started_at)
+                _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
+                return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
 
-        provider_text = _provider_text(raw_response)
-        if provider_text is None:
-            error_code = TodayNarrativeErrorCode.PROVIDER_ERROR.value
-            latency_ms = _latency_ms(active_clock, started_at)
-            _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
-            return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
-        try:
-            content = _validate_response(provider_text.text, context)
-            _validate_capabilities(content, context)
-        except _NarrativeValidationError as exc:
-            error_code = exc.code.value
-            latency_ms = _latency_ms(active_clock, started_at)
-            _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
-            return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
-        except Exception:
-            error_code = TodayNarrativeErrorCode.SCHEMA_INVALID.value
+            provider_text = _provider_text(raw_response)
+            if provider_text is None:
+                error_code = TodayNarrativeErrorCode.PROVIDER_ERROR.value
+                latency_ms = _latency_ms(active_clock, started_at)
+                _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
+                return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
+            try:
+                content = _validate_response(
+                    provider_text.text,
+                    context,
+                    allow_grounding_nulls=attempt == 1,
+                )
+                _validate_capabilities(content, context)
+            except _NarrativeValidationError as exc:
+                if attempt == 0 and exc.code is TodayNarrativeErrorCode.GROUNDING_VIOLATION:
+                    continue
+                error_code = exc.code.value
+                latency_ms = _latency_ms(active_clock, started_at)
+                _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
+                return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
+            except Exception:
+                error_code = TodayNarrativeErrorCode.SCHEMA_INVALID.value
+                latency_ms = _latency_ms(active_clock, started_at)
+                _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
+                return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
+            break
+
+        if content is None or provider_text is None:
+            error_code = TodayNarrativeErrorCode.GROUNDING_VIOLATION.value
             latency_ms = _latency_ms(active_clock, started_at)
             _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
             return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
