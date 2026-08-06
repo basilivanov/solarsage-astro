@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: TEST_TODAY_CONVERGENCE_GROUPS — direct-star grouping contract tests.
-# ROLE: Proves direct physical grouping, C1 hero selection, independence, and per-group spheres.
+# ROLE: Proves direct physical grouping, C1 hero selection, independence, and resolver-backed sphere/facet projection.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-GROUPS
@@ -8,12 +8,12 @@
 # owns:
 #   - apps/api/tests/test_today_convergence_groups.py
 # inputs: Immutable CanonicalLedger records and the frozen TodayConvergenceCanon.
-# outputs: pytest assertions for direct stars, hero C1, independence, sphere votes, and typed misuse.
+# outputs: pytest assertions for direct stars, hero C1, independence, sphere/facet resolution, and typed misuse.
 # dependencies: app.services.today_convergence_canon, app.services.today_convergence_units, app.services.today_convergence_ledger, app.services.today_convergence_groups.
 # side_effects: none.
 # emitted_logs: none.
 # invariants: grouping is direct, input-order invariant, producer-independent, and presentation-free.
-# failure_policy: pytest failure on grouping, hero, independence, sphere, audit, or immutability drift.
+# failure_policy: pytest failure on grouping, hero, independence, projection, audit, or immutability drift.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-GROUPS
 
 # START_MODULE_MAP: M-TEST-TODAY-CONVERGENCE-GROUPS
@@ -23,7 +23,7 @@
 #   - DIRECT_STARS: target/theme links and no transitive bridge.
 #   - INDEPENDENCE: distinct drivers, anchor choice, and public member pool.
 #   - HERO_C1: rare anchor and direct independent confirmation.
-#   - SPHERE_PROJECTION: majority, tie-breaks, threshold, and per-group cap.
+#   - SPHERE_PROJECTION: one group-level resolver result, nullable facets, unresolved groups, and no cloning.
 #   - DETERMINISM: immutable records, group IDs, ordering, and typed misuse.
 # owned_tests:
 #   - self
@@ -93,14 +93,6 @@ def ledger_for(*rows: RawPhysicalFact) -> CanonicalLedger:
 
 def groups_for(ledger: CanonicalLedger) -> CanonicalGroupingResult:
     return build_canonical_groups(ledger, CANON)
-
-
-def with_spheres(ledger: CanonicalLedger, spheres: tuple[tuple[str, ...], ...]) -> CanonicalLedger:
-    assert len(ledger.units) == len(spheres)
-    return replace(
-        ledger,
-        units=tuple(replace(unit, product_spheres=unit_spheres) for unit, unit_spheres in zip(ledger.units, spheres)),
-    )
 
 
 # START_BLOCK: DIRECT_STARS
@@ -313,58 +305,101 @@ def test_hero_confirmer_must_be_direct_to_rare_anchor_not_only_bridge_member() -
 
 
 # START_BLOCK: SPHERE_PROJECTION
-def test_group_sphere_majority_and_secondary_threshold_are_per_group() -> None:
+def test_group_resolves_house_two_to_one_sphere_and_facet() -> None:
     rows = [
-        fact(source_key="Transit_MOON", temporal_role="anchor_today"),
-        fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting"),
-        fact(source_key="Transit_VENUS", aspect_type="OPPOSITION", temporal_role="supporting"),
+        fact(
+            source_key="Transit_JUPITER",
+            house=2,
+            technical_spheres=("money_security_resources",),
+            temporal_role="anchor_today",
+        ),
+        fact(
+            source_key="Transit_MERCURY",
+            house=2,
+            technical_spheres=("money_security_resources",),
+            aspect_type="TRINE",
+            temporal_role="supporting",
+        ),
+        fact(
+            source_key="Transit_VENUS",
+            house=2,
+            technical_spheres=("money_security_resources",),
+            aspect_type="OPPOSITION",
+            temporal_role="supporting",
+        ),
     ]
-    ledger = with_spheres(ledger_for(*rows), (("work", "money"), ("work", "money"), ("work", "documents")))
-
-    result = groups_for(ledger)
+    result = groups_for(ledger_for(*rows))
 
     assert len(result.groups) == 1
-    assert result.groups[0].primary_sphere == "work"
-    assert result.groups[0].secondary_sphere == "money"
+    assert result.groups[0].sphere == "finance"
+    assert result.groups[0].facet == "personal_money"
+    assert not hasattr(result.groups[0], "primary_sphere")
+    assert not hasattr(result.groups[0], "secondary_sphere")
 
 
-def test_sphere_ties_use_anchor_then_canonical_order_and_do_not_clone_group() -> None:
-    anchor_tie = with_spheres(
-        ledger_for(
-            fact(source_key="Transit_MOON", temporal_role="anchor_today"),
-            fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting"),
+def test_groups_with_same_resolved_sphere_remain_separate() -> None:
+    rows = [
+        fact(
+            source_key="Transit_JUPITER",
+            target_key="Natal_SATURN",
+            house=2,
+            technical_spheres=("money_security_resources",),
+            temporal_role="anchor_today",
         ),
-        (("money",), ("work",)),
-    )
-    canonical_tie = with_spheres(
-        ledger_for(
-            fact(source_key="Transit_MOON", temporal_role="anchor_today"),
-            fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting"),
-            fact(source_key="Transit_VENUS", aspect_type="OPPOSITION", temporal_role="supporting"),
+        fact(
+            source_key="Transit_MERCURY",
+            target_key="Natal_SATURN",
+            house=2,
+            technical_spheres=("money_security_resources",),
+            aspect_type="TRINE",
+            temporal_role="supporting",
         ),
-        ((), ("money",), ("work",)),
-    )
-
-    anchor_result = groups_for(anchor_tie)
-    canonical_result = groups_for(canonical_tie)
-
-    assert len(anchor_result.groups) == 1
-    assert anchor_result.groups[0].primary_sphere == "money"
-    assert canonical_result.groups[0].primary_sphere == "work"
-    assert canonical_result.groups[0].secondary_sphere is None
-    assert len(canonical_result.groups) == 1
-
-
-def test_two_driver_star_without_product_spheres_is_not_published() -> None:
-    ledger = with_spheres(
-        ledger_for(
-            fact(source_key="Transit_MOON", temporal_role="anchor_today"),
-            fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting"),
+        fact(
+            source_key="Transit_VENUS",
+            target_key="Natal_MOON",
+            house=2,
+            technical_spheres=("body_energy_health",),
+            temporal_role="anchor_today",
         ),
-        ((), ()),
+        fact(
+            source_key="Transit_MARS",
+            target_key="Natal_MOON",
+            house=2,
+            technical_spheres=("body_energy_health",),
+            aspect_type="TRINE",
+            temporal_role="supporting",
+        ),
+    ]
+
+    ledger = ledger_for(*rows)
+    # Keep the two target stars physically separate; sphere/facet resolution
+    # still uses the preserved technical annotations and houses.
+    isolated = replace(
+        ledger,
+        units=tuple(
+            replace(unit, theme_keys=(f"target_{unit.target_key.lower()}",))
+            for unit in ledger.units
+        ),
+    )
+    result = groups_for(isolated)
+
+    assert len(result.groups) == 2
+    assert {group.sphere for group in result.groups} == {"finance"}
+    assert all(group.facet == "personal_money" for group in result.groups)
+    assert len({group.group_id for group in result.groups}) == 2
+
+
+def test_two_driver_star_without_resolvable_sphere_is_not_published() -> None:
+    ledger = ledger_for(
+        fact(source_key="Transit_MOON", temporal_role="anchor_today"),
+        fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting"),
+    )
+    unresolved = replace(
+        ledger,
+        units=tuple(replace(unit, technical_spheres=(), theme_keys=()) for unit in ledger.units),
     )
 
-    result = groups_for(ledger)
+    result = groups_for(unresolved)
 
     assert result.groups == ()
     assert result.audit.group_without_sphere_count == 1
@@ -392,28 +427,38 @@ def test_star_dedup_permutation_group_id_and_records_are_immutable() -> None:
     with pytest.raises(FrozenInstanceError):
         result.groups = ()  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
-        result.groups[0].primary_sphere = "money"  # type: ignore[misc]
+        result.groups[0].sphere = "finance"  # type: ignore[misc]
 
 
-def test_group_id_ignores_provenance_and_sphere_fanout() -> None:
+def test_group_id_ignores_provenance_and_sphere_facet_projection() -> None:
     rows = [
         fact(source_key="Transit_MOON", temporal_role="anchor_today", provenance_ids=("a",)),
         fact(source_key="Transit_MERCURY", aspect_type="TRINE", temporal_role="supporting", provenance_ids=("b",)),
     ]
     ledger = ledger_for(*rows)
     baseline = groups_for(ledger)
-    altered = with_spheres(
-        replace(
-            ledger,
-            units=tuple(replace(unit, provenance_ids=("changed",)) for unit in ledger.units),
+    altered = replace(
+        ledger,
+        units=tuple(
+            replace(
+                unit,
+                provenance_ids=("changed",),
+                house=2,
+                technical_spheres=("money_security_resources",),
+                theme_keys=("resources_security",),
+            )
+            for unit in ledger.units
         ),
-        (("work", "money"), ("relationships", "documents")),
     )
 
     changed = groups_for(altered)
 
     assert len(baseline.groups) == len(changed.groups) == 1
     assert baseline.groups[0].group_id == changed.groups[0].group_id
+    assert (baseline.groups[0].sphere, baseline.groups[0].facet) != (
+        changed.groups[0].sphere,
+        changed.groups[0].facet,
+    )
 
 
 def test_duplicate_ledger_id_and_malformed_api_are_typed_errors() -> None:

@@ -1155,38 +1155,6 @@ def resolve_product_sphere(
     return sphere_key, facet.key
 
 
-def _legacy_unit_sphere_compat(
-    canon: TodayConvergenceCanon,
-    technical_spheres: Sequence[str] | None = None,
-    source_key: str | None = None,
-    target_key: str | None = None,
-) -> tuple[str, ...]:
-    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON._legacy_unit_sphere_compat
-    # purpose: Keep the pre-S3 unit import boundary loadable while units still
-    # carry their legacy tuple field.
-    # inputs: canon plus technical/source/target physical keys.
-    # returns: at most one canonical sphere from the new resolver.
-    # side_effects: none.
-    # emitted_logs: none.
-    # error_behavior: unresolved input returns an empty tuple.
-    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON._legacy_unit_sphere_compat
-    resolved = resolve_product_sphere(
-        canon,
-        technical_spheres=technical_spheres,
-        source_key=source_key,
-        target_key=target_key,
-    )
-    return (resolved[0],) if resolved is not None else ()
-
-
-def __getattr__(name: str) -> Any:
-    """Expose only a transient import bridge for the frozen pre-S3 units."""
-
-    if name == "map_factor_to_product_spheres":
-        return _legacy_unit_sphere_compat
-    raise AttributeError(name)
-
-
 def map_factor_to_theme_keys(
     canon: TodayConvergenceCanon,
     technical_spheres: Sequence[str] | None = None,

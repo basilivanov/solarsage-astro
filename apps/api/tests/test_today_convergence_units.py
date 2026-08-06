@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: TEST_TODAY_CONVERGENCE_UNITS — canonical physical-unit boundary tests.
-# ROLE: Proves producer-independent identity, immutable records, and fail-closed eligibility.
+# ROLE: Proves producer-independent identity, technical annotations, and fail-closed eligibility.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-UNITS
@@ -12,7 +12,7 @@
 # dependencies: app.services.today_convergence_canon, app.services.today_convergence_units.
 # side_effects: none.
 # emitted_logs: none.
-# invariants: physical identity excludes producer/provenance; malformed facts never raise.
+# invariants: physical identity excludes producer/provenance and product projection; malformed facts never raise.
 # failure_policy: pytest failure on identity, normalization, or eligibility drift.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-UNITS
 
@@ -96,6 +96,8 @@ def test_valid_unit_normalizes_fields_and_is_immutable() -> None:
     assert unit.aspect_type == "sextile"
     assert unit.polarity == "tense"
     assert unit.data_quality == "high"
+    assert unit.technical_spheres == ("work_status_achievement",)
+    assert not hasattr(unit, "product_spheres")
     assert unit.theme_keys == (
         "structure_boundaries_control",
         "resources_security",
@@ -174,9 +176,11 @@ def test_technical_annotation_changes_themes_but_not_identity() -> None:
     assert first.theme_keys != second.theme_keys
 
 
-def test_unknown_technical_annotation_has_no_fallback_but_source_mapping_survives() -> None:
+def test_unknown_technical_annotation_is_preserved_without_product_fallback() -> None:
     unit = build_canonical_unit(fact(technical_spheres=("unknown_factor",)), CANON).unit
     assert unit is not None
+    assert unit.technical_spheres == ("unknown_factor",)
+    assert not hasattr(unit, "product_spheres")
     assert unit.theme_keys == (
         "structure_boundaries_control",
         "resources_security",

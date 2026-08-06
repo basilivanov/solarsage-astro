@@ -8,7 +8,9 @@
 # owns:
 #   - apps/api/app/services/today_convergence_units.py
 # inputs: RawPhysicalFact values and the frozen TodayConvergenceCanon.
-# outputs: producer-independent CanonicalUnitBuildResult records.
+# outputs: producer-independent CanonicalUnitBuildResult records carrying
+#   normalized technical spheres and theme evidence; product projection is
+#   deferred to the physical-group boundary.
 # dependencies: today_convergence_canon and Python standard library only.
 # side_effects: none; this boundary is pure and does not log or write.
 # emitted_logs: none.
@@ -49,7 +51,6 @@ from app.services.today_convergence_canon import (
     is_fast_source,
     is_rare_source,
     load_today_convergence_canon,
-    map_factor_to_product_spheres,
     map_factor_to_theme_keys,
     source_max_orb,
 )
@@ -142,7 +143,7 @@ class CanonicalUnit:
     data_quality: str
     birth_time_mode: str
     birth_time_robustness: str
-    product_spheres: tuple[str, ...]
+    technical_spheres: tuple[str, ...]
     theme_keys: tuple[str, ...]
     polarity: str
     strength: float
@@ -337,10 +338,9 @@ def _accepted_result(
     provenance_ids = _text_sequence(raw.provenance_ids, ExclusionReason.INVALID_PROVENANCE)
     if isinstance(provenance_ids, ExclusionReason):
         return _exclude(provenance_ids)
-    mapped_spheres = map_factor_to_product_spheres(canon, technical_spheres, source, target)
-    if not mapped_spheres:
-        return _exclude(ExclusionReason.UNMAPPED_FACTOR)
     theme_keys = map_factor_to_theme_keys(canon, technical_spheres, source, target)
+    if not theme_keys:
+        return _exclude(ExclusionReason.UNMAPPED_FACTOR)
 
     normalized_aspect = _text(raw.aspect_type)
     normalized_aspect = normalized_aspect.lower() if normalized_aspect is not None else None
@@ -493,7 +493,7 @@ def _accepted_result(
         data_quality=data_quality,
         birth_time_mode=birth_time_mode,
         birth_time_robustness=birth_time_robustness,
-        product_spheres=mapped_spheres,
+        technical_spheres=technical_spheres,
         theme_keys=theme_keys,
         polarity=polarity,
         strength=float(raw.strength),

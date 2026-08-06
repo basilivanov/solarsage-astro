@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: MODULE_TODAY_CONVERGENCE_GROUPS — deterministic direct-star groups.
-# ROLE: Builds immutable physical groups, C1 hero evidence, independence, and per-group sphere projection.
+# ROLE: Builds immutable physical groups, C1 hero evidence, independence, and one group-level sphere/facet projection.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-GROUPS
@@ -12,7 +12,7 @@
 # dependencies: today_convergence_canon, today_convergence_ledger, today_convergence_units, and Python standard library only.
 # side_effects: none; this module is pure and emits no runtime logs.
 # emitted_logs: none.
-# invariants: public pool is evidence-eligible/non-background; group identity uses only canonical member IDs; spheres are group-level.
+# invariants: public pool is evidence-eligible/non-background; group identity uses only canonical member IDs; sphere/facet are group-level.
 # failure_policy: malformed API input and ledger invariant violations raise TodayConvergenceGroupingError; data already rejected by ledger stays out of groups.
 # END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-GROUPS
 
@@ -28,7 +28,7 @@
 #   - DIRECT_STARS: seed anchors and link only direct target/theme neighbors.
 #   - INDEPENDENCE: distinct driver validity and deterministic selected anchor.
 #   - HERO_C1: rare anchor plus direct independent confirmation.
-#   - SPHERE_PROJECTION: group-level majority, tie-break, and secondary cap.
+#   - SPHERE_PROJECTION: one deterministic group-level sphere/facet resolver call.
 #   - AUDIT: immutable deterministic counters and sorted output.
 # owned_tests:
 #   - apps/api/tests/test_today_convergence_groups.py
@@ -38,11 +38,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import Counter
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
-from app.services.today_convergence_canon import TodayConvergenceCanon, load_today_convergence_canon
+from app.services.today_convergence_canon import (
+    TodayConvergenceCanon,
+    load_today_convergence_canon,
+    resolve_product_sphere,
+)
 from app.services.today_convergence_ledger import CanonicalLedger
 from app.services.today_convergence_units import CanonicalUnit
 
@@ -53,7 +56,7 @@ class TodayConvergenceGroupingError(ValueError):
 
 @dataclass(frozen=True)
 class CanonicalConvergenceGroup:
-    """Immutable direct-star group with optional C1 hero pair and group spheres."""
+    """Immutable direct-star group with optional C1 hero pair and one projection."""
 
     group_id: str
     anchor_unit_id: str
@@ -63,8 +66,8 @@ class CanonicalConvergenceGroup:
     hero_confirmation_id: str | None
     hero_eligible: bool
     evidence_level: Literal["high", "medium"]
-    primary_sphere: str
-    secondary_sphere: str | None
+    sphere: str
+    facet: str | None
 
     @property
     def selected_anchor_id(self) -> str:
@@ -227,34 +230,31 @@ def _hero_pair(
 
 
 # START_BLOCK: SPHERE_PROJECTION
-def _project_spheres(
+def _group_house(members: Sequence[CanonicalUnit]) -> int | None:
+    houses = {unit.house for unit in members if unit.house is not None}
+    return next(iter(houses)) if len(houses) == 1 else None
+
+
+def _project_sphere_facet(
     members: Sequence[CanonicalUnit],
-    anchor: CanonicalUnit,
     canon: TodayConvergenceCanon,
 ) -> tuple[str, str | None] | None:
-    canonical_order = {sphere: index for index, sphere in enumerate(canon.canonical_spheres)}
-    votes: Counter[str] = Counter()
-    for member in members:
-        for sphere in set(member.product_spheres):
-            if sphere in canonical_order:
-                votes[sphere] += 1
-    if not votes:
-        return None
-    anchor_spheres = set(anchor.product_spheres)
-    ordered = sorted(
-        votes.items(),
-        key=lambda item: (
-            -item[1],
-            -(1 if item[0] in anchor_spheres else 0),
-            canonical_order[item[0]],
-        ),
+    technical_spheres = tuple(sorted({
+        technical_sphere
+        for member in members
+        for technical_sphere in member.technical_spheres
+    }))
+    theme_keys = tuple(sorted({
+        theme_key
+        for member in members
+        for theme_key in member.theme_keys
+    }))
+    return resolve_product_sphere(
+        canon,
+        house=_group_house(members),
+        technical_spheres=technical_spheres,
+        theme_keys=theme_keys,
     )
-    primary = ordered[0][0]
-    secondary = next(
-        (sphere for sphere, count in ordered[1:] if count >= 2 and sphere != primary),
-        None,
-    )
-    return primary, secondary
 
 
 # END_BLOCK: SPHERE_PROJECTION
@@ -298,11 +298,11 @@ def build_canonical_groups(
             continue
         hero_anchor, hero_confirmation = _hero_pair(members, resolved_canon)
         anchor = hero_anchor or _select_anchor(members)
-        spheres = _project_spheres(members, anchor, resolved_canon)
-        if spheres is None:
+        sphere_facet = _project_sphere_facet(members, resolved_canon)
+        if sphere_facet is None:
             group_without_sphere_count += 1
             continue
-        primary_sphere, secondary_sphere = spheres
+        sphere, facet = sphere_facet
         groups.append(
             CanonicalConvergenceGroup(
                 group_id=_group_id([unit.canonical_event_id for unit in members]),
@@ -313,8 +313,8 @@ def build_canonical_groups(
                 hero_confirmation_id=hero_confirmation.canonical_event_id if hero_confirmation is not None else None,
                 hero_eligible=hero_anchor is not None and hero_confirmation is not None,
                 evidence_level="high" if hero_anchor is not None and hero_confirmation is not None else "medium",
-                primary_sphere=primary_sphere,
-                secondary_sphere=secondary_sphere,
+                sphere=sphere,
+                facet=facet,
             )
         )
 
