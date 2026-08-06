@@ -65,7 +65,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone as dt_timezone
 from enum import StrEnum
 from functools import lru_cache
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.core.config import settings
@@ -469,7 +469,7 @@ def _driver_theme_labels() -> Mapping[str, tuple[str, ...]]:
     for planet, theme_keys in convergence_canon.target_planet_themes.items():
         human_labels: list[str] = []
         for theme_key in theme_keys:
-            theme = language_canon.themes.get(theme_key)
+            theme = cast(Mapping[str, Any], language_canon.themes).get(theme_key)
             label = getattr(theme, "label", None)
             if not isinstance(label, str) or not label.strip():
                 raise ValueError("driver_theme_label")
@@ -697,6 +697,7 @@ def _snapshot_context(snapshot: object) -> _SnapshotContext:
         main_event=main_event,
         impulses=impulses,
     )
+# END_BLOCK: DRIVER_GROUNDING
 
 
 # START_BLOCK: PROMPT

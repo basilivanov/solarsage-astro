@@ -134,6 +134,7 @@ export type SphereScoreV2 = components["schemas"]["SphereScoreV2"];
 
 // W4-TODAY-CONVERGENCE: TodayFocus wire contracts
 export type TodayConvergence = components["schemas"]["TodayConvergence"];
+export type TodayConvergencePayload = components["schemas"]["TodayConvergencePayload"];
 export type TodayFeaturedSphere = components["schemas"]["TodayFeaturedSphere"];
 export type TodayFocusEvent = components["schemas"]["TodayFocusEvent"];
 export type TodayFocusFactor = components["schemas"]["TodayFocusFactor"];

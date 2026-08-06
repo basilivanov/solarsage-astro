@@ -27,7 +27,7 @@
 
 "use client";
 
-import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
+import type { TodayConvergencePayload } from "@/packages/contracts";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import { TabBar } from "@/components/today/tab-bar";
 
