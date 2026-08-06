@@ -72,62 +72,16 @@ hero_rule: |
        + прямая связь по target/theme,
        + устойчивая сфера и полярность.
 
-# ── Проекция сфер (без fan-out) ──────────────────────────────────────────
+# ── Проекция сфер (одна группа → одна сфера → facet или null) ─────────────
 sphere_projection:
-  rule: group_to_spheres        # физическая группа → одна canonical convergence → сферы
-  primary: majority_anchor_tiebreak
-  secondary_max: 1
+  rule: one_group_to_one_sphere
+  source: product_spheres.v1.yml
+  one_group: one_sphere_one_facet_or_null
+  priority: [house, technical_spheres, explicit_context, planets_tiebreak]
   fail_unmapped: true           # неизвестный factor не превращается в work
   canonical_order:
-    [work, money, documents, relationships, sport, communication,
-     health, decisions, travel, creativity, study, shopping]
-  # Техническая theme-map применяется первой и остаётся отдельным evidence.
-  technical_to_product:
-    thinking_speech_learning: [communication, study, documents]
-    work_status_achievement: [work, decisions]
-    relationships_partnership: [relationships]
-    money_security_resources: [money, shopping, documents]
-    body_energy_health: [health, sport]
-    home_family_roots: [relationships]
-    inner_background_unconscious: [health, creativity]
-    crisis_transformation_control: [decisions, money]
-  technical_alias_to_product:
-    career: [work]
-    career_social_status: [work]
-    public_image: [work]
-    technology_innovation: [work]
-    finance_money: [money]
-    legal_affairs: [documents]
-    partnerships_contracts: [documents]
-    relationships: [relationships]
-    home_family: [relationships]
-    inheritance: [relationships]
-    daily_routine: [sport]
-    service_routine: [sport]
-    communication_learning: [communication, study]
-    friendship_social: [communication]
-    spirituality_inner_growth: [health]
-    healing: [health]
-    hidden_matters: [health]
-    career_ambition: [decisions]
-    crisis_transformation: [decisions]
-    philosophy: [decisions]
-    travel_adventure: [travel]
-  # Planet-map не раздувает один фактор более чем на две продуктовые сферы.
-  planet_to_product:
-    SUN: [work]
-    MARS: [sport, work]
-    VENUS: [relationships, money]
-    MERCURY: [communication, documents]
-    JUPITER: [money, work]
-    SATURN: [decisions, documents]
-    MOON: [relationships, health]
-    URANUS: [travel, creativity]
-    NEPTUNE: [creativity, health]
-    PLUTO: [decisions]
-  planet_sphere_limits:
-    max_spheres_per_planet: 2
-    decisions: [SATURN, PLUTO]  # decisions НЕ catch-all для SUN/MARS/JUPITER
+    [work, finance, documents, relationships, sport, communication, health,
+     home_family, travel, creativity, study, friends_goals]
 
 # ── Состояния и presentation ─────────────────────────────────────────────
 states: [convergence_today, quiet_day, unavailable]

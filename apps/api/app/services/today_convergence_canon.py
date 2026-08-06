@@ -7,11 +7,13 @@
 # purpose: Load the frozen Today Convergence and aspect canons without legacy or reference-analysis imports.
 # owns:
 #   - apps/api/app/services/today_convergence_canon.py
-# inputs: Today convergence, aspect-rules, and versioned narrow-theme YAML canons.
-# outputs: immutable TodayConvergenceCanon/TonePolicyCanon, strict canon
-#   artifact fingerprints, and pure mapping/significance/eligibility helpers.
+# inputs: Today convergence, product-spheres, aspect-rules, and versioned
+#   narrow-theme YAML canons.
+# outputs: immutable TodayConvergenceCanon/TonePolicyCanon/ProductSphereCanon,
+#   strict canon artifact fingerprints, and pure resolver/significance/
+#   eligibility helpers.
 # dependencies: PyYAML and Python standard library only.
-# side_effects: reads three YAML files; never writes or emits runtime logs.
+# side_effects: reads four YAML files; never writes or emits runtime logs.
 # emitted_logs: none.
 # invariants: frozen versions are exact; unknown mappings and normative values fail closed; no defaults/fallbacks.
 # failure_policy: TodayConvergenceCanonError for missing, malformed, or unknown canon values.
@@ -27,7 +29,7 @@
 #   - TodayConvergenceCanonError
 #   - load_today_convergence_canon
 #   - compute_today_convergence_canon_hash
-#   - map_factor_to_product_spheres
+#   - resolve_product_sphere
 #   - aspect_weight
 #   - source_max_orb
 #   - event_class_significance
@@ -61,6 +63,7 @@ class TodayConvergenceCanonError(ValueError):
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_CANON_DIR = _REPO_ROOT / "grace" / "canon"
 _TODAY_FILENAME = "today_convergence.v1.yml"
+_PRODUCT_SPHERES_FILENAME = "product_spheres.v1.yml"
 _ASPECT_FILENAME = "aspect_rules.v1.yml"
 _THEME_FILENAME = "today_convergence_themes.v1.yml"
 _RARE_TRANSIT_SOURCES = frozenset({"JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"})
@@ -123,15 +126,37 @@ class BirthTimeCanon:
 
 
 @dataclass(frozen=True)
+class ProductFacetCanon:
+    """Immutable product facet used by the deterministic sphere resolver."""
+
+    key: str
+    label: str
+    houses: tuple[int, ...]
+    technical_spheres: tuple[str, ...]
+    required_context: tuple[str, ...]
+    modifiers: Mapping[str, tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class ProductSphereCanon:
+    """Immutable product sphere and its ordered facet definitions."""
+
+    key: str
+    title: str
+    description: str
+    facets: tuple[ProductFacetCanon, ...]
+
+
+@dataclass(frozen=True)
 class TodayConvergenceCanon:
     schema_version: str
     status: str
     formula_version: str
     canonical_spheres: tuple[str, ...]
-    technical_to_product: Mapping[str, tuple[str, ...]]
-    technical_alias_to_product: Mapping[str, tuple[str, ...]]
-    planet_to_product: Mapping[str, tuple[str, ...]]
-    max_planet_spheres: int
+    product_schema_version: str
+    product_status: str
+    product_spheres: Mapping[str, ProductSphereCanon]
+    projection_priority: tuple[str, ...]
     aspect_weights: Mapping[str, float]
     orb_profile: Mapping[str, float]
     aspect_weight_min: float
@@ -172,14 +197,19 @@ def _read_yaml(path: Path, label: str) -> Mapping[str, Any]:
     return value
 
 
-def _canon_artifact_paths(canon_dir: Path | None) -> tuple[Path, Path, Path]:
+def _canon_artifact_paths(canon_dir: Path | None) -> tuple[Path, Path, Path, Path]:
     directory = _DEFAULT_CANON_DIR if canon_dir is None else canon_dir
     if directory.is_file():
         today_path = directory
         directory = directory.parent
     else:
         today_path = directory / _TODAY_FILENAME
-    return today_path, directory / _ASPECT_FILENAME, directory / _THEME_FILENAME
+    return (
+        today_path,
+        directory / _PRODUCT_SPHERES_FILENAME,
+        directory / _ASPECT_FILENAME,
+        directory / _THEME_FILENAME,
+    )
 
 
 def _require_mapping(value: Any, reason: str) -> Mapping[str, Any]:
@@ -224,15 +254,6 @@ def _string_tuple(value: Any, reason: str) -> tuple[str, ...]:
     result = tuple(_text(item, reason) for item in value)
     if not result or len(result) != len(set(result)):
         _fail(reason)
-    return result
-
-
-def _mapping_of_strings(value: Any, reason: str) -> dict[str, tuple[str, ...]]:
-    mapping = _require_mapping(value, reason)
-    result: dict[str, tuple[str, ...]] = {}
-    for raw_key, raw_values in mapping.items():
-        key = _text(raw_key, reason)
-        result[key] = _string_tuple(raw_values, reason)
     return result
 
 
@@ -303,6 +324,178 @@ def _theme_mapping(value: Any, reason: str, *, uppercase_keys: bool) -> dict[str
             _fail(reason)
         result[key] = normalized_values
     return result
+
+
+def _normalized_token_tuple(
+    value: Any,
+    reason: str,
+    *,
+    uppercase: bool = False,
+    allow_empty: bool = False,
+) -> tuple[str, ...]:
+    """Read a strict unique token list used by product-sphere metadata."""
+
+    if allow_empty:
+        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+            _fail(reason)
+        values = tuple(_text(item, reason) for item in value)
+        if len(values) != len(set(values)):
+            _fail(reason)
+    else:
+        values = _string_tuple(value, reason)
+    result = tuple(item.upper() if uppercase else item.lower() for item in values)
+    if result != values and any(
+        (item.upper() if uppercase else item.lower()) != item for item in values
+    ):
+        _fail(reason)
+    if any(any(not (char.isalnum() or char == "_") for char in item) for item in result):
+        _fail(reason)
+    return result
+
+
+def _product_spheres_canon(value: Any) -> tuple[
+    str,
+    str,
+    tuple[str, ...],
+    Mapping[str, ProductSphereCanon],
+    tuple[str, ...],
+]:
+    """Validate and materialize the single product sphere/facet canon."""
+
+    product = _require_mapping(value, "product_mapping")
+    _require_keys(
+        product,
+        {
+            "schema_version", "status", "description", "canonical_order",
+            "allowed_technical_spheres", "allowed_context_keys", "allowed_planets",
+            "migration_aliases", "resolver", "spheres",
+        },
+        "product_top_keys",
+    )
+    if product.get("schema_version") != "product_spheres.v1":
+        _fail("product_schema_version")
+    if product.get("status") != "frozen_w1":
+        _fail("product_status")
+    _text(product["description"], "product_description")
+
+    canonical_order = _normalized_token_tuple(product["canonical_order"], "product_canonical_order")
+    expected_order = (
+        "work", "finance", "documents", "relationships", "sport", "communication",
+        "health", "home_family", "travel", "creativity", "study", "friends_goals",
+    )
+    if canonical_order != expected_order:
+        _fail("product_canonical_order")
+
+    technical_keys = _normalized_token_tuple(
+        product["allowed_technical_spheres"], "product_technical_keys"
+    )
+    if technical_keys != (
+        "thinking_speech_learning", "work_status_achievement", "relationships_partnership",
+        "money_security_resources", "body_energy_health", "home_family_roots",
+        "inner_background_unconscious", "crisis_transformation_control",
+        "meaning_expansion_vector",
+    ):
+        _fail("product_technical_keys")
+    context_keys = set(_normalized_token_tuple(product["allowed_context_keys"], "product_context_keys"))
+    if not context_keys:
+        _fail("product_context_keys")
+    planets = _normalized_token_tuple(product["allowed_planets"], "product_planets", uppercase=True)
+    if planets != ("SUN", "MOON", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"):
+        _fail("product_planets")
+
+    migration_aliases = _require_mapping(product["migration_aliases"], "product_migration_aliases")
+    if dict(migration_aliases) != {"money": "finance", "shopping": "finance"}:
+        _fail("product_migration_aliases")
+
+    resolver = _require_mapping(product["resolver"], "product_resolver")
+    _require_keys(
+        resolver,
+        {"rule", "priority", "output", "unknown", "planet_only_narrow_facets"},
+        "product_resolver_keys",
+    )
+    priority = _normalized_token_tuple(resolver["priority"], "product_resolver_priority")
+    if priority != ("house", "technical_spheres", "explicit_context", "planets_tiebreak"):
+        _fail("product_resolver_priority")
+    if resolver["rule"] != "one_group_to_one_sphere":
+        _fail("product_resolver_rule")
+    if resolver["output"] != ["sphere", "facet_or_null"]:
+        _fail("product_resolver_output")
+    if resolver["unknown"] != "unresolved":
+        _fail("product_resolver_unknown")
+    if resolver["planet_only_narrow_facets"] != "forbidden":
+        _fail("product_resolver_planet_only")
+
+    spheres_raw = _require_mapping(product["spheres"], "product_spheres")
+    if set(spheres_raw) != set(canonical_order):
+        _fail("product_spheres_order")
+    sphere_values: dict[str, ProductSphereCanon] = {}
+    global_facets: set[str] = set()
+    for raw_sphere_key in canonical_order:
+        raw_sphere = _require_mapping(spheres_raw.get(raw_sphere_key), "product_sphere_mapping")
+        _require_keys(raw_sphere, {"key", "title", "description", "facets"}, "product_sphere_keys")
+        sphere_key = _normalized_token_tuple([raw_sphere["key"]], "product_sphere_key")[0]
+        if sphere_key != raw_sphere_key:
+            _fail("product_sphere_key")
+        title = _text(raw_sphere["title"], "product_sphere_title")
+        description = _text(raw_sphere["description"], "product_sphere_description")
+        facets_raw = raw_sphere["facets"]
+        if not isinstance(facets_raw, Sequence) or isinstance(facets_raw, (str, bytes)) or not facets_raw:
+            _fail("product_facets")
+        facets: list[ProductFacetCanon] = []
+        facet_keys: set[str] = set()
+        for raw_facet in facets_raw:
+            facet = _require_mapping(raw_facet, "product_facet_mapping")
+            required_facet_keys = {"key", "label", "houses", "modifiers"}
+            allowed_facet_keys = required_facet_keys | {"technical_spheres", "required_context"}
+            if not required_facet_keys.issubset(facet) or set(facet) - allowed_facet_keys:
+                _fail("product_facet_keys")
+            facet_key = _normalized_token_tuple([facet["key"]], "product_facet_key")[0]
+            if facet_key in facet_keys or facet_key in global_facets:
+                _fail("product_facet_unique")
+            facet_keys.add(facet_key)
+            global_facets.add(facet_key)
+            label = _text(facet["label"], "product_facet_label")
+            raw_houses = facet["houses"]
+            if not isinstance(raw_houses, Sequence) or isinstance(raw_houses, (str, bytes)) or not raw_houses:
+                _fail("product_facet_houses")
+            houses = tuple(raw_houses)
+            if any(
+                isinstance(house, bool) or not isinstance(house, int) or not 1 <= house <= 12
+                for house in houses
+            ) or len(houses) != len(set(houses)):
+                _fail("product_facet_houses")
+            facet_technical = _normalized_token_tuple(
+                facet.get("technical_spheres", []), "product_facet_technical", allow_empty=True
+            )
+            if set(facet_technical) - set(technical_keys):
+                _fail("product_facet_technical_reference")
+            required_context = _normalized_token_tuple(
+                facet.get("required_context", []), "product_facet_context", allow_empty=True
+            )
+            if set(required_context) - context_keys:
+                _fail("product_facet_context_reference")
+            modifiers = _require_mapping(facet["modifiers"], "product_facet_modifiers")
+            _require_keys(modifiers, {"planets"}, "product_facet_modifiers_keys")
+            modifier_planets = _normalized_token_tuple(modifiers["planets"], "product_facet_planets", uppercase=True)
+            if set(modifier_planets) - set(planets):
+                _fail("product_facet_planet_reference")
+            facets.append(
+                ProductFacetCanon(
+                    key=facet_key,
+                    label=label,
+                    houses=houses,
+                    technical_spheres=facet_technical,
+                    required_context=required_context,
+                    modifiers=MappingProxyType({"planets": modifier_planets}),
+                )
+            )
+        sphere_values[sphere_key] = ProductSphereCanon(
+            key=sphere_key,
+            title=title,
+            description=description,
+            facets=tuple(facets),
+        )
+    return product["schema_version"], product["status"], canonical_order, MappingProxyType(sphere_values), priority
 
 
 def _birth_time_canon(value: Any) -> BirthTimeCanon:
@@ -428,17 +621,26 @@ def _birth_time_canon(value: Any) -> BirthTimeCanon:
 
 def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConvergenceCanon:
     # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.load_today_convergence_canon
-    # purpose: Load and validate the frozen convergence, aspect, and theme YAML canons.
-    # inputs: canon_dir — directory containing all three normative YAML files; repository canon by default.
+    # purpose: Load and validate the frozen convergence, product-spheres, aspect, and theme YAML canons.
+    # inputs: canon_dir — directory containing all four normative YAML files; repository canon by default.
     # returns: immutable TodayConvergenceCanon.
     # side_effects: reads YAML files only.
     # emitted_logs: none.
     # error_behavior: raises TodayConvergenceCanonError on any missing/malformed/unknown value.
     # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.load_today_convergence_canon
-    today_path, aspect_path, theme_path = _canon_artifact_paths(canon_dir)
+    today_path, product_path, aspect_path, theme_path = _canon_artifact_paths(canon_dir)
     today = _read_yaml(today_path, "today")
+    product = _read_yaml(product_path, "product")
     aspect = _read_yaml(aspect_path, "aspect")
     theme = _read_yaml(theme_path, "theme")
+
+    (
+        product_schema_version,
+        product_status,
+        product_canonical_order,
+        product_spheres,
+        projection_priority,
+    ) = _product_spheres_canon(product)
 
     _require_keys(
         theme,
@@ -693,38 +895,23 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
     sphere = _require_mapping(today["sphere_projection"], "sphere_projection_mapping")
     _require_keys(
         sphere,
-        {"rule", "primary", "secondary_max", "fail_unmapped", "canonical_order", "technical_to_product",
-         "technical_alias_to_product", "planet_to_product", "planet_sphere_limits"},
+        {"rule", "source", "one_group", "priority", "fail_unmapped", "canonical_order"},
         "sphere_projection_keys",
     )
-    if sphere["rule"] != "group_to_spheres":
+    if sphere["rule"] != "one_group_to_one_sphere":
         _fail("sphere_projection_rule")
-    if sphere["primary"] != "majority_anchor_tiebreak":
-        _fail("sphere_projection_primary")
-    if not isinstance(sphere["secondary_max"], int) or isinstance(sphere["secondary_max"], bool) or sphere["secondary_max"] != 1:
-        _fail("sphere_projection_secondary")
+    if sphere["source"] != _PRODUCT_SPHERES_FILENAME:
+        _fail("sphere_projection_source")
+    if sphere["one_group"] != "one_sphere_one_facet_or_null":
+        _fail("sphere_projection_one_group")
+    sphere_priority = _normalized_token_tuple(sphere["priority"], "sphere_projection_priority")
+    if sphere_priority != projection_priority:
+        _fail("sphere_projection_priority")
     if sphere["fail_unmapped"] is not True:
         _fail("sphere_projection_unmapped")
     canonical_spheres = _string_tuple(sphere["canonical_order"], "canonical_order")
-    valid_spheres = frozenset(canonical_spheres)
-    technical_to_product = _mapping_of_strings(sphere["technical_to_product"], "technical_to_product")
-    technical_alias_to_product = _mapping_of_strings(sphere["technical_alias_to_product"], "technical_alias_to_product")
-    planet_to_product = {
-        _normal_source(key): values
-        for key, values in _mapping_of_strings(sphere["planet_to_product"], "planet_to_product").items()
-    }
-    if None in planet_to_product:
-        _fail("planet_key")
-    for mapping in (technical_to_product, technical_alias_to_product, planet_to_product):
-        if any(set(values) - valid_spheres for values in mapping.values()):
-            _fail("sphere")
-    limits = _require_mapping(sphere["planet_sphere_limits"], "planet_sphere_limits")
-    _require_keys(limits, {"max_spheres_per_planet", "decisions"}, "planet_sphere_limits_keys")
-    max_planet_spheres = limits["max_spheres_per_planet"]
-    if not isinstance(max_planet_spheres, int) or max_planet_spheres <= 0:
-        _fail("max_planet_spheres")
-    if any(len(values) > max_planet_spheres for values in planet_to_product.values()):
-        _fail("planet_sphere_limit")
+    if canonical_spheres != product_canonical_order:
+        _fail("canonical_order")
 
     _require_keys(
         aspect,
@@ -766,10 +953,10 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         status="frozen_w1",
         formula_version="today-convergence-2",
         canonical_spheres=canonical_spheres,
-        technical_to_product=MappingProxyType({key.lower(): value for key, value in technical_to_product.items()}),
-        technical_alias_to_product=MappingProxyType({key.lower(): value for key, value in technical_alias_to_product.items()}),
-        planet_to_product=MappingProxyType({key: value for key, value in planet_to_product.items()}),
-        max_planet_spheres=max_planet_spheres,
+        product_schema_version=product_schema_version,
+        product_status=product_status,
+        product_spheres=product_spheres,
+        projection_priority=projection_priority,
         aspect_weights=MappingProxyType(aspect_weights),
         orb_profile=MappingProxyType(orb_profile),
         aspect_weight_min=aspect_weight_min,
@@ -797,10 +984,10 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
 
 def compute_today_convergence_canon_hash(canon_dir: Path | None = None) -> str:
     # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.compute_today_convergence_canon_hash
-    # purpose: Fingerprint exact bytes of the three strictly validated W1 canon artifacts.
+    # purpose: Fingerprint exact bytes of the four strictly validated W1 canon artifacts.
     # inputs: canon_dir — repository canon directory or a complete copied canon directory.
     # returns: lowercase SHA-256 hex digest with filename boundaries.
-    # side_effects: reads the three canon files; does not cache or write.
+    # side_effects: reads the four canon files; does not cache or write.
     # emitted_logs: none.
     # error_behavior: raises TodayConvergenceCanonError before hashing malformed/missing canon.
     # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.compute_today_convergence_canon_hash
@@ -816,34 +1003,188 @@ def compute_today_convergence_canon_hash(canon_dir: Path | None = None) -> str:
 
 
 # START_BLOCK: CANON_POLICY
-def map_factor_to_product_spheres(
+def _input_token_tuple(value: Sequence[str] | str | None) -> tuple[str, ...]:
+    """Normalize tolerant resolver input without assigning unknown values."""
+
+    if value is None:
+        return ()
+    if isinstance(value, (str, bytes)):
+        values: Sequence[Any] = (value,)
+    elif isinstance(value, Sequence):
+        values = value
+    else:
+        return ()
+    return tuple(str(item).strip().lower().replace("-", "_") for item in values if str(item).strip())
+
+
+def _product_facet_candidates(canon: TodayConvergenceCanon) -> tuple[tuple[str, ProductFacetCanon], ...]:
+    return tuple(
+        (sphere_key, facet)
+        for sphere_key in canon.canonical_spheres
+        for facet in canon.product_spheres[sphere_key].facets
+    )
+
+
+def _planet_values(source_key: str | None, target_key: str | None) -> frozenset[str]:
+    return frozenset(
+        key
+        for key in (_normal_source(source_key), _normal_source(target_key))
+        if key is not None
+    )
+
+
+def resolve_product_sphere(
+    canon: TodayConvergenceCanon,
+    house: int | None = None,
+    technical_spheres: Sequence[str] | None = None,
+    context_keys: Sequence[str] | None = None,
+    theme_keys: Sequence[str] | None = None,
+    context_theme_keys: Sequence[str] | None = None,
+    source_key: str | None = None,
+    target_key: str | None = None,
+    *,
+    context: Sequence[str] | None = None,
+    source_planet: str | None = None,
+    target_planet: str | None = None,
+) -> tuple[str, str | None] | None:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.resolve_product_sphere
+    # purpose: Resolve one physical group to one product sphere and optional facet.
+    # inputs: canon; optional house (or one mapping with these fields),
+    #   technical spheres, normalized context/theme keys, and source/target planets.
+    # returns: (sphere, facet) or (sphere, None) when the sphere is known; None
+    #   for an unknown/unmapped group.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: invalid/unknown input remains unresolved; no work
+    #   fallback and no planet-only narrow facet are allowed.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.resolve_product_sphere
+    if isinstance(house, Mapping):
+        payload = house
+        house = payload.get("house")
+        technical_spheres = payload.get("technical_spheres", technical_spheres)
+        context_keys = payload.get("context_keys", context_keys)
+        theme_keys = payload.get("theme_keys", theme_keys)
+        context_theme_keys = payload.get("context_theme_keys", context_theme_keys)
+        source_key = payload.get("source_key", source_key)
+        target_key = payload.get("target_key", target_key)
+        source_planet = payload.get("source_planet", source_planet)
+        target_planet = payload.get("target_planet", target_planet)
+
+    house_value = None
+    if house is not None:
+        if isinstance(house, bool) or not isinstance(house, int) or not 1 <= house <= 12:
+            return None
+        house_value = house
+
+    technical_values = frozenset(_input_token_tuple(technical_spheres))
+    context_values = set(_input_token_tuple(context_keys))
+    context_values.update(_input_token_tuple(theme_keys))
+    context_values.update(_input_token_tuple(context_theme_keys))
+    context_values.update(_input_token_tuple(context))
+    effective_source = source_key if source_key is not None else source_planet
+    effective_target = target_key if target_key is not None else target_planet
+    planets = _planet_values(effective_source, effective_target)
+    candidates = _product_facet_candidates(canon)
+
+    if house_value is not None:
+        base = [item for item in candidates if house_value in item[1].houses]
+        if not base:
+            return None
+        technical_base = [item for item in base if set(item[1].technical_spheres) & technical_values]
+        if technical_base:
+            base = technical_base
+    elif technical_values:
+        base = [item for item in candidates if set(item[1].technical_spheres) & technical_values]
+        if not base and context_values:
+            base = [item for item in candidates if set(item[1].required_context) & context_values]
+    elif context_values:
+        base = [item for item in candidates if set(item[1].required_context) & context_values]
+    else:
+        # A planet is only a modifier/tie-break, never an origin of a product
+        # sphere or a narrow facet.
+        return None
+
+    if not base:
+        return None
+
+    eligible = [
+        item for item in base
+        if not item[1].required_context or set(item[1].required_context) & context_values
+    ]
+    if not eligible:
+        # The physical/technical evidence still identifies a sphere, but not a
+        # context-specific facet. This is the explicit nullable-facet outcome.
+        planet_sphere_matches = [
+            item for item in base
+            if set(item[1].modifiers["planets"]) & planets
+            and (
+                house_value is None
+                or len(item[1].houses) == 1
+                or item[1].houses[0] == house_value
+            )
+        ]
+        if planet_sphere_matches:
+            return planet_sphere_matches[0][0], None
+        return base[0][0], None
+
+    contextual = [item for item in eligible if set(item[1].required_context) & context_values]
+    if not contextual and planets:
+        eligible_spheres = {item[0] for item in eligible}
+        planet_sphere_matches = [
+            item for item in base
+            if item[0] not in eligible_spheres
+            and set(item[1].modifiers["planets"]) & planets
+            and (
+                house_value is None
+                or len(item[1].houses) == 1
+                or item[1].houses[0] == house_value
+            )
+        ]
+        if planet_sphere_matches:
+            return planet_sphere_matches[0][0], None
+    selected = contextual or eligible
+    if len(selected) > 1 and planets:
+        planet_matches = [
+            item for item in selected
+            if set(item[1].modifiers["planets"]) & planets
+        ]
+        if planet_matches:
+            selected = planet_matches
+
+    sphere_key, facet = selected[0]
+    return sphere_key, facet.key
+
+
+def _legacy_unit_sphere_compat(
     canon: TodayConvergenceCanon,
     technical_spheres: Sequence[str] | None = None,
     source_key: str | None = None,
     target_key: str | None = None,
 ) -> tuple[str, ...]:
-    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.map_factor_to_product_spheres
-    # purpose: Map one physical/technical factor through frozen sphere maps without fallback.
-    # inputs: canon plus optional technical, source, and target keys.
-    # returns: canonical-order product spheres; empty tuple for unknown/unmapped factors.
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON._legacy_unit_sphere_compat
+    # purpose: Keep the pre-S3 unit import boundary loadable while units still
+    # carry their legacy tuple field.
+    # inputs: canon plus technical/source/target physical keys.
+    # returns: at most one canonical sphere from the new resolver.
     # side_effects: none.
     # emitted_logs: none.
-    # error_behavior: unknown keys are ignored and remain unmapped.
-    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.map_factor_to_product_spheres
-    mapped: set[str] = set()
-    if technical_spheres is None or isinstance(technical_spheres, (str, bytes)) or not isinstance(technical_spheres, Sequence):
-        technical_values: Sequence[str] = ()
-    else:
-        technical_values = technical_spheres
-    for value in technical_values:
-        key = str(value).strip().lower()
-        mapped.update(canon.technical_to_product.get(key, ()))
-        mapped.update(canon.technical_alias_to_product.get(key, ()))
-    for value in (source_key, target_key):
-        key = _normal_source(value)
-        if key is not None:
-            mapped.update(canon.planet_to_product.get(key, ()))
-    return tuple(sphere for sphere in canon.canonical_spheres if sphere in mapped)
+    # error_behavior: unresolved input returns an empty tuple.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON._legacy_unit_sphere_compat
+    resolved = resolve_product_sphere(
+        canon,
+        technical_spheres=technical_spheres,
+        source_key=source_key,
+        target_key=target_key,
+    )
+    return (resolved[0],) if resolved is not None else ()
+
+
+def __getattr__(name: str) -> Any:
+    """Expose only a transient import bridge for the frozen pre-S3 units."""
+
+    if name == "map_factor_to_product_spheres":
+        return _legacy_unit_sphere_compat
+    raise AttributeError(name)
 
 
 def map_factor_to_theme_keys(
@@ -998,9 +1339,11 @@ __all__ = [
     "TodayConvergenceCanon",
     "TodayConvergenceCanonError",
     "TonePolicyCanon",
+    "ProductFacetCanon",
+    "ProductSphereCanon",
     "load_today_convergence_canon",
     "compute_today_convergence_canon_hash",
-    "map_factor_to_product_spheres",
+    "resolve_product_sphere",
     "map_factor_to_theme_keys",
     "aspect_weight",
     "source_max_orb",

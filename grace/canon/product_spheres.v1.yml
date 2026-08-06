@@ -1,0 +1,369 @@
+schema_version: product_spheres.v1
+status: frozen_w1
+description: >-
+  Единый продуктовый канон сфер и facets для Today Convergence. Техническая
+  таксономия и физические правила scoring живут в отдельных канонах.
+
+canonical_order:
+  [work, finance, documents, relationships, sport, communication, health,
+   home_family, travel, creativity, study, friends_goals]
+
+allowed_technical_spheres:
+  [thinking_speech_learning, work_status_achievement,
+   relationships_partnership, money_security_resources, body_energy_health,
+   home_family_roots, inner_background_unconscious,
+   crisis_transformation_control, meaning_expansion_vector]
+
+allowed_context_keys:
+  [career, career_ambition, career_social_status, communication,
+   communication_learning, communication_learning_documents, contract,
+   creative, creative_work, creativity, crisis_transformation, daily_routine,
+   direction_growth_meaning, documents, education, education_documents, family, finance, finance_money,
+   financial, foreign, friendship_social, friends, goals, group, health,
+   healing, higher_education, hidden_matters, home, home_family, housing,
+   inheritance, legal, legal_affairs, local_travel, movement, negotiation,
+   obligation, partnership, partnerships_contracts, philosophy,
+   private_creativity, project, property, public_image, public_speech,
+   recovery, relocation, relationships, resources_security, service_routine,
+   sport, study, symptoms, training, transaction, travel, travel_adventure,
+   travel_long_distance, work]
+
+allowed_planets: [SUN, MOON, MERCURY, VENUS, MARS, JUPITER, SATURN, URANUS, NEPTUNE, PLUTO]
+
+# These names are accepted only when migrating persisted legacy payloads. They
+# are never emitted by the resolver and are not runtime projection maps.
+migration_aliases:
+  money: finance
+  shopping: finance
+
+resolver:
+  rule: one_group_to_one_sphere
+  priority: [house, technical_spheres, explicit_context, planets_tiebreak]
+  output: [sphere, facet_or_null]
+  unknown: unresolved
+  planet_only_narrow_facets: forbidden
+
+spheres:
+  work:
+    key: work
+    title: "Работа"
+    description: "Текущие задачи, карьера, статус и публичная роль."
+    facets:
+      - key: daily_work
+        label: "Текущая работа"
+        houses: [6]
+        technical_spheres: [work_status_achievement]
+        required_context: []
+        modifiers:
+          planets: [MARS, SATURN, SUN]
+      - key: career_status
+        label: "Карьера и статус"
+        houses: [10]
+        technical_spheres: [work_status_achievement]
+        required_context: []
+        modifiers:
+          planets: [SUN, SATURN, JUPITER]
+
+  finance:
+    key: finance
+    title: "Финансы"
+    description: "Личные и общие ресурсы, деньги, покупки и обязательства."
+    facets:
+      - key: personal_money
+        label: "Личные деньги"
+        houses: [2]
+        technical_spheres: [money_security_resources]
+        required_context: []
+        modifiers:
+          planets: [VENUS, JUPITER]
+      - key: shared_money
+        label: "Общие деньги и ресурсы"
+        houses: [8]
+        technical_spheres: [money_security_resources, crisis_transformation_control]
+        required_context: []
+        modifiers:
+          planets: [SATURN, PLUTO]
+      - key: purchases_transactions
+        label: "Покупки и сделки"
+        houses: [2]
+        technical_spheres: [money_security_resources]
+        required_context: [transaction]
+        modifiers:
+          planets: [MERCURY, VENUS]
+      - key: financial_obligations
+        label: "Финансовые обязательства"
+        houses: [8]
+        technical_spheres: [money_security_resources, crisis_transformation_control]
+        required_context: [obligation]
+        modifiers:
+          planets: [SATURN, PLUTO]
+
+  documents:
+    key: documents
+    title: "Документы"
+    description: "Оформление, договоры и документы для финансовых, правовых и имущественных задач."
+    facets:
+      - key: admin_documents
+        label: "Обычное оформление"
+        houses: [3]
+        technical_spheres: [thinking_speech_learning]
+        required_context: []
+        modifiers:
+          planets: [MERCURY]
+      - key: legal_foreign_education_documents
+        label: "Юридические, иностранные и образовательные документы"
+        houses: [9]
+        technical_spheres: [thinking_speech_learning, meaning_expansion_vector]
+        required_context: [legal, foreign, education_documents]
+        modifiers:
+          planets: [JUPITER, SATURN]
+      - key: contracts
+        label: "Договоры"
+        houses: [7]
+        technical_spheres: [relationships_partnership]
+        required_context: [contract, partnerships_contracts]
+        modifiers:
+          planets: [MERCURY, VENUS, SATURN]
+      - key: financial_documents
+        label: "Финансовые документы"
+        houses: [2, 8]
+        technical_spheres: [money_security_resources]
+        required_context: [finance, financial, finance_money]
+        modifiers:
+          planets: [MERCURY, SATURN]
+      - key: property_documents
+        label: "Документы на жильё и недвижимость"
+        houses: [4]
+        technical_spheres: [home_family_roots]
+        required_context: [property, housing]
+        modifiers:
+          planets: [MOON, SATURN]
+
+  relationships:
+    key: relationships
+    title: "Отношения"
+    description: "Романтика и взаимодействие один на один."
+    facets:
+      - key: romance
+        label: "Романтика"
+        houses: [5]
+        technical_spheres: [relationships_partnership]
+        required_context: []
+        modifiers:
+          planets: [VENUS, MOON, MARS]
+      - key: partnership
+        label: "Партнёрство"
+        houses: [7]
+        technical_spheres: [relationships_partnership]
+        required_context: [partnership, relationships]
+        modifiers:
+          planets: [VENUS, SATURN]
+
+  sport:
+    key: sport
+    title: "Спорт"
+    description: "Телесная активность, тренировки и соревнования."
+    facets:
+      - key: physical_energy
+        label: "Физическая энергия"
+        houses: [1]
+        technical_spheres: [body_energy_health]
+        required_context: []
+        modifiers:
+          planets: [MARS, SUN]
+      - key: training_routine
+        label: "Тренировочный режим"
+        houses: [6]
+        technical_spheres: [body_energy_health]
+        required_context: [training, sport]
+        modifiers:
+          planets: [MARS, SATURN]
+      - key: competition_performance
+        label: "Соревнование и выступление"
+        houses: [5, 10]
+        technical_spheres: [body_energy_health, work_status_achievement]
+        required_context: [sport]
+        modifiers:
+          planets: [MARS, SUN, JUPITER]
+
+  communication:
+    key: communication
+    title: "Общение"
+    description: "Контакты, переговоры, группы, аудитория и выступления."
+    facets:
+      - key: everyday_contacts
+        label: "Повседневные контакты"
+        houses: [3]
+        technical_spheres: [thinking_speech_learning]
+        required_context: [communication]
+        modifiers:
+          planets: [MERCURY, MOON]
+      - key: negotiations
+        label: "Переговоры"
+        houses: [7]
+        technical_spheres: [thinking_speech_learning, relationships_partnership]
+        required_context: [negotiation, communication]
+        modifiers:
+          planets: [MERCURY, VENUS, SATURN]
+      - key: groups_audience
+        label: "Группы и аудитория"
+        houses: [11]
+        technical_spheres: [thinking_speech_learning]
+        required_context: [group, communication]
+        modifiers:
+          planets: [JUPITER, URANUS]
+      - key: public_speech_teaching
+        label: "Публичная речь и преподавание"
+        houses: [9, 10]
+        technical_spheres: [thinking_speech_learning, meaning_expansion_vector]
+        required_context: [public_speech, education]
+        modifiers:
+          planets: [MERCURY, JUPITER]
+
+  health:
+    key: health
+    title: "Здоровье"
+    description: "Общее состояние, телесный режим и восстановление без диагнозов."
+    facets:
+      - key: general_condition
+        label: "Общее состояние"
+        houses: [1]
+        technical_spheres: [body_energy_health]
+        required_context: []
+        modifiers:
+          planets: [SUN, MARS, MOON]
+      - key: symptoms_routine_treatment
+        label: "Режим и лечение"
+        houses: [6]
+        technical_spheres: [body_energy_health]
+        required_context: [health, healing, symptoms, daily_routine, service_routine]
+        modifiers:
+          planets: [MARS, SATURN]
+      - key: recovery_isolation
+        label: "Восстановление и снижение активности"
+        houses: [12]
+        technical_spheres: [inner_background_unconscious]
+        required_context: [recovery, hidden_matters]
+        modifiers:
+          planets: [NEPTUNE, SATURN]
+
+  home_family:
+    key: home_family
+    title: "Дом и семья"
+    description: "Семья, корни, жильё, домашняя база и переезд."
+    facets:
+      - key: family_roots
+        label: "Семья и корни"
+        houses: [4]
+        technical_spheres: [home_family_roots]
+        required_context: []
+        modifiers:
+          planets: [MOON, SATURN]
+      - key: housing_property
+        label: "Жильё и пространство"
+        houses: [4]
+        technical_spheres: [home_family_roots]
+        required_context: [property, housing, home_family]
+        modifiers:
+          planets: [VENUS, MOON]
+      - key: relocation
+        label: "Переезд"
+        houses: [4]
+        technical_spheres: [home_family_roots]
+        required_context: [movement, relocation]
+        modifiers:
+          planets: [URANUS, SATURN]
+
+  travel:
+    key: travel
+    title: "Поездки"
+    description: "Локальные и дальние поездки, включая заграничное направление."
+    facets:
+      - key: local_travel
+        label: "Локальные поездки"
+        houses: [3]
+        technical_spheres: [thinking_speech_learning, meaning_expansion_vector]
+        required_context: [travel, local_travel, travel_adventure]
+        modifiers:
+          planets: [MERCURY, URANUS]
+      - key: long_distance_foreign_travel
+        label: "Дальние и заграничные поездки"
+        houses: [9]
+        technical_spheres: [thinking_speech_learning, meaning_expansion_vector]
+        required_context: [travel, travel_long_distance, travel_adventure, foreign]
+        modifiers:
+          planets: [JUPITER, URANUS]
+
+  creativity:
+    key: creativity
+    title: "Творчество"
+    description: "Авторское проявление, творческая работа и внутреннее творчество."
+    facets:
+      - key: self_expression
+        label: "Самовыражение"
+        houses: [5]
+        technical_spheres: []
+        required_context: [creative, creativity]
+        modifiers:
+          planets: [SUN, VENUS, NEPTUNE]
+      - key: creative_work
+        label: "Творческая работа"
+        houses: [5, 10]
+        technical_spheres: [work_status_achievement]
+        required_context: [creative_work, creativity]
+        modifiers:
+          planets: [SUN, VENUS]
+      - key: private_inner_creativity
+        label: "Творчество в уединении"
+        houses: [5, 12]
+        technical_spheres: [inner_background_unconscious]
+        required_context: [private_creativity, creative]
+        modifiers:
+          planets: [NEPTUNE, URANUS]
+
+  study:
+    key: study
+    title: "Учёба"
+    description: "Навыки, курсы, высшее образование и сложные системы знания."
+    facets:
+      - key: skills_courses
+        label: "Навыки и курсы"
+        houses: [3]
+        technical_spheres: [thinking_speech_learning]
+        required_context: [study, education, communication_learning]
+        modifiers:
+          planets: [MERCURY]
+      - key: higher_education_worldview
+        label: "Высшее образование и мировоззрение"
+        houses: [9]
+        technical_spheres: [thinking_speech_learning, meaning_expansion_vector]
+        required_context: [study, higher_education, philosophy, direction_growth_meaning]
+        modifiers:
+          planets: [JUPITER, NEPTUNE]
+
+  friends_goals:
+    key: friends_goals
+    title: "Друзья и планы"
+    description: "Друзья, сообщества, коллективные проекты и долгосрочные цели."
+    facets:
+      - key: friends_community
+        label: "Друзья и сообщества"
+        houses: [11]
+        technical_spheres: []
+        required_context: []
+        modifiers:
+          planets: [JUPITER, URANUS]
+      - key: collective_projects
+        label: "Коллективные проекты"
+        houses: [11]
+        technical_spheres: [work_status_achievement]
+        required_context: [project, work]
+        modifiers:
+          planets: [MARS, JUPITER, URANUS]
+      - key: long_term_goals
+        label: "Долгосрочные планы"
+        houses: [11]
+        technical_spheres: []
+        required_context: [goals]
+        modifiers:
+          planets: [SATURN, JUPITER]

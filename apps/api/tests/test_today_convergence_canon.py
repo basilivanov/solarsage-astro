@@ -43,7 +43,7 @@ from app.services.today_convergence_canon import (
     is_rare_source,
     load_today_convergence_canon,
     map_factor_to_theme_keys,
-    map_factor_to_product_spheres,
+    resolve_product_sphere,
     source_max_orb,
 )
 
@@ -56,6 +56,7 @@ def copied_canons(tmp_path: Path) -> Path:
     target = tmp_path / "canon"
     target.mkdir()
     shutil.copy(CANON_DIR / "today_convergence.v1.yml", target / "today_convergence.v1.yml")
+    shutil.copy(CANON_DIR / "product_spheres.v1.yml", target / "product_spheres.v1.yml")
     shutil.copy(CANON_DIR / "aspect_rules.v1.yml", target / "aspect_rules.v1.yml")
     shutil.copy(CANON_DIR / "today_convergence_themes.v1.yml", target / "today_convergence_themes.v1.yml")
     return target
@@ -68,9 +69,21 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
     assert canon.status == "frozen_w1"
     assert canon.formula_version == "today-convergence-2"
     assert canon.canonical_spheres == (
-        "work", "money", "documents", "relationships", "sport", "communication",
-        "health", "decisions", "travel", "creativity", "study", "shopping",
+        "work", "finance", "documents", "relationships", "sport", "communication",
+        "health", "home_family", "travel", "creativity", "study", "friends_goals",
     )
+    assert canon.product_schema_version == "product_spheres.v1"
+    assert canon.product_status == "frozen_w1"
+    assert tuple(canon.product_spheres) == canon.canonical_spheres
+    assert canon.projection_priority == (
+        "house", "technical_spheres", "explicit_context", "planets_tiebreak",
+    )
+    assert "money" not in canon.canonical_spheres
+    assert "decisions" not in canon.canonical_spheres
+    assert "shopping" not in canon.canonical_spheres
+    for sphere in canon.product_spheres.values():
+        assert len({facet.key for facet in sphere.facets}) == len(sphere.facets)
+        assert all(1 <= house <= 12 for facet in sphere.facets for house in facet.houses)
     assert canon.aspect_weight_min == 0.55
     assert canon.orb_ratio_max == 0.5
     assert source_max_orb(canon, "Jupiter") == 7.0
@@ -136,7 +149,7 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
         (lambda data, aspect: data["status"].__class__ and data.update(status="draft"), "status"),
         (lambda data, aspect: data.update(formula_version="other"), "formula_version"),
         (lambda data, aspect: data["sphere_projection"].update(canonical_order=["work", "work"]), "canonical_order"),
-        (lambda data, aspect: data["sphere_projection"]["planet_to_product"].update(UNKNOWN=["not_a_sphere"]), "sphere"),
+        (lambda data, aspect: data["sphere_projection"].update(extra_key=True), "sphere_projection_keys"),
         (lambda data, aspect: aspect.update(orb_profile_default={}), "orb_profile"),
         (lambda data, aspect: aspect["orb_profile_default"].update(JUPITER=0), "orb_value"),
         (lambda data, aspect: data["significance"].update(aspect_weight_min=1.1), "aspect_weight_min"),
@@ -151,8 +164,9 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
         (lambda data, aspect: data["grouping"].update(rule="transitive_star"), "grouping_rule"),
         (lambda data, aspect: data["grouping"].update(link=["shared_target_key"]), "grouping_link"),
         (lambda data, aspect: data["sphere_projection"].update(rule="factor_to_spheres"), "sphere_projection_rule"),
-        (lambda data, aspect: data["sphere_projection"].update(primary="first"), "sphere_projection_primary"),
-        (lambda data, aspect: data["sphere_projection"].update(secondary_max=2), "sphere_projection_secondary"),
+        (lambda data, aspect: data["sphere_projection"].update(source="other.yml"), "sphere_projection_source"),
+        (lambda data, aspect: data["sphere_projection"].update(one_group="many_spheres"), "sphere_projection_one_group"),
+        (lambda data, aspect: data["sphere_projection"].update(priority=["house"]), "sphere_projection_priority"),
         (lambda data, aspect: data["sphere_projection"].update(fail_unmapped=False), "sphere_projection_unmapped"),
         (lambda data, aspect: data["independence"]["driver_key"].update(transit="technique_family"), "driver_transit"),
         (lambda data, aspect: data["independence"]["driver_key"].update(timelord="source_planet"), "driver_timelord"),
@@ -197,6 +211,35 @@ def test_missing_normative_file_fails_closed(tmp_path: Path) -> None:
     target = copied_canons(tmp_path)
     (target / "aspect_rules.v1.yml").unlink()
     with pytest.raises(TodayConvergenceCanonError, match="aspect_rules"):
+        load_today_convergence_canon(target)
+
+    product_root = tmp_path / "product_missing"
+    product_root.mkdir()
+    target = copied_canons(product_root)
+    (target / "product_spheres.v1.yml").unlink()
+    with pytest.raises(TodayConvergenceCanonError, match="product"):
+        load_today_convergence_canon(target)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda product: product.update(canonical_order=["work"]), "product_canonical_order"),
+        (lambda product: product["spheres"]["finance"]["facets"][0].update(houses=[13]), "product_facet_houses"),
+        (lambda product: product["spheres"]["finance"]["facets"][0]["modifiers"].update(planets=["CERES"]), "product_facet_planet_reference"),
+        (lambda product: product["spheres"]["finance"]["facets"][0].update(required_context=["unknown_context"]), "product_facet_context_reference"),
+        (lambda product: product["spheres"]["finance"]["facets"][1].update(key="personal_money"), "product_facet_unique"),
+        (lambda product: product["resolver"].update(rule="planet_to_product"), "product_resolver_rule"),
+    ],
+)
+def test_malformed_product_canon_fails_closed(tmp_path: Path, mutation, reason: str) -> None:
+    target = copied_canons(tmp_path)
+    product_path = target / "product_spheres.v1.yml"
+    product = yaml.safe_load(product_path.read_text(encoding="utf-8"))
+    mutation(product)
+    product_path.write_text(yaml.safe_dump(product), encoding="utf-8")
+
+    with pytest.raises(TodayConvergenceCanonError, match=reason):
         load_today_convergence_canon(target)
 
 
@@ -254,6 +297,7 @@ def test_canon_hash_is_stable_cwd_independent_and_64_hex(tmp_path: Path, monkeyp
 
 @pytest.mark.parametrize("filename", [
     "today_convergence.v1.yml",
+    "product_spheres.v1.yml",
     "aspect_rules.v1.yml",
     "today_convergence_themes.v1.yml",
 ])
@@ -277,15 +321,38 @@ def test_invalid_canon_does_not_receive_a_fingerprint(tmp_path: Path) -> None:
         compute_today_convergence_canon_hash(target)
 
 
-def test_mapping_and_threshold_helpers_are_canon_driven_and_fail_closed() -> None:
+def test_resolver_and_threshold_helpers_are_canon_driven_and_fail_closed() -> None:
     canon = load_today_convergence_canon()
 
-    assert map_factor_to_product_spheres(canon, technical_spheres=["thinking_speech_learning"]) == (
-        "documents", "communication", "study"
+    assert resolve_product_sphere(canon, house=2) == ("finance", "personal_money")
+    assert resolve_product_sphere(canon, house=8) == ("finance", "shared_money")
+    assert resolve_product_sphere(canon, house=8, context_keys=["obligation"]) == (
+        "finance", "financial_obligations"
     )
-    assert map_factor_to_product_spheres(canon, source_key="Transit_Jupiter") == ("work", "money")
-    assert map_factor_to_product_spheres(canon, source_key="UNKNOWN_FACTOR") == ()
-    assert "work" not in map_factor_to_product_spheres(canon, technical_spheres=["unknown_factor"])
+    assert resolve_product_sphere(canon, house=3, context_keys=["travel"]) == (
+        "travel", "local_travel"
+    )
+    assert resolve_product_sphere(canon, house=9, context_keys=["study"]) == (
+        "study", "higher_education_worldview"
+    )
+    assert resolve_product_sphere(canon, source_key="Uranus") is None
+    assert resolve_product_sphere(canon, source_key="Neptune") is None
+    assert resolve_product_sphere(canon, house=9, source_key="Uranus") == ("travel", None)
+    assert resolve_product_sphere(canon, house=12, source_key="Uranus") != ("creativity", "private_inner_creativity")
+    assert resolve_product_sphere(canon, technical_spheres=["unknown_factor"]) is None
+    assert resolve_product_sphere(
+        canon,
+        house=3,
+        technical_spheres=["meaning_expansion_vector", "thinking_speech_learning"],
+        context_keys=["travel", "local_travel"],
+        source_key="Transit_Uranus",
+    ) == resolve_product_sphere(
+        canon,
+        house=3,
+        technical_spheres=["thinking_speech_learning", "meaning_expansion_vector"],
+        context_keys=["local_travel", "travel"],
+        source_key="Transit_Uranus",
+    )
     assert event_class_significance(canon, "timelord_period_change") is True
     assert event_class_significance(canon, "house_ingress") is False
     assert event_class_significance(canon, "unknown_class") is None
