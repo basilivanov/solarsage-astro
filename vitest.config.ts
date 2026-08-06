@@ -36,7 +36,7 @@
 //   - __tests__/grace-discipline.test.ts (runs via this config)
 // END_MODULE_MAP: M-WEB-TEST-CONFIG
 
-import { defineConfig } from 'vitest/config';
+import { defineConfig, coverageConfigDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
@@ -51,6 +51,9 @@ export default defineConfig({
     // lines/statements 46.67 -> 46, functions 64.89 -> 64, branches 76.38 -> 76.
     coverage: {
       provider: 'v8',
+      // Dev-only tooling never ships to production runtime and is excluded
+      // from thresholds: the /sandbox prototype preview is manually verified.
+      exclude: [...coverageConfigDefaults.exclude, 'app/sandbox/**'],
       thresholds: {
         lines: 46,
         statements: 46,

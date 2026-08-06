@@ -421,6 +421,36 @@ describe("Today Convergence public time and access projections", () => {
     expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
   });
 
+  it("opens the drilldown sheet from a marked sphere tile", () => {
+    mockFetchSpherePage.mockResolvedValueOnce(readySpherePayload);
+    renderToday(quietSteady);
+
+    const tile = screen.getByTestId("sphere-tile-work");
+    expect(tile.getAttribute("data-has-today")).toBe("true");
+    fireEvent.click(tile);
+
+    const dialog = screen.getByTestId("impulse-drilldown-sheet");
+    expect(dialog.getAttribute("role")).toBe("dialog");
+    expect(
+      screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`),
+    ).toBeTruthy();
+  });
+
+  it("opens the sheet for a main-event-only sphere and lists the main event fact", () => {
+    mockFetchSpherePage.mockResolvedValueOnce(readySpherePayload);
+    renderToday(quietMainMax);
+    const mainEvent = quietMainMax.mainEvent;
+    expect(mainEvent).toBeTruthy();
+
+    const tile = screen.getByTestId(`sphere-tile-${mainEvent!.sphere}`);
+    expect(tile.getAttribute("data-has-today")).toBe("true");
+    fireEvent.click(tile);
+
+    const dialog = screen.getByTestId("impulse-drilldown-sheet");
+    expect(dialog.getAttribute("role")).toBe("dialog");
+    expect(screen.getByTestId(`impulse-drilldown-fact-${mainEvent!.eventId}`)).toBeTruthy();
+  });
+
   it("renders meaning under the matched event title without fabricating a missing title", () => {
     mockFetchSpherePage.mockReturnValueOnce(new Promise(() => undefined));
     const impulse = quietSteady.impulses[0];
@@ -537,6 +567,39 @@ describe("Today Convergence public time and access projections", () => {
     ).toBe("пик 00:00, окно 00:00–00:00");
   });
 
+  it("degrades exact times without peak and keeps soft modes honest", () => {
+    expect(
+      formatEventTime({ mode: "exact", peak: null, start: "13:00", end: "18:00" }),
+    ).toBe("окно 13:00–18:00");
+    expect(
+      formatEventTime({ mode: "exact", peak: null, start: null, end: null }),
+    ).toBe("точное время события");
+    expect(
+      formatEventTime({ mode: "partofday", partOfDay: null }),
+    ).toBe("в течение дня");
+  });
+
+  it("falls back to wire-local formatting for an unknown timezone", () => {
+    const time = { mode: "exact", peak: "11:34", start: "20:23", end: "02:34" } as const;
+    expect(formatEventTime(time, "Bogus/Zone")).toBe(formatEventTime(time, null));
+  });
+
+  it("links both spheres of a secondary convergence group", () => {
+    const group = heroThreeSpheres.convergences[1];
+    renderToday({
+      ...heroThreeSpheres,
+      convergences: [
+        heroThreeSpheres.convergences[0],
+        { ...group, secondarySphere: "work" },
+        ...heroThreeSpheres.convergences.slice(2),
+      ],
+    });
+
+    const secondary = screen.getAllByTestId("convergence-secondary")[0];
+    expect(secondary.textContent).toContain("·");
+    expect(secondary.querySelectorAll("a")).toHaveLength(2);
+  });
+
   it("prefers absolute instants and formats dates in the payload timezone", () => {
     const time: HumanFirstEventTime = {
       mode: "exact",
@@ -633,6 +696,33 @@ describe("Today Convergence public time and access projections", () => {
     expect(empty.hasAttribute("data-today-summary")).toBe(false);
     expect(screen.queryByTestId("sphere-tile-summary-shopping")).toBeNull();
     expect(empty.getAttribute("aria-label")).toBe("Покупки");
+  });
+
+  it("pluralizes tile summaries for two signals", () => {
+    const baseEvent = quietSteady.events.find((event) => event.sphere === "work") ?? quietSteady.events[0];
+    const twoEvents = [baseEvent, { ...baseEvent, id: "evt_extra_2", polarity: "supportive" as const }];
+    renderToday({ ...quietSteady, events: twoEvents });
+    expect(screen.getByTestId("sphere-tile-summary-work").textContent).toContain("2 сигнала");
+  });
+
+  it("pluralizes tile summaries for five signals", () => {
+    const baseEvent = quietSteady.events.find((event) => event.sphere === "work") ?? quietSteady.events[0];
+    const fiveEvents = Array.from({ length: 5 }, (_, index) => ({
+      ...baseEvent,
+      id: `evt_extra_${index}`,
+    }));
+    renderToday({ ...quietSteady, events: fiveEvents });
+    expect(screen.getByTestId("sphere-tile-summary-work").textContent).toContain("5 сигналов");
+  });
+
+  it("renders a main event without a summary block when the claim is absent", () => {
+    const mainEvent = quietMainMax.mainEvent;
+    expect(mainEvent).toBeTruthy();
+    renderToday({ ...quietMainMax, mainEvent: { ...mainEvent!, summary: null } });
+
+    const card = screen.getByTestId("main-event");
+    expect(card).toBeTruthy();
+    expect(card.querySelector("p.text-pretty")).toBeNull();
   });
 
   it("keeps period context, spheres, and calculation disclosure in rail order", () => {
