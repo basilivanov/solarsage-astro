@@ -34,7 +34,7 @@
 import {
   TodayConvergencePayloadWireSchema,
 } from "@/packages/contracts/today-convergence";
-import type { TodayConvergencePayload } from "@/packages/contracts/today-convergence";
+import type { TodayConvergencePayload } from "@/packages/contracts";
 import { logEvent } from "@/lib/log";
 import { instrumentedFetch } from "@/lib/log/instrumented-fetch";
 
