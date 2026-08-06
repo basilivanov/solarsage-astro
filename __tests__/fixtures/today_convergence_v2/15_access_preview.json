@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000151",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -27,7 +27,11 @@
   "dayTone": "supportive",
   "personal": true,
   "previewTeaser": {
-    "spheres": ["work", "relationships", "study"]
+    "spheres": [
+      "work",
+      "relationships",
+      "study"
+    ]
   },
   "convergences": [],
   "mainEvent": null,

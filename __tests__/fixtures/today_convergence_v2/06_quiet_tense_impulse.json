@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000061",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -44,13 +44,18 @@
       },
       "summary": {
         "text": "Один резкий разговор может быстро расшириться до спора о старых претензиях.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000061"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000061"
+        ]
       },
       "meaning": null,
       "action": {
         "text": "Перед ответом отдели факты от догадок и возьми паузу на один вдох.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000061"]
-      }
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000061"
+        ]
+      },
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -70,7 +75,10 @@
         "end": "18:30",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000061"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000061"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

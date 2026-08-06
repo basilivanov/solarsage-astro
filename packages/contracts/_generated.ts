@@ -1161,7 +1161,7 @@ export interface components {
             /** Note */
             note?: string | null;
             /** Observedspheres */
-            observedSpheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[] | null;
+            observedSpheres?: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals")[] | null;
             /** Tags */
             tags?: string[];
             /**
@@ -1219,7 +1219,7 @@ export interface components {
             /** Note */
             note: string | null;
             /** Observedspheres */
-            observedSpheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[] | null;
+            observedSpheres?: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals")[] | null;
             /** Predictionseenat */
             predictionSeenAt?: string | null;
             /** Predictionseensurface */
@@ -2706,6 +2706,8 @@ export interface components {
              * @enum {string}
              */
             evidenceLevel: "high" | "medium";
+            /** Facet */
+            facet?: string | null;
             /** Id */
             id: string;
             /** Kind */
@@ -2721,7 +2723,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             time: components["schemas"]["TodayConvergenceEventTime"];
             /** Title */
             title: string | null;
@@ -2758,6 +2760,8 @@ export interface components {
              * @enum {string}
              */
             evidenceLevel: "high" | "medium";
+            /** Facet */
+            facet?: string | null;
             /** Id */
             id: string;
             meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
@@ -2767,12 +2771,10 @@ export interface components {
              */
             polarity: "supportive" | "tense" | "mixed";
             /**
-             * Primarysphere
+             * Sphere
              * @enum {string}
              */
-            primarySphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
-            /** Secondarysphere */
-            secondarySphere?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             summary?: components["schemas"]["TodayConvergenceSummary"] | null;
         };
         /** TodayConvergenceImpulse */
@@ -2785,6 +2787,8 @@ export interface components {
              * @enum {string}
              */
             evidenceLevel: "high" | "medium";
+            /** Facet */
+            facet?: string | null;
             meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
             /**
              * Polarity
@@ -2795,7 +2799,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             summary?: components["schemas"]["TodayConvergenceSummary"] | null;
             time: components["schemas"]["TodayConvergenceEventTime"];
         };
@@ -2807,7 +2811,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             /**
              * Targetdate
              * Format: date
@@ -2824,6 +2828,8 @@ export interface components {
              * @enum {string}
              */
             evidenceLevel: "high" | "medium";
+            /** Facet */
+            facet?: string | null;
             /** Id */
             id: string;
             meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
@@ -2836,7 +2842,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             summary?: components["schemas"]["TodayConvergenceSummary"] | null;
             time: components["schemas"]["TodayConvergenceEventTime"];
         };
@@ -2883,7 +2889,7 @@ export interface components {
              * Schemaversion
              * @constant
              */
-            schemaVersion: 1;
+            schemaVersion: 2;
             /** Snapshotid */
             snapshotId: string | null;
             /** State */
@@ -2912,14 +2918,14 @@ export interface components {
              */
             kind: "active_period" | "no_strong_accent";
             /** Sphere */
-            sphere: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+            sphere: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals") | null;
             /** Title */
             title: string | null;
         };
         /** TodayConvergencePreviewTeaser */
         TodayConvergencePreviewTeaser: {
             /** Spheres */
-            spheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+            spheres?: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals")[];
         };
         /** TodayConvergenceSummary */
         TodayConvergenceSummary: {
@@ -3255,9 +3261,9 @@ export interface components {
              * Primarysphere
              * @enum {string}
              */
-            primarySphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            primarySphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             /** Secondarysphere */
-            secondarySphere: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+            secondarySphere: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals") | null;
         };
         /** TodaySphereDrilldownPayload */
         TodaySphereDrilldownPayload: {
@@ -3280,7 +3286,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
             /**
              * State
              * @enum {string}
@@ -3327,7 +3333,7 @@ export interface components {
              * Sphere
              * @enum {string}
              */
-            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
         };
         /** TodaySpherePeriodItem */
         TodaySpherePeriodItem: {
@@ -3789,7 +3795,7 @@ export interface components {
             /** Snapshotid */
             snapshotId: string;
             /** Spherekeys */
-            sphereKeys: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+            sphereKeys: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals")[];
             /**
              * State
              * @enum {string}

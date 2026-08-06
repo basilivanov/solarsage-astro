@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000001",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,8 @@
   "convergences": [
     {
       "id": "cvg_v1_00000000000000000000000000000001",
-      "primarySphere": "work",
-      "secondarySphere": null,
+      "sphere": "work",
+      "facet": null,
       "polarity": "supportive",
       "evidenceLevel": "high",
       "eventIds": [
@@ -47,11 +47,15 @@
       },
       "meaning": {
         "text": "То, что долго собиралось по частям, легче соединить в общий план.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000001"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000001"
+        ]
       },
       "action": {
         "text": "Назначь один разговор о приоритетах и зафиксируй следующий шаг письменно.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000002"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000002"
+        ]
       }
     }
   ],
@@ -74,7 +78,10 @@
         "end": "14:10",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000001"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000001"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000002",
@@ -90,7 +97,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000002"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000002"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

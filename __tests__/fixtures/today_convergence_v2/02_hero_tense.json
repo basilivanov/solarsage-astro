@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000011",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,8 @@
   "convergences": [
     {
       "id": "cvg_v1_00000000000000000000000000000011",
-      "primarySphere": "work",
-      "secondarySphere": "documents",
+      "sphere": "work",
+      "facet": null,
       "polarity": "tense",
       "evidenceLevel": "high",
       "eventIds": [
@@ -47,11 +47,15 @@
       },
       "meaning": {
         "text": "Попытка ускорить процесс без проверки деталей добавит лишний круг исправлений.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000012"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000012"
+        ]
       },
       "action": {
         "text": "Оставь запас на проверку и попроси подтвердить условия до отправки.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000011"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000011"
+        ]
       }
     }
   ],
@@ -74,13 +78,16 @@
         "end": "18:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000011"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000011"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000012",
       "title": "Марс в твоём 10-м доме",
       "kind": "structural",
-      "sphere": "documents",
+      "sphere": "work",
       "polarity": "mixed",
       "evidenceLevel": "medium",
       "time": {
@@ -90,7 +97,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000012"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000012"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

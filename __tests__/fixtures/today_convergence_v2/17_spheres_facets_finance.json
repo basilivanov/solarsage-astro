@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000051",
   "targetDate": "2026-08-06",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,7 @@
   "convergences": [
     {
       "id": "cvg_v1_00000000000000000000000000000051",
-      "primarySphere": "finance",
-      "secondarySphere": null,
+      "sphere": "finance",
       "facet": "personal_money",
       "polarity": "supportive",
       "evidenceLevel": "high",
@@ -59,8 +58,7 @@
     },
     {
       "id": "cvg_v1_00000000000000000000000000000052",
-      "primarySphere": "finance",
-      "secondarySphere": null,
+      "sphere": "finance",
       "facet": "financial_obligations",
       "polarity": "tense",
       "evidenceLevel": "medium",
@@ -88,8 +86,7 @@
     },
     {
       "id": "cvg_v1_00000000000000000000000000000053",
-      "primarySphere": "work",
-      "secondarySphere": null,
+      "sphere": "work",
       "facet": "daily_work",
       "polarity": "supportive",
       "evidenceLevel": "medium",
@@ -917,7 +914,7 @@
         "planetA": "Sun",
         "planetB": "Mars",
         "aspectType": "sextile",
-        "orb": 3.0,
+        "orb": 3,
         "applying": true
       }
     ],
@@ -925,13 +922,13 @@
       {
         "name": "ASC",
         "sign": "Taurus",
-        "degree": 15.0,
+        "degree": 15,
         "longitude": 45
       },
       {
         "name": "MC",
         "sign": "Aquarius",
-        "degree": 0.0,
+        "degree": 0,
         "longitude": 315
       }
     ],

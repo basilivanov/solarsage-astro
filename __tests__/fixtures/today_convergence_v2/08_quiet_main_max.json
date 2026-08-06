@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000081",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -31,7 +31,7 @@
   "mainEvent": {
     "id": "mev_v1_evt_v1_00000000000000000000000000000081",
     "eventId": "evt_v1_00000000000000000000000000000081",
-    "sphere": "decisions",
+    "sphere": "work",
     "polarity": "mixed",
     "evidenceLevel": "high",
     "time": {
@@ -43,16 +43,23 @@
     },
     "summary": {
       "text": "Главное событие дня просит выбрать направление, не пытаясь удержать все варианты сразу.",
-      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
+      "sourceEventIds": [
+        "evt_v1_00000000000000000000000000000081"
+      ]
     },
     "meaning": {
       "text": "Решение становится устойчивее, когда у него есть ясный критерий и ближайшая проверка.",
-      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
+      "sourceEventIds": [
+        "evt_v1_00000000000000000000000000000081"
+      ]
     },
     "action": {
       "text": "Запиши один выбранный путь и один признак, по которому проверишь его завтра.",
-      "sourceEventIds": ["evt_v1_00000000000000000000000000000081"]
-    }
+      "sourceEventIds": [
+        "evt_v1_00000000000000000000000000000081"
+      ]
+    },
+    "facet": null
   },
   "impulses": [
     {
@@ -69,14 +76,17 @@
       },
       "summary": {
         "text": "Утром проще собрать материалы для выбранного решения.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000082"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000082"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000083",
-      "sphere": "money",
+      "sphere": "finance",
       "polarity": "mixed",
       "evidenceLevel": "medium",
       "time": {
@@ -88,10 +98,13 @@
       },
       "summary": {
         "text": "После выбора внимательно проверь цену и ресурсы, которые он потребует.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000083"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000083"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000084",
@@ -107,10 +120,13 @@
       },
       "summary": {
         "text": "Вечером полезно зафиксировать вывод короткой заметкой и одним вопросом.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000084"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000084"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -124,7 +140,7 @@
       "id": "evt_v1_00000000000000000000000000000081",
       "title": "Марс в фокусе",
       "kind": "station",
-      "sphere": "decisions",
+      "sphere": "work",
       "polarity": "mixed",
       "evidenceLevel": "high",
       "time": {
@@ -134,7 +150,10 @@
         "end": "15:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000081"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000081"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000082",
@@ -150,13 +169,16 @@
         "end": "11:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000082"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000082"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000083",
       "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
-      "sphere": "money",
+      "sphere": "finance",
       "polarity": "mixed",
       "evidenceLevel": "medium",
       "time": {
@@ -166,7 +188,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000083"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000083"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000084",
@@ -182,7 +207,10 @@
         "end": "22:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000084"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000084"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

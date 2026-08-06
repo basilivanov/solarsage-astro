@@ -931,17 +931,17 @@
                 "items": {
                   "enum": [
                     "work",
-                    "money",
+                    "finance",
                     "documents",
                     "relationships",
                     "sport",
                     "communication",
                     "health",
-                    "decisions",
+                    "home_family",
                     "travel",
                     "creativity",
                     "study",
-                    "shopping"
+                    "friends_goals"
                   ],
                   "type": "string"
                 },
@@ -1139,17 +1139,17 @@
                 "items": {
                   "enum": [
                     "work",
-                    "money",
+                    "finance",
                     "documents",
                     "relationships",
                     "sport",
                     "communication",
                     "health",
-                    "decisions",
+                    "home_family",
                     "travel",
                     "creativity",
                     "study",
-                    "shopping"
+                    "friends_goals"
                   ],
                   "type": "string"
                 },
@@ -5137,6 +5137,17 @@
             "title": "Evidencelevel",
             "type": "string"
           },
+          "facet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facet"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -5164,17 +5175,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -5340,6 +5351,17 @@
             "title": "Evidencelevel",
             "type": "string"
           },
+          "facet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facet"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -5363,48 +5385,23 @@
             "title": "Polarity",
             "type": "string"
           },
-          "primarySphere": {
+          "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
-            "title": "Primarysphere",
+            "title": "Sphere",
             "type": "string"
-          },
-          "secondarySphere": {
-            "anyOf": [
-              {
-                "enum": [
-                  "work",
-                  "money",
-                  "documents",
-                  "relationships",
-                  "sport",
-                  "communication",
-                  "health",
-                  "decisions",
-                  "travel",
-                  "creativity",
-                  "study",
-                  "shopping"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Secondarysphere"
           },
           "summary": {
             "anyOf": [
@@ -5419,7 +5416,7 @@
         },
         "required": [
           "id",
-          "primarySphere",
+          "sphere",
           "polarity",
           "evidenceLevel",
           "eventIds"
@@ -5452,6 +5449,17 @@
             "title": "Evidencelevel",
             "type": "string"
           },
+          "facet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facet"
+          },
           "meaning": {
             "anyOf": [
               {
@@ -5474,17 +5482,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -5523,17 +5531,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -5577,6 +5585,17 @@
             "title": "Evidencelevel",
             "type": "string"
           },
+          "facet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facet"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -5603,17 +5622,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -5800,7 +5819,7 @@
             "title": "Publishedat"
           },
           "schemaVersion": {
-            "const": 1,
+            "const": 2,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -5917,17 +5936,17 @@
               {
                 "enum": [
                   "work",
-                  "money",
+                  "finance",
                   "documents",
                   "relationships",
                   "sport",
                   "communication",
                   "health",
-                  "decisions",
+                  "home_family",
                   "travel",
                   "creativity",
                   "study",
-                  "shopping"
+                  "friends_goals"
                 ],
                 "type": "string"
               },
@@ -5967,21 +5986,20 @@
             "items": {
               "enum": [
                 "work",
-                "money",
+                "finance",
                 "documents",
                 "relationships",
                 "sport",
                 "communication",
                 "health",
-                "decisions",
+                "home_family",
                 "travel",
                 "creativity",
                 "study",
-                "shopping"
+                "friends_goals"
               ],
               "type": "string"
             },
-            "maxItems": 3,
             "title": "Spheres",
             "type": "array"
           }
@@ -6837,17 +6855,17 @@
           "primarySphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Primarysphere",
             "type": "string"
@@ -6857,17 +6875,17 @@
               {
                 "enum": [
                   "work",
-                  "money",
+                  "finance",
                   "documents",
                   "relationships",
                   "sport",
                   "communication",
                   "health",
-                  "decisions",
+                  "home_family",
                   "travel",
                   "creativity",
                   "study",
-                  "shopping"
+                  "friends_goals"
                 ],
                 "type": "string"
               },
@@ -6935,17 +6953,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -7066,17 +7084,17 @@
           "sphere": {
             "enum": [
               "work",
-              "money",
+              "finance",
               "documents",
               "relationships",
               "sport",
               "communication",
               "health",
-              "decisions",
+              "home_family",
               "travel",
               "creativity",
               "study",
-              "shopping"
+              "friends_goals"
             ],
             "title": "Sphere",
             "type": "string"
@@ -8587,17 +8605,17 @@
             "items": {
               "enum": [
                 "work",
-                "money",
+                "finance",
                 "documents",
                 "relationships",
                 "sport",
                 "communication",
                 "health",
-                "decisions",
+                "home_family",
                 "travel",
                 "creativity",
                 "study",
-                "shopping"
+                "friends_goals"
               ],
               "type": "string"
             },

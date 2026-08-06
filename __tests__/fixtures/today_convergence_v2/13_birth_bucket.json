@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000131",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -44,10 +44,13 @@
       },
       "summary": {
         "text": "Утро подходит для спокойного запуска одной важной рабочей задачи.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000131"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000131"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -67,7 +70,10 @@
         "end": null,
         "partOfDay": "morning"
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000131"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000131"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

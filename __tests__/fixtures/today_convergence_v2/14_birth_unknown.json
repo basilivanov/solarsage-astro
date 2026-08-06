@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000141",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -44,7 +44,8 @@
       },
       "summary": null,
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000142",
@@ -60,7 +61,8 @@
       },
       "summary": null,
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -80,7 +82,10 @@
         "end": null,
         "partOfDay": "day"
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000141"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000141"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000142",
@@ -96,7 +101,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000142"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000142"
+      ],
+      "facet": null
     }
   ],
   "contentState": "not_needed",

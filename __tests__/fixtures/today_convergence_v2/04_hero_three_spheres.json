@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000041",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,8 @@
   "convergences": [
     {
       "id": "cvg_v1_00000000000000000000000000000041",
-      "primarySphere": "work",
-      "secondarySphere": "documents",
+      "sphere": "work",
+      "facet": null,
       "polarity": "supportive",
       "evidenceLevel": "high",
       "eventIds": [
@@ -47,17 +47,21 @@
       },
       "meaning": {
         "text": "Практический результат растёт там, где идея сразу получает форму и срок.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000041"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000041"
+        ]
       },
       "action": {
         "text": "Собери решение в один документ и отправь его до вечернего пика.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000042"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000042"
+        ]
       }
     },
     {
       "id": "cvg_v1_00000000000000000000000000000043",
-      "primarySphere": "relationships",
-      "secondarySphere": null,
+      "sphere": "relationships",
+      "facet": null,
       "polarity": "supportive",
       "evidenceLevel": "medium",
       "eventIds": [
@@ -73,17 +77,21 @@
       },
       "meaning": {
         "text": "Слушать сегодня не менее полезно, чем доказывать свою позицию.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000043"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000043"
+        ]
       },
       "action": {
         "text": "Оставь место для ответа собеседника и не закрывай тему первым выводом.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000044"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000044"
+        ]
       }
     },
     {
       "id": "cvg_v1_00000000000000000000000000000045",
-      "primarySphere": "documents",
-      "secondarySphere": null,
+      "sphere": "documents",
+      "facet": null,
       "polarity": "supportive",
       "evidenceLevel": "medium",
       "eventIds": [
@@ -99,11 +107,15 @@
       },
       "meaning": {
         "text": "Небольшая точность сейчас сбережёт время на следующем шаге.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000045"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000045"
+        ]
       },
       "action": {
         "text": "Перед отправкой перечитай имена, даты и условия один раз вслух.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000046"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000046"
+        ]
       }
     }
   ],
@@ -126,13 +138,16 @@
         "end": "12:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000041"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000041"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000042",
       "title": "Марс в твоём 10-м доме",
       "kind": "structural",
-      "sphere": "documents",
+      "sphere": "work",
       "polarity": "supportive",
       "evidenceLevel": "medium",
       "time": {
@@ -142,7 +157,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000042"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000042"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000043",
@@ -158,7 +176,10 @@
         "end": "17:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000043"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000043"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000044",
@@ -174,7 +195,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000044"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000044"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000045",
@@ -190,7 +214,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000045"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000045"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000046",
@@ -206,7 +233,10 @@
         "end": "21:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000046"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000046"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

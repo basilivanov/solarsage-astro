@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000091",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -44,7 +44,8 @@
       },
       "summary": null,
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000092",
@@ -60,7 +61,8 @@
       },
       "summary": null,
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": {
@@ -70,7 +72,9 @@
     "title": "Длительный рабочий фон",
     "activeFrom": "2026-07-27",
     "activeUntil": "2026-08-05",
-    "eventIds": ["evt_v1_00000000000000000000000000000091"]
+    "eventIds": [
+      "evt_v1_00000000000000000000000000000091"
+    ]
   },
   "lookahead": null,
   "events": [
@@ -88,7 +92,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000091"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000091"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000092",
@@ -104,7 +111,10 @@
         "end": null,
         "partOfDay": "evening"
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000092"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000092"
+      ],
+      "facet": null
     }
   ],
   "contentState": "not_needed",

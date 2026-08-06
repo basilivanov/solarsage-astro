@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000111",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -32,7 +32,7 @@
   "impulses": [
     {
       "eventId": "evt_v1_00000000000000000000000000000111",
-      "sphere": "money",
+      "sphere": "finance",
       "polarity": "tense",
       "evidenceLevel": "high",
       "time": {
@@ -44,7 +44,8 @@
       },
       "summary": null,
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -54,7 +55,7 @@
       "id": "evt_v1_00000000000000000000000000000111",
       "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
-      "sphere": "money",
+      "sphere": "finance",
       "polarity": "tense",
       "evidenceLevel": "high",
       "time": {
@@ -64,7 +65,10 @@
         "end": "20:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000111"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000111"
+      ],
+      "facet": null
     }
   ],
   "contentState": "unavailable",

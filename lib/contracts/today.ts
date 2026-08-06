@@ -223,8 +223,8 @@ export type ConcreteAdviceDetails = z.infer<typeof ConcreteAdviceDetailsSchema>
 
 export const ConcreteAdviceRowSchema = z.object({
   key: z.enum([
-    "work", "money", "documents", "relationships", "sport", "communication",
-    "health", "decisions", "travel", "creativity", "study", "shopping"
+    "work", "finance", "documents", "relationships", "sport", "communication",
+    "health", "home_family", "travel", "creativity", "study", "friends_goals"
   ]),
   label: z.string().min(1),
   iconName: z.string().min(1),

@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-FIXTURES
-// purpose: Provide one typed import surface for the 16 Today and 3 Yesterday wire fixtures.
+// purpose: Provide one typed import surface for the 16 canonical Today, 2 sandbox Today, and 3 Yesterday fixtures.
 // owns:
 //   - __tests__/fixtures/today_convergence_v2/*.json
 //   - __tests__/fixtures/today_convergence_v2/index.ts
@@ -19,7 +19,8 @@
 
 // START_MODULE_MAP: M-TEST-TODAY-CONVERGENCE-FIXTURES
 // public_entrypoints:
-//   - 16 named Today fixture exports
+//   - 16 named canonical Today fixture exports
+//   - 2 named sphere/facet sandbox fixture exports
 //   - 3 named Yesterday fixture exports
 //   - todayConvergenceFixtures
 //   - yesterdayFixtures
@@ -49,6 +50,8 @@ import birthBucketJson from "./13_birth_bucket.json";
 import birthUnknownJson from "./14_birth_unknown.json";
 import accessPreviewJson from "./15_access_preview.json";
 import accessLockedJson from "./16_access_locked.json";
+import spheresFacetsFinanceJson from "./17_spheres_facets_finance.json";
+import quietFacetsNewSpheresJson from "./18_quiet_facets_new_spheres.json";
 import yesterdayPreSubmitJson from "./yesterday_pre_submit.json";
 import yesterdayPostSubmitJson from "./yesterday_post_submit.json";
 import yesterdayNoSnapshotJson from "./yesterday_no_snapshot.json";
@@ -72,6 +75,13 @@ export const birthBucket: TodayConvergencePayload = birthBucketJson as TodayConv
 export const birthUnknown: TodayConvergencePayload = birthUnknownJson as TodayConvergencePayload;
 export const accessPreview: TodayConvergencePayload = accessPreviewJson as TodayConvergencePayload;
 export const accessLocked: TodayConvergencePayload = accessLockedJson as TodayConvergencePayload;
+
+// START_BLOCK: SPHERE_FACET_SANDBOX_FIXTURES
+// Fixture 17 intentionally remains a sandbox context fixture: its one-event
+// convergence groups are not a valid TodayConvergencePayload group root.
+export const spheresFacetsFinance = spheresFacetsFinanceJson;
+export const quietFacetsNewSpheres: TodayConvergencePayload = quietFacetsNewSpheresJson as TodayConvergencePayload;
+// END_BLOCK: SPHERE_FACET_SANDBOX_FIXTURES
 
 export const todayConvergenceFixtures: readonly TodayConvergencePayload[] = [
   heroSupportive,

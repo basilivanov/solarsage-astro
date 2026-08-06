@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000021",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,8 @@
   "convergences": [
     {
       "id": "cvg_v1_00000000000000000000000000000021",
-      "primarySphere": "relationships",
-      "secondarySphere": "work",
+      "sphere": "relationships",
+      "facet": null,
       "polarity": "mixed",
       "evidenceLevel": "high",
       "eventIds": [
@@ -47,11 +47,15 @@
       },
       "meaning": {
         "text": "Одна и та же фраза может открыть сотрудничество или усилить защитную реакцию.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000021"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000021"
+        ]
       },
       "action": {
         "text": "Сначала назови общую цель, затем обсуждай условия и сроки.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000022"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000022"
+        ]
       }
     }
   ],
@@ -74,13 +78,16 @@
         "end": "14:30",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000021"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000021"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000022",
       "title": "Луна в напряжении к твоему Сатурну",
       "kind": "aspect",
-      "sphere": "work",
+      "sphere": "relationships",
       "polarity": "tense",
       "evidenceLevel": "medium",
       "time": {
@@ -90,7 +97,10 @@
         "end": "20:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000022"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000022"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

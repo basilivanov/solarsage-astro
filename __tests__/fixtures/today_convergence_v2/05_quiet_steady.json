@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap_v1_00000000000000000000000000000051",
   "targetDate": "2026-08-01",
   "timezone": "Europe/Moscow",
@@ -44,10 +44,13 @@
       },
       "summary": {
         "text": "Утренний импульс помогает спокойно расставить рабочие приоритеты.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000051"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000051"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000052",
@@ -63,10 +66,13 @@
       },
       "summary": {
         "text": "Днём легче услышать оттенок чужой позиции и ответить без спешки.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000052"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000052"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     },
     {
       "eventId": "evt_v1_00000000000000000000000000000053",
@@ -82,10 +88,13 @@
       },
       "summary": {
         "text": "Вечерний ритм просит небольшого запаса на восстановление.",
-        "sourceEventIds": ["evt_v1_00000000000000000000000000000053"]
+        "sourceEventIds": [
+          "evt_v1_00000000000000000000000000000053"
+        ]
       },
       "meaning": null,
-      "action": null
+      "action": null,
+      "facet": null
     }
   ],
   "periodContext": null,
@@ -109,7 +118,10 @@
         "end": "11:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000051"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000051"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000052",
@@ -125,7 +137,10 @@
         "end": null,
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000052"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000052"
+      ],
+      "facet": null
     },
     {
       "id": "evt_v1_00000000000000000000000000000053",
@@ -141,7 +156,10 @@
         "end": "21:00",
         "partOfDay": null
       },
-      "sourceIds": ["src_v1_00000000000000000000000000000053"]
+      "sourceIds": [
+        "src_v1_00000000000000000000000000000053"
+      ],
+      "facet": null
     }
   ],
   "contentState": "ready",

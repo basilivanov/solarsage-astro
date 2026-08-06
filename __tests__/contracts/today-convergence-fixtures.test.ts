@@ -42,11 +42,13 @@ import {
   heroTense,
   heroThreeSpheres,
   quietGeneralBackground,
+  quietFacetsNewSpheres,
   quietMainMax,
   quietSteady,
   quietTenseImpulse,
   quietZeroImpulses,
   stateUnavailable,
+  spheresFacetsFinance,
   todayConvergenceFixtures,
   yesterdayFixtures,
   yesterdayNoSnapshot,
@@ -285,13 +287,13 @@ describe("Today Convergence and Yesterday fixture matrix", () => {
 
     expect(heroTense.dayTone).toBe("tense");
     expect(heroMixed.dayTone).toBe("mixed");
-    expect(heroMixed.convergences[0].secondarySphere).not.toBeNull();
+    expect(heroMixed.convergences[0].sphere).toBe("relationships");
+    expect(heroMixed.convergences[0].facet).toBeNull();
 
     expect(heroThreeSpheres.convergences).toHaveLength(3);
     const heroSpheres = new Set(
       heroThreeSpheres.convergences.flatMap((group) => [
-        group.primarySphere,
-        ...(group.secondarySphere ? [group.secondarySphere] : []),
+        group.sphere,
       ])
     );
     expect(heroSpheres).toEqual(new Set(["work", "documents", "relationships"]));
@@ -322,6 +324,21 @@ describe("Today Convergence and Yesterday fixture matrix", () => {
     expect(quietMainMax.impulses).toHaveLength(3);
     expect(quietMainMax.lookahead).not.toBeNull();
     expect(quietMainMax.contentState).toBe("ready");
+  });
+
+  it("exports the sphere/facet sandbox fixtures without widening the canonical root matrix", () => {
+    expect(spheresFacetsFinance.schemaVersion).toBe(2);
+    expect(spheresFacetsFinance.convergences.map((group) => [group.sphere, group.facet])).toEqual([
+      ["finance", "personal_money"],
+      ["finance", "financial_obligations"],
+      ["work", "daily_work"],
+    ]);
+    expect(quietFacetsNewSpheres.schemaVersion).toBe(2);
+    expect(quietFacetsNewSpheres.impulses.map((impulse) => [impulse.sphere, impulse.facet])).toEqual([
+      ["work", "daily_work"],
+      ["finance", "personal_money"],
+      ["study", "skills_courses"],
+    ]);
   });
 
   it("keeps pending/unavailable LLM states deterministic", () => {

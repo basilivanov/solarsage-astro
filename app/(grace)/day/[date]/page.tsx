@@ -40,7 +40,7 @@ import { formatDayMonth, fromDateParam, toDateParam } from "@/lib/date";
 import { TODAY, sameDay } from "@/lib/today";
 
 const TRANSPORT_PAYLOAD = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   snapshotId: null,
   targetDate: "",
   timezone: "UTC",
