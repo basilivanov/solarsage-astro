@@ -1,91 +1,87 @@
-# MASTER ТЗ: пересборка 12 сфер жизни и конкретных проявлений внутри сфер
+# MASTER ТЗ: пересборка 12 продуктовых сфер и проявлений внутри сфер
 
 Дата: 2026-08-06  
-Статус: решение владельца; готово к реализации  
-Область: Today Convergence, страницы сфер, narrative, frontend-навигатор  
+Статус: REVISED после проверки против repository main; готово к реализации  
+Область: Today Convergence, страницы сфер, narrative, check-in, frontend и generated contracts
 
-## 1. Контекст и принцип реализации
+## 1. Контекст и принятые решения
 
-Текущая версия Today Convergence ещё не выкачена в production. Поэтому работу выполняем как **прямую переделку текущей v1**, без параллельной архитектуры и без совместимости со старым вариантом.
+Текущая версия Today Convergence ещё не выкачена в production. Поэтому изменение выполняется как **прямая переделка текущей реализации**, без compatibility-слоя и параллельных версий поведения.
 
-Обязательные правила реализации:
+Обязательные правила:
 
-- не создавать `v2`-каноны, `v2`-контракты, адаптеры совместимости, dual-read/dual-write и shadow-режим;
-- не сохранять старые ключи и старое поведение «на всякий случай»;
-- менять существующие каноны, dataclass/Pydantic/TypeScript-контракты, backend, frontend, fixtures и тесты в одном атомарном изменении;
-- старые варианты остаются только в git history;
-- после изменения пересобрать generated contracts и полностью заменить старые fixtures/snapshots;
-- derived dev/test snapshots и кэши старого формата удалить и пересоздать; миграция production-данных не требуется.
+- не создавать `v2`-реализацию рядом с текущей, адаптеры совместимости, dual-read/dual-write, shadow и feature flag;
+- не сохранять старые product keys «на всякий случай»;
+- изменить каноны, runtime, Pydantic/OpenAPI/generated TypeScript, frontend, fixtures и тесты атомарно;
+- старое поведение остаётся только в git history;
+- rollback — git revert всего пакета;
+- физическая формула convergence не меняется: significance, eligibility, direct-star grouping, independence, hero C1, tone и birth-time rules остаются прежними.
 
-Задача не состоит в создании нового слоя поверх существующей системы. Задача — привести текущую систему сфер в нормальную, однозначную модель.
+Отдельный файл `product_spheres.v1.yml` **разрешён и обязателен**. Это не новая версия старого канона, а отсутствующий канон другой сущности — продуктовых сфер. Технический scoring-канон `spheres.v1.yml` не переписывать.
 
 ---
 
 ## 2. Проблема
 
-### 2.1. В текущих 12 карточках смешаны разные типы сущностей
+### 2.1. Текущие 12 карточек не образуют единую систему
 
-Сейчас на одном уровне находятся:
+На одном уровне смешаны:
 
-- настоящие области жизни: работа, деньги, отношения, здоровье;
-- действия пользователя: решения, покупки;
+- жизненные области: работа, деньги, отношения, здоровье;
+- действия: решения, покупки;
 - виды активности: спорт, учёба, поездки, общение.
 
-Из-за этого список не является цельной системой жизненных сфер. В нём отсутствуют важные области — дом/семья и друзья/сообщества/долгосрочные планы, — а «Решения» и «Покупки» занимают отдельные карточки, хотя сами по себе сферами жизни не являются.
+При этом отсутствуют самостоятельные области «Дом и семья» и «Друзья и планы».
 
-Решение всегда принимается о конкретной сфере: работе, деньгах, отношениях, поездке. Покупка является конкретным финансовым действием, а не отдельной жизненной областью.
+`decisions` не является сферой: решение всегда относится к работе, финансам, отношениям и т. п.  
+`shopping` не является сферой: покупка — одно из финансовых проявлений.
 
-### 2.2. Текущая проекция раздувает технический факт в несколько продуктовых сфер
+### 2.2. Fan-out раздувает один физический факт
 
-В `today_convergence.v1.yml` одна техническая тема дополнительно раскрывается через:
+В `grace/canon/today_convergence.v1.yml` продуктовая проекция строится одновременно через:
 
 - `technical_to_product`;
 - `technical_alias_to_product`;
-- `planet_to_product`.
+- `planet_to_product`;
+- `planet_sphere_limits`.
 
-В результате один физический факт может одновременно голосовать за несколько продуктовых карточек. Это приводит к следующим ошибкам:
+Из-за этого один physical unit получает несколько продуктовых сфер, а широкая смесь фактов попадает в group projection и LLM. Следствия:
 
-- «Документы» получают факты одновременно из коммуникации и финансов;
-- «Здоровье» получает общий фон 12/8 домов и начинает нагнетать скрытые болезни/кризисы;
-- «Поездки» могут появляться только из Урана без опоры на 3-й или 9-й дом;
-- «Творчество» может строиться из Нептуна/Урана и 12-го дома без нормальной опоры на 5-й дом;
-- LLM получает широкую смесь фактов и дописывает сюжет, которого в расчёте нет.
+- документы смешиваются с деньгами;
+- здоровье получает общий 8/12-домный фон;
+- поездки появляются из одного Урана;
+- творчество появляется из Нептуна/Урана без 5-го дома;
+- narrative дописывает конкретный жизненный сюжет, которого нет в fact-pack.
 
-### 2.3. Полярность сферы ошибочно воспринимается как полярность всего внутри неё
+### 2.3. Полярность ошибочно обобщается на всю сферу
 
-Финансы могут одновременно проявляться по-разному:
-
-- личные деньги — поддержка;
-- общий бюджет или обязательства — напряжение.
-
-Текущая широкая модель «Финансы = supportive/tense» провоцирует неверный вывод, будто одна полярность распространяется на все финансовые вопросы сразу.
-
-Правильная единица прогноза:
-
-```text
-физическая группа → сфера → конкретное проявление → полярность группы
-```
-
-Например:
+В один день возможны независимые сигналы:
 
 ```text
 finance / personal_money / supportive
 finance / financial_obligations / tense
 ```
 
-Карточка «Финансы» агрегирует два сигнала и показывает «2 сигнала · поддержка + напряжение», но каждый сигнал сохраняет собственный смысл и собственную полярность.
+Это не означает, что «все финансы смешанные». Это означает:
 
-### 2.4. Текущий selector может выбрасывать второй сигнал той же сферы
+- личные деньги — поддержка;
+- обязательства — напряжение.
 
-Сейчас presentation selection стремится показывать разные сферы и может отбрасывать следующую группу, если она не добавляет новую сферу. Поэтому две независимые финансовые линии способны «съесть» друг друга.
+Полярность должна принадлежать отдельной физической группе/сигналу. Тайлу разрешена только краткая агрегированная сводка.
 
-Это неверно. Сначала должны выбираться сильнейшие физические сигналы дня, и только после этого они раскладываются по карточкам. Две разные группы одной сферы должны сохраняться обе.
+### 2.4. Diversity-gate теряет второй сигнал той же сферы
+
+Текущий selector отбрасывает следующую группу, если она не добавляет новую sphere. Поэтому две независимые финансовые группы способны съесть друг друга.
+
+Сначала выбираются физические сигналы по существующему ranking, затем они раскладываются по sphere/facet. Повтор sphere не является причиной исключения.
+
+### 2.5. Продуктовая и техническая таксономии сейчас не разделены
+
+`grace/canon/spheres.v1.yml` — технический scoring-канон из девяти кластеров с домами, планетами, лотами и весами. Его используют scoring, semantic, day ledger, valence и страницы сфер. Он не является реестром 12 product spheres и не должен им становиться.
 
 ---
 
-## 3. Что должно получиться
-
-### 3.1. Новый канонический список 12 сфер
+## 3. Целевой список 12 product spheres
 
 Фиксированный порядок и ключи:
 
@@ -102,574 +98,495 @@ finance / financial_obligations / tense
 11. `study` — Учёба
 12. `friends_goals` — Друзья и планы
 
-Из канона, контрактов, backend, frontend, fixtures и тестов полностью удалить продуктовые сферы:
+Явный breaking rename:
 
-- `decisions`;
-- `shopping`.
+```text
+money → finance
+```
 
-Их старые роуты, labels, иконки, fixtures и ветки обработки не сохранять.
+Полностью удалить product keys:
 
-### 3.2. Решения и покупки перестают быть сферами
+```text
+decisions
+shopping
+```
 
-- «Решение» не имеет собственной карточки и не получает отдельную полярность. Оно описывается только внутри предметной сферы, когда факты реально указывают на выбор, фиксацию или действие.
-- «Покупка» становится одним из возможных проявлений финансов. Она не должна автоматически выводиться из одного Меркурия или Венеры; для узкого текста о покупке нужен соответствующий дом и/или явный контекст сделки.
+Отдельных routes для этих ключей нет: dynamic route сохраняется, а доступность определяется новым union/каноном. Не создавать redirects.
 
 ---
 
-## 4. Конкретные проявления внутри сфер
+## 4. Facets — конкретные проявления sphere
 
-В контракте используется поле `facet`: конкретная часть сферы, к которой относится данный сигнал.
+`facet` — обычное nullable-поле существующего сигнала, а не отдельная карточка, сервис или ontology engine.
 
-`facet` не является отдельной карточкой, отдельной группой или отдельным сервисом. Это обычное поле существующего результата группы/события.
+Каждый опубликованный physical signal получает:
 
-Одна физическая группа получает:
+```text
+sphere: ровно одна product sphere
+facet: один facet этой sphere либо null
+polarity: polarity этой physical group/unit
+```
 
-- ровно одну `sphere`;
-- один `facet` либо `null`, если данных хватает только на общую тему сферы;
-- собственную `polarity`.
-
-Не вводить secondary sphere и secondary facet. Один физический сюжет публикуется в одной наиболее обоснованной сфере и не клонируется.
+Secondary sphere и secondary facet удалить. Один физический сюжет не клонируется.
 
 ### 4.1. Работа
 
-- `daily_work` — текущие задачи, нагрузка, служебная рутина; основной дом 6;
-- `career_status` — карьера, статус, продвижение, публичная роль; основной дом 10.
+- `daily_work` — текущие задачи, служебная нагрузка, рутина; дом 6;
+- `career_status` — карьера, статус, продвижение, публичная роль; дом 10.
 
 ### 4.2. Финансы
 
-- `personal_money` — доход, личные расходы, накопления, личное имущество; дом 2;
+- `personal_money` — доход, расходы, накопления, личное имущество; дом 2;
 - `shared_money` — общий бюджет, средства партнёра, страхование, наследование; дом 8;
-- `purchases_transactions` — покупка, продажа, цена, сделка, оформление приобретения; дом 2 плюс явный контекст сделки; Меркурий/Венера только уточняют;
-- `financial_obligations` — кредит, долг, налог, рассрочка, возврат, обязательство; дом 8 плюс явный контекст обязательства; Меркурий/Сатурн только уточняют.
+- `purchases_transactions` — покупка, продажа, цена, сделка; дом 2 + явный transaction-context;
+- `financial_obligations` — кредит, долг, налог, рассрочка, возврат; дом 8 + явный obligation-context.
 
-Поддержка или напряжение одного financial facet не распространяется на остальные financial facets.
+Меркурий, Венера и Сатурн могут уточнять, но не создают узкий facet самостоятельно.
 
 ### 4.3. Документы
 
 - `admin_documents` — заявления, справки, переписка, обычное оформление; дом 3;
 - `legal_foreign_education_documents` — юридические, иностранные, визовые, образовательные документы; дом 9;
-- `contracts` — договор между сторонами; дом 7 плюс договорный контекст;
-- `financial_documents` — счёт, кредитный, налоговый, страховой документ; дом 2 или 8 плюс финансовый контекст;
-- `property_documents` — документы на жильё/недвижимость; дом 4 плюс имущественный контекст.
+- `contracts` — договор между сторонами; дом 7 + contract-context;
+- `financial_documents` — счета, кредитные, налоговые, страховые документы; дом 2/8 + finance-context;
+- `property_documents` — документы на жильё/недвижимость; дом 4 + property-context.
 
-Нельзя собирать страницу «Документы» из всех домов 2/3/7/8/9/4 одновременно. Каждый отдельный сигнал маршрутизируется по своим фактам.
+Не собирать один сигнал «Документы» сразу из всех перечисленных домов.
 
 ### 4.4. Отношения
 
-- `romance` — симпатия, свидания, романтика, удовольствие; дом 5;
-- `partnership` — пара, брак, устойчивое партнёрство, взаимодействие один на один; дом 7.
+- `romance` — симпатия, свидания, романтика; дом 5;
+- `partnership` — пара, брак, взаимодействие один на один; дом 7.
 
-Дом и семейный быт не складывать автоматически в отношения: для этого есть отдельная сфера `home_family`.
+Семья и домашний быт относятся к `home_family`, если нет самостоятельной relationship-темы.
 
 ### 4.5. Спорт
 
-- `physical_energy` — телесная активность, сила, готовность действовать; дом 1;
+- `physical_energy` — телесная активность и готовность действовать; дом 1;
 - `training_routine` — режим и повторяющаяся тренировка; дом 6;
-- `competition_performance` — соревнование или результативное выступление; дом 5/10 плюс явный спортивный контекст.
+- `competition_performance` — соревнование/выступление; дом 5/10 + sport-context.
 
-Марс является важным модификатором, но один Марс не создаёт спортивный facet без телесной/тренировочной темы.
+Один Марс не создаёт sport facet.
 
 ### 4.6. Общение
 
-- `everyday_contacts` — переписка, разговоры, повседневные контакты; дом 3;
+- `everyday_contacts` — разговоры, переписка, повседневные контакты; дом 3;
 - `negotiations` — обсуждение и договорённость один на один; дом 7;
-- `groups_audience` — общение с группой, сообществом, аудиторией; дом 11;
-- `public_speech_teaching` — выступление, преподавание, передача сложного знания; дом 9/10 плюс соответствующий контекст.
+- `groups_audience` — группа, сообщество, аудитория; дом 11;
+- `public_speech_teaching` — выступление/преподавание; дом 9/10 + соответствующий context.
 
 ### 4.7. Здоровье
 
-- `general_condition` — общее физическое состояние и жизненный тонус; дом 1;
+- `general_condition` — общее физическое состояние и тонус; дом 1;
 - `symptoms_routine_treatment` — симптомы, режим, лечение, восстановительная рутина; дом 6;
-- `recovery_isolation` — отдых, вынужденное снижение активности, изоляция или стационарный контекст; дом 12 плюс подтверждающий контекст.
+- `recovery_isolation` — отдых, снижение активности, изоляция/стационарный контекст; дом 12 + подтверждающий context.
 
-Дом 8 не является общей базой здоровья. Дом 12 сам по себе не означает скрытую болезнь. Не генерировать диагнозы и конкретные медицинские события.
+Дом 8 не является общей базой здоровья. Дом 12 сам по себе не означает скрытую болезнь. Диагнозы и конкретные медицинские события запрещены.
 
 ### 4.8. Дом и семья
 
 - `family_roots` — семья, родители, корни, домашняя база; дом 4;
 - `housing_property` — жильё, недвижимость, бытовое пространство; дом 4;
-- `relocation` — переезд или смена места проживания; дом 4 плюс явный контекст перемещения через 3/9.
+- `relocation` — переезд; дом 4 + movement-context через 3/9.
 
 ### 4.9. Поездки
 
-- `local_travel` — короткая, локальная, регулярная поездка; дом 3;
-- `long_distance_foreign_travel` — дальняя поездка, путешествие, заграница; дом 9.
+- `local_travel` — короткая/локальная поездка; дом 3;
+- `long_distance_foreign_travel` — дальняя поездка/заграница; дом 9.
 
-Уран может описывать неожиданность или изменение маршрута, но не создаёт поездку без базы 3/9 дома или явной travel-темы.
+Уран только модифицирует неожиданность; без 3/9 или явной travel-темы поездку не создаёт.
 
 ### 4.10. Творчество
 
-- `self_expression` — творчество, авторское проявление, удовольствие от создания; дом 5;
-- `creative_work` — творческий проект как работа или публичный результат; дом 5 плюс 10;
-- `private_inner_creativity` — творчество в уединении или работа с внутренними образами; дом 5 плюс 12.
+- `self_expression` — творчество и авторское проявление; дом 5;
+- `creative_work` — творческий проект как работа/публичный результат; 5 + 10;
+- `private_inner_creativity` — творчество в уединении; 5 + 12.
 
-Дом 12, Нептун или Уран отдельно не создают творческую тему без 5-го дома или явного creative-контекста.
+Дом 12, Нептун или Уран без 5-го дома либо явного creative-context творчество не создают.
 
 ### 4.11. Учёба
 
-- `skills_courses` — освоение навыка, курс, базовое обучение, получение информации; дом 3;
-- `higher_education_worldview` — высшее образование, сложные системы знания, философия, преподавание; дом 9.
+- `skills_courses` — навык, курс, базовое обучение; дом 3;
+- `higher_education_worldview` — высшее образование, сложные системы знания, философия; дом 9.
 
 ### 4.12. Друзья и планы
 
-- `friends_community` — друзья, сообщества, круг единомышленников; дом 11;
-- `collective_projects` — совместные проекты и командная деятельность; дом 11 плюс рабочий контекст;
-- `long_term_goals` — долгосрочные планы, направление развития, желаемый результат; дом 11.
+- `friends_community` — друзья, сообщества, единомышленники; дом 11;
+- `collective_projects` — совместные проекты; дом 11 + project/work-context;
+- `long_term_goals` — долгосрочные планы и направление развития; дом 11.
 
 ---
 
-## 5. Правила маршрутизации sphere/facet
+## 5. Правила resolver
 
-### 5.1. Приоритет данных
+Resolver выбирает `(sphere, facet|null)` детерминированно по приоритету:
 
-При выборе сферы и facet использовать источники в следующем порядке:
+1. конкретный `house` physical unit/group;
+2. `technical_spheres`;
+3. явный normalized context/alias события;
+4. source/target planets как модификаторы и tie-break.
 
-1. конкретный дом события;
-2. техническая тема события;
-3. явный контекст/алиас конкретного сюжета;
-4. планеты как модификаторы и tie-break, но не как самостоятельное основание узкого facet.
+Planet-only запрещён для узких facets.
 
-Запрещено:
-
-- определять поездку только по Урану;
-- определять творчество только по Нептуну/Урану;
-- определять покупку только по Венере/Меркурию;
-- определять кредит/долг только по Сатурну;
-- определять документы только по Меркурию;
-- определять здоровье/скрытую болезнь только по 12-му или 8-му дому;
-- отправлять неизвестную тему в `work` или любую другую fallback-сферу.
-
-### 5.2. Неоднозначность
-
-Если сфера определяется уверенно, но конкретное проявление определить нельзя:
+Если sphere определена, а facet нет:
 
 ```text
-sphere = определённая сфера
+sphere = resolved
 facet = null
 ```
 
-Такой сигнал публикуется только с общим, ограниченным текстом по сфере. LLM не имеет права дописывать покупку, кредит, налог, поездку, диагноз, наследство и другие конкретные события без соответствующего facet и фактов.
+Если sphere не определяется, signal не публикуется и увеличивается существующий `group_without_sphere_count`/соответствующий unmapped audit. На acceptance replay таких случаев должно быть 0.
 
-Если не определяется даже сфера, событие не публикуется и увеличивает существующий audit-счётчик unmapped/group-without-sphere. На полном replay таких случаев должно быть 0.
+Неизвестный factor не падает в `work` и не получает иной fallback.
 
-### 5.3. Детерминизм
-
-Одинаковый набор физических фактов независимо от порядка входа обязан давать одинаковые:
-
-- `canonical_event_id`;
-- `group_id`;
-- `sphere`;
-- `facet`;
-- `polarity`;
-- порядок выбранных сигналов.
-
-Producer-дубль не создаёт дополнительный сигнал и не влияет на sphere/facet.
+Одинаковый набор physical facts при любой перестановке должен давать одинаковые event IDs, group IDs, sphere, facet, polarity и selection order. Producer duplicate не даёт второй голос.
 
 ---
 
-## 6. Полярность и агрегация карточки
+## 6. Изменения канонов
 
-### 6.1. Полярность остаётся на уровне физической группы
+### 6.1. `grace/canon/spheres.v1.yml`
 
-Существующая формула unit/group/day tone не меняется.
+**Не менять его назначение и структуру.** Это технический scoring-канон девяти кластеров.
 
-Каждая выбранная группа имеет собственную:
+Допустимы только точечные исправления, если реализация выявит фактическую ошибку технического scoring; такие изменения не входят в это ТЗ и требуют отдельного решения.
 
-```text
-sphere + facet + polarity + evidence
-```
+### 6.2. Новый `grace/canon/product_spheres.v1.yml`
 
-Нельзя присвоить полярность карточке и затем распространить её на все facets.
+Создать единый product-канон, содержащий:
 
-### 6.2. Несколько сигналов одной сферы сохраняются
-
-Selector выбирает до трёх сильнейших физических сигналов по существующим правилам ранжирования. Он не должен требовать разнообразия сфер и не должен отбрасывать сигнал только потому, что его sphere уже присутствует среди выбранных.
-
-Пример допустимого результата:
-
-```json
-[
-  {
-    "groupId": "cvg_1",
-    "sphere": "finance",
-    "facet": "personal_money",
-    "polarity": "supportive"
-  },
-  {
-    "groupId": "cvg_2",
-    "sphere": "finance",
-    "facet": "financial_obligations",
-    "polarity": "tense"
-  }
-]
-```
-
-### 6.3. Состояние тайла вычисляется из выбранных сигналов
-
-Frontend группирует выбранные сигналы по `sphere`.
-
-Для тайла:
-
-- `signalCount` — количество выбранных сигналов этой сферы;
-- если все сигналы supportive → «поддержка»;
-- если все tense → «напряжение»;
-- если есть supportive и tense либо хотя бы один mixed → «поддержка + напряжение»;
-- полярность тайла используется только как краткая сводка и не заменяет полярности отдельных сигналов.
-
-Отдельный новый API-объект для тайла не вводить: сводка выводится из уже возвращённых сигналов.
-
----
-
-## 7. Изменения канонов
-
-### 7.1. `grace/canon/spheres.v1.yml`
-
-Переделать существующий файл в единый источник истины для 12 продуктовых сфер и их facets.
-
-Файл должен содержать:
-
-- фиксированный порядок 12 сфер;
-- русские titles/descriptions;
-- facets каждой сферы;
-- дома и допустимые technical/context keys;
-- планеты-модификаторы;
+- порядок и labels 12 product spheres;
+- facets;
+- допустимые houses;
+- допустимые technical/context keys;
+- planet modifiers/tie-breaks;
 - правила приоритета;
-- явный запрет planet-only для узких facets.
+- запреты planet-only;
+- rename/migration aliases только для одноразовой миграции данных (`money`, `shopping`), но не для runtime output.
 
-Не создавать `spheres.v2.yml` и отдельный `sphere_facets.v1.yml`.
+Не создавать `product_spheres.v2.yml` и отдельный `sphere_facets`-канон.
 
-### 7.2. `grace/canon/today_convergence.v1.yml`
+### 6.3. `grace/canon/today_convergence.v1.yml`
 
-Обновить текущий `sphere_projection`:
+Изменить текущий `sphere_projection`:
 
-- canonical order заменить на новый список;
-- удалить старые `technical_to_product`, `technical_alias_to_product`, `planet_to_product` и `planet_sphere_limits` как дублирующую fan-out модель;
-- зафиксировать правило: physical group → одна sphere → один facet/null;
+- canonical order заменить на новые 12 keys;
+- удалить fan-out registries `technical_to_product`, `technical_alias_to_product`, `planet_to_product`, `planet_sphere_limits`;
+- ссылаться на `product_spheres.v1.yml` как источник product projection;
+- зафиксировать one group → one sphere → one facet/null;
 - удалить secondary sphere;
-- сохранить без изменений significance, eligibility, rare anchors, direct grouping, hero C1, birth-time и tone policy.
+- не менять significance, eligibility, grouping, hero, tone и birth-time sections;
+- сохранить существующий status либо синхронно изменить strict-loader expectation; YAML и loader не должны расходиться.
 
-### 7.3. `today_convergence_themes.v1.yml`
+### 6.4. `today_convergence_themes.v1.yml`
 
-Theme keys продолжают использоваться только для физической direct-star группировки.
-
-Не смешивать group-link themes с продуктовыми sphere/facet. Обновить файл только там, где текущий реестр не покрывает технические темы домов 4, 5 и 11 либо новые canonical keys, необходимые существующим фактам.
+Themes остаются только для physical direct-star link. Не использовать их как продуктовый реестр. Менять лишь при необходимости покрыть реальные technical keys 4/5/11 домов.
 
 ---
 
-## 8. Изменения backend
+## 7. Изменения backend runtime
 
-### 8.1. `today_convergence_canon.py`
+### 7.1. `today_convergence_canon.py`
 
-- загружать и строго валидировать текущий `spheres.v1.yml`;
-- проверять ровно 12 canonical sphere keys и уникальные facet keys внутри сфер;
-- удалить helpers старого fan-out mapping;
-- добавить один deterministic resolver, который по данным unit/group возвращает `(sphere, facet | None)`;
-- неизвестные ключи обрабатывать fail-closed, без fallback в work.
+- загрузить и строго валидировать `product_spheres.v1.yml`;
+- проверить ровно 12 keys в утверждённом порядке;
+- проверить unique facets и houses 1..12;
+- удалить helpers старого fan-out;
+- реализовать один resolver внутри текущего canon/projection-модуля;
+- синхронно изменить strict checks, которые сейчас требуют старый `frozen_w1` shape и девять `sphere_projection` keys;
+- неизвестные mapping values fail closed.
 
-Не создавать новый сервис/модуль только для facets: resolver остаётся частью текущей canon/projection реализации.
+Новый отдельный runtime-сервис для facets не создавать.
 
-### 8.2. `today_convergence_units.py`
+### 7.2. `today_convergence_units.py`
 
-`CanonicalUnit` должен хранить физические и технические данные, необходимые для последующей проекции.
+В `CanonicalUnit`:
 
-Изменить текущую модель:
-
-- удалить `product_spheres` из unit;
-- сохранить нормализованные `technical_spheres` в unit;
-- сохранить `house`, source/target, theme keys и существующие physical fields;
-- не выбирать продуктовую сферу на этапе построения unit;
+- удалить `product_spheres`;
+- **добавить новое поле** `technical_spheres: tuple[str, ...]` — сейчас оно есть только в `RawPhysicalFact` и теряется при normalization;
+- сохранить `house`, source/target, theme keys и прочие physical fields;
+- не вычислять product sphere на unit-build boundary;
 - не менять canonical identity, significance, eligibility, orb и birth-time rules.
 
-Product sphere/facet не должны участвовать в идентичности физического события.
+Sphere/facet не входят в `canonical_event_id`.
 
-### 8.3. `today_convergence_groups.py`
+### 7.3. `today_convergence_groups.py`
 
-Физическую группировку, independence, direct-star и hero C1 оставить без изменений.
+- direct-star, independence, C1 и group identity оставить без изменений;
+- после формирования physical group вызвать resolver;
+- заменить `primary_sphere/secondary_sphere` на `sphere/facet`;
+- не клонировать group;
+- при unresolved sphere не публиковать group и увеличить audit;
+- `group_id` зависит только от member event IDs.
 
-После формирования каждой валидной physical group:
+### 7.4. `today_convergence_selection.py`
 
-- вызвать текущий canon resolver;
-- записать в `CanonicalConvergenceGroup` поля `sphere` и `facet`;
-- удалить `primary_sphere` и `secondary_sphere`;
-- не клонировать группу по нескольким сферам;
-- если sphere не разрешена, группу не публиковать и увеличить существующий audit `group_without_sphere_count`.
+Для convergence state:
 
-`group_id` по-прежнему зависит только от физических member IDs и не зависит от sphere/facet.
+- убрать sphere-diversity gate;
+- убрать cap на количество distinct spheres;
+- сохранить максимум 3 selected convergence groups;
+- repeated sphere не является причиной исключения;
+- `selected_spheres` — уникальный список сфер уже выбранных signals, не критерий selection.
 
-### 8.4. `today_convergence_tone.py`
+Для quiet day сохранить текущий контракт:
 
-Формулу не менять.
+- `main_event` — 0..1;
+- `impulses` — 0..3;
+- суммарно возможно до 4 content blocks;
+- repeated sphere не является причиной исключения;
+- все events получают `sphere/facet` тем же resolver.
 
-Group polarity считается для physical group и затем показывается вместе с её sphere/facet.
+Не формулировать общий cap как «три сигнала для всех states».
 
-### 8.5. `today_convergence_selection.py`
+### 7.5. `today_convergence_tone.py`
 
-- убрать отбрасывание группы из-за того, что её sphere уже выбрана;
-- убрать лимит количества разных сфер как критерий selection;
-- сохранить общий лимит до трёх публичных сигналов;
-- ранжировать группы по существующим evidence/strength/time правилам;
-- `selected_spheres` оставить как уникальный список сфер уже выбранных сигналов, только для навигации/маркировки;
-- quiet-day events также получают одну sphere и facet/null через тот же resolver;
-- два сигнала одной sphere обязаны одновременно попадать в результат, если проходят общий top-N.
+Формулу не менять. Polarity остаётся на physical group/unit и передаётся вместе с `sphere/facet`.
 
-### 8.6. Narrative
+### 7.6. Wire projection и validators
 
-Обновить текущий `today_narrative_service.py` и существующий sanitizer, не создавая отдельный narrative pipeline.
+В `apps/api/app/schemas/today_convergence.py` и связанных projection builders:
 
-В prompt каждого блока передавать:
+- заменить `primarySphere/secondarySphere` на `sphere/facet`;
+- удалить `group_sphere_distinct` validator;
+- удалить `sphere_union_cap`; payload ограничивается количеством groups/events, а не числом distinct spheres;
+- сохранить event-reference, content-state, time-precision и остальные fail-closed validators;
+- обновить event/main/impulse/group models согласованно.
+
+### 7.7. Narrative и sanitizer
+
+В prompt передавать:
 
 - `sphere`;
-- `facet` или `null`;
+- `facet|null`;
 - `polarity`;
-- конкретные houses/planets/fact IDs этого сигнала.
+- source fact IDs;
+- houses/planets как deterministic grounding.
 
-Правила текста:
+Capability rule:
 
-- объяснять только конкретный сигнал;
-- не распространять polarity на всю сферу;
-- при `facet=null` использовать только общий язык сферы;
-- не упоминать другую sphere/facet;
-- не ссылаться на дом или конкретное событие, которого нет в fact-pack;
-- при нарушении существующий sanitizer делает одну регенерацию, затем возвращает `summary=null`.
+- при `capabilities.houses=true` дома можно использовать и называть в тексте;
+- при `capabilities.houses=false` house data разрешена только как внутреннее grounding resolver, но **не передаётся модели как разрешённый claim и не может упоминаться в output**;
+- существующие regex/capability guards не ослаблять.
 
----
+Обновить `narrative_sanitizer.py`:
 
-## 9. Изменения контрактов
+- заменить старые sphere patterns/related-spheres на новые 12 keys и facets;
+- удалить разрешённые связи `money↔shopping`, `decisions` и другие старые исключения;
+- запретить foreign sphere/facet и распространение polarity на всю sphere;
+- `facet=null` допускает только общий язык sphere;
+- одна regeneration, затем `summary=null`/существующий honest pending.
 
-Так как версия ещё не вышла в production, контракты меняются напрямую, без legacy union и compatibility fields.
+### 7.8. Страницы сфер и drilldown
 
-Во всех current Pydantic/OpenAPI/generated TypeScript моделях:
+Атомарно обновить:
 
-### Для convergence/group signal
-
-Удалить:
-
-```text
-primarySphere
-secondarySphere
-```
-
-Добавить/оставить:
-
-```text
-sphere: SphereKey
-facet: string | null
-polarity: supportive | tense | mixed
-```
-
-### Для quiet-day event/impulse
-
-```text
-sphere: SphereKey
-facet: string | null
-polarity: supportive | tense | mixed
-```
-
-### SphereKey
-
-Зафиксировать literal union из новых 12 ключей. Старые `decisions` и `shopping` удалить полностью.
-
-### Версии
-
-- текущий schema namespace можно оставить v1, потому что он не был опубликован;
-- `contract_version` увеличить как breaking internal change;
-- generated OpenAPI/TypeScript обновить штатной командой проекта;
-- не оставлять deprecated aliases.
+- `today_sphere_page_service.py`;
+- `today_sphere_drilldown.py` и его schema/tests, даже если текущий frontend endpoint не использует;
+- natal narrative cache keys/fixtures для новых sphere keys;
+- все места, где ожидаются primary/secondary sphere.
 
 ---
 
-## 10. Изменения frontend
+## 8. Контракты, frontend и check-in
 
-### 10.1. Навигатор сфер
+### 8.1. Wire versioning
 
-Порядок карточек:
+Не вводить несуществующий `contract_version`.
+
+Принято:
+
+- `TodayConvergencePayload.schema_version`: bump `1 → 2`;
+- `formula_version`: оставить `today-convergence-2`, поскольку physical hero/formula не меняется;
+- `calculation_version`: bump на следующую текущую project revision, поскольку projection/selection semantics изменились;
+- canon hash изменится из-за новых/изменённых канонов;
+- legacy schema union и aliases не поддерживать.
+
+Пересобрать OpenAPI, generated TypeScript/Zod и registry snapshots штатными командами проекта.
+
+### 8.2. ProductSphereKey и labels
+
+Обновить единый literal union и все его consumers. Явно заменить `money → finance`, удалить `decisions/shopping`, добавить `home_family/friends_goals`.
+
+Проверить и синхронно изменить минимум:
+
+- `lib/display/sphere-labels.ts`;
+- `today-formatters.tsx`;
+- `lib/contracts/today.ts`;
+- generated `_generated.ts`/Zod;
+- icons и navigator order;
+- fixtures, visual snapshots, e2e;
+- dynamic `[key]` sphere route validation.
+
+Не писать в ТЗ «удалить отдельные routes решений/покупок»: отдельных routes нет.
+
+### 8.3. Tile summary
+
+Frontend группирует выбранные signals по sphere:
+
+- все supportive → `поддержка`;
+- все tense → `напряжение`;
+- наличие обеих сторон или хотя бы одного `mixed` → единый UI-label `поддержка + напряжение`;
+- отдельный старый label `смешанно` для sphere tile удалить/заменить;
+- polarity каждого signal остаётся видимой отдельно.
+
+### 8.4. Check-in persisted data
+
+`evening_checkins.observed_spheres` реально хранится в JSON и использует тот же ProductSphereKey. Поэтому заявление «миграция данных не требуется» к check-in неприменимо.
+
+До реализации выполнить preflight query/count по значениям:
 
 ```text
-Работа · Финансы · Документы · Отношения · Спорт · Общение
-Здоровье · Дом и семья · Поездки · Творчество · Учёба · Друзья и планы
+money
+decisions
+shopping
 ```
 
-- удалить карточки «Решения» и «Покупки»;
-- добавить «Дом и семья» и «Друзья и планы»;
-- обновить `sphere-labels`, icons, routes, types и fixtures;
-- старые routes решений/покупок удалить, redirect не нужен.
+Добавить одноразовую Alembic/data migration:
 
-### 10.2. Маркер тайла
+- `money → finance`;
+- `shopping → finance`;
+- `decisions` удалить из observed list, потому что предмет решения из старого key восстановить нельзя;
+- дедуплицировать список после mapping;
+- неизвестные keys не угадывать: зафиксировать count и fail migration либо явно очистить только после owner approval;
+- обновить check-in Pydantic schemas, service, frontend, tests и generated contracts.
 
-Для каждой sphere собрать выбранные signals текущего дня.
-
-Примеры:
-
-```text
-1 сигнал · поддержка
-2 сигнала · напряжение
-2 сигнала · поддержка + напряжение
-```
-
-Точка/маркер остаётся нейтральным и не превращается в тревожную цветовую индикацию.
-
-### 10.3. Drilldown и страница сферы
-
-Внутри сферы показывать каждый выбранный сигнал отдельно:
-
-```text
-Личные деньги · поддержка
-Финансовые обязательства · напряжение
-```
-
-Не объединять два facet в один общий LLM-текст «финансы сегодня смешанные» без расшифровки.
-
-При `facet=null` показывать label сферы без выдуманного подзаголовка.
+Если preflight докажет, что таблица пуста во всех deploy environments, migration всё равно должна быть безопасной no-op либо в verification evidence должно быть явно зафиксировано решение не создавать её.
 
 ---
 
-## 11. Тесты
+## 9. Tests
 
-Обновить существующие suites, а не строить отдельный тестовый фреймворк.
+Обновить существующие suites; отдельный framework не создавать.
 
-### 11.1. Canon tests
+### 9.1. Canon/unit/grouping
 
-В `test_today_convergence_canon.py` доказать:
+Доказать:
 
-- ровно 12 новых sphere keys в правильном порядке;
-- отсутствуют decisions/shopping;
-- присутствуют home_family/friends_goals;
-- facet keys уникальны внутри sphere;
-- все houses валидны 1..12;
-- неизвестный mapping fail-closed;
-- planet-only не создаёт узкий facet.
-
-### 11.2. Unit tests
-
-В `test_today_convergence_units.py` доказать:
-
-- unit хранит technical_spheres, но не product sphere;
-- sphere/facet не входят в canonical event identity;
-- перестановка/producer duplicate не меняют unit identity.
-
-### 11.3. Grouping tests
-
-В `test_today_convergence_groups.py` сохранить все текущие direct-star/C1/determinism тесты и заменить sphere projection cases:
-
+- `spheres.v1.yml` продолжает грузиться как технический scoring-канон;
+- `product_spheres.v1.yml` содержит ровно 12 новых keys;
+- planet-only не создаёт узкий facet;
+- `CanonicalUnit` хранит `technical_spheres`, но не product sphere;
+- sphere/facet не меняют event/group identity;
 - 2 дом → finance/personal_money;
-- 8 дом → finance/shared_money или obligations только при соответствующем контексте;
-- 3 дом → travel/local_travel при travel-контексте, иначе communication/documents по правилам;
-- 9 дом → travel/long_distance или study/documents по контексту;
+- 8 дом не становится obligation без context;
+- 3/9 маршрутизируются по context между travel/study/documents/communication;
 - Уран без 3/9 не создаёт travel;
 - Нептун/Уран без 5 не создают creativity;
-- две physical groups одной sphere остаются двумя группами;
-- group ID не меняется при изменении sphere/facet projection.
+- две groups одной sphere остаются двумя groups.
 
-### 11.4. Tone/selection tests
+Все существующие direct-star/C1/permutation/duplicate tests сохранить зелёными.
 
-В существующих tone/selection suites доказать:
+### 9.2. Selection/wire/tone
 
-- polarity двух групп одной sphere считается отдельно;
-- supportive personal_money + tense financial_obligations сохраняются одновременно;
-- selector не отбрасывает второй finance signal;
-- общий лимит до трёх сигналов сохраняется;
-- selected_spheres содержит finance один раз, хотя finance signals два;
-- tile summary mixed получается из сигналов, а не записывается обратно в группы.
+Доказать:
 
-### 11.5. Narrative tests
+- supportive personal_money и tense financial_obligations выбираются одновременно;
+- repeated finance не исключается;
+- convergence cap = 3 groups;
+- quiet cap = main 0..1 + impulses 0..3;
+- `selected_spheres` содержит finance один раз;
+- wire принимает повтор sphere и не применяет sphere-union cap;
+- group polarity/dayTone не меняются;
+- tile summary строится из signal polarities.
 
-Добавить focused fixtures:
+### 9.3. Narrative
 
-- finance/personal_money/supportive не пишет о кредите или налоге;
-- finance/financial_obligations/tense не объявляет напряжение во всех деньгах;
-- facet=null не превращается в конкретную покупку/долг;
+Focused fixtures:
+
+- personal_money не пишет о кредите/налоге;
+- financial_obligations не объявляет напряжение во всех финансах;
+- facet=null не превращается в покупку/долг;
+- houses=false не допускает упоминание домов;
 - health не пишет диагноз;
-- travel не появляется из одного Урана;
-- documents не ссылаются на дома вне fact-pack.
+- foreign sphere/facet вызывает reject;
+- updated sanitizer не отклоняет валидные новые keys.
 
-### 11.6. Frontend/e2e
+### 9.4. Frontend/check-in/e2e
 
-- новые 12 labels и порядок;
-- нет decisions/shopping;
-- есть home_family/friends_goals;
-- два сигнала одной sphere отображаются на одном тайле и оба открываются в drilldown;
-- mixed summary соответствует двум разным signal polarities;
-- обновлены visual baselines и fixtures.
+- правильный порядок 12 tiles;
+- нет decisions/shopping/money;
+- есть finance/home_family/friends_goals;
+- два signals одной sphere видны на одном tile и в drilldown;
+- check-in принимает новые keys;
+- migration mapping/dedup покрыты PostgreSQL и unit tests;
+- visual baselines/fixtures заменены.
 
 ---
 
-## 12. Replay и доказательство устойчивости
+## 10. Replay и доказательство устойчивости
 
-Не создавать второй replay pipeline. Использовать и при необходимости расширить существующий:
+### 10.1. Обязательная синхронизация analysis pipeline
 
-```text
-docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py
-```
+Текущий `corpus_replay.py` использует analysis-копию canon/projection, а не production `today_convergence_groups.py`. Поэтому одновременно изменить:
 
-### 12.1. Baseline до изменения
+- `analysis/convergence_canon.py`;
+- связанные analysis helpers/tests;
+- `analysis/corpus_replay.py` aggregation/report;
+- при необходимости `ablation_harness.py`, только в части product projection, не физической формулы.
 
-До начала реализации на текущем commit выполнить existing replay хотя бы на полном корпусе либо сохранить текущие проверенные daily signatures, необходимые для сравнения:
+Production и analysis resolver должны проходить parity fixtures на одинаковых inputs.
 
-- `canonical_event_ids`;
-- `group_ids` и member IDs;
-- hero keys/IDs;
-- public state;
-- dayTone;
-- group polarity.
+### 10.2. Расширить replay output
 
-Это временный verification baseline, а не новый production contract.
+Добавить daily/aggregate evidence:
 
-### 12.2. Smoke после изменения
+- canonical event IDs;
+- group IDs и member IDs;
+- driver keys;
+- hero anchor/confirmation IDs;
+- evidence level;
+- group polarity;
+- state/dayTone;
+- selected group/event IDs;
+- counts по sphere/facet;
+- `facet=null` count;
+- repeated-sphere selected count;
+- `group_without_sphere`/unmapped count;
+- occurrences старых keys.
 
-Прогнать:
+Без этих полей replay не считается доказательством данного ТЗ.
+
+### 10.3. Fingerprint и baseline procedure
+
+Добавить в `FINGERPRINT_FILES` минимум:
+
+- `grace/canon/product_spheres.v1.yml`;
+- `grace/canon/today_convergence.v1.yml`;
+- `grace/canon/today_convergence_themes.v1.yml`;
+- production canon/units/groups/selection files;
+- analysis canon/replay files.
+
+Порядок локальной работы в одном branch:
+
+1. сначала внести только replay instrumentation/parity additions, не меняя production semantics;
+2. regenerate manifest для этой instrumented baseline и выполнить baseline run;
+3. сохранить baseline aggregate/signatures и commit SHA в verification artifacts;
+4. реализовать product taxonomy/runtime изменения;
+5. regenerate candidate manifest с новым fingerprint;
+6. выполнить candidate run и сравнить physical signatures.
+
+Разные fingerprints baseline/candidate ожидаемы и фиксируют lineage. Сравнение выполняется по одинаковым chart IDs, seed, датам и physical signature fields. `--allow-source-drift` для acceptance запрещён.
+
+Это порядок выполнения внутри одного рабочего пакета; промежуточный production merge не требуется.
+
+### 10.4. Smoke
 
 ```bash
 cd /opt/solarsage-astro
 apps/api/.venv/bin/python \
   docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py \
   --output-dir /var/tmp/spheres-smoke \
+  --residues 0,1,2,3,4 \
   --limit-charts 5 \
   --from-date 2026-07-01 \
   --to-date 2026-07-30 \
   --workers 4
 ```
 
-Проверить:
+Промежуточный отдельный gate `20×365` удалить. Нужны smoke и full acceptance; распределения анализируются в full report.
 
-- ошибок 0;
-- unmapped sphere 0;
-- invalid facet 0;
-- несколько сигналов одной sphere не теряются;
-- в результатах присутствуют новые sphere keys, старых нет.
-
-### 12.3. Проверочный прогон
-
-```bash
-apps/api/.venv/bin/python \
-  docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py \
-  --output-dir /var/tmp/spheres-20x365 \
-  --limit-charts 20 \
-  --from-date 2025-08-01 \
-  --to-date 2026-07-31 \
-  --workers 8
-```
-
-Отчёт должен дополнительно показывать:
-
-- count по sphere;
-- count по facet;
-- число `facet=null`;
-- число дней с двумя/тремя сигналами одной sphere;
-- число sphere summaries supportive/tense/mixed;
-- unmapped/group-without-sphere.
-
-Эти распределения являются диагностикой, а не квотой.
-
-### 12.4. Полный acceptance replay
-
-Запустить существующий полный корпус:
-
-- 120 синтетических карт;
-- 2025-01-01..2026-12-31;
-- 730 дней;
-- exact + 4 birth-time buckets + unknown.
-
-Команда:
+### 10.5. Full acceptance replay
 
 ```bash
 apps/api/.venv/bin/python \
@@ -681,109 +598,89 @@ apps/api/.venv/bin/python \
   --workers 8
 ```
 
-Перед финальным run обновить существующий source fingerprint/manifest штатным генератором. Новый `spheres.v1.yml` и изменённые projection files должны входить в fingerprint. `--allow-source-drift` для acceptance запрещён.
+Корпус:
 
-### 12.5. Обязательные invariants baseline → candidate
+- 120 synthetic charts;
+- 730 дней;
+- exact + 4 buckets + unknown.
 
-На одинаковых физических входах должны полностью совпасть:
+Acceptance gates:
 
-- canonical event IDs;
-- physical group IDs и member IDs;
-- independence/driver keys;
-- hero anchor и confirmation;
-- hero eligibility/evidence level;
-- group polarity;
-- dayTone;
-- `convergence_today` / `quiet_day`.
-
-Меняться имеют право:
-
-- sphere/facet;
-- состав выбранного top-3, если раньше сигнал был ошибочно отброшен только из-за повторной sphere;
-- selected_spheres;
-- UI labels;
-- narrative/fact-pack.
-
-Если изменились physical groups, hero, dayTone или state, работа останавливается: это означает, что sphere/facet вмешались в физическую формулу, что запрещено данным ТЗ.
-
-### 12.6. Финальные replay gates
-
-- charts errors = 0;
+- chart errors = 0;
 - invalid ledger = 0;
-- unmapped sphere/group-without-sphere = 0;
-- unknown old sphere key = 0;
-- decisions/shopping occurrences = 0;
-- потерянных physical groups из-за повторной sphere = 0;
-- одна physical group не клонируется;
-- каждый опубликованный signal имеет одну sphere;
-- facet либо валиден для sphere, либо `null`;
-- новый selector сохраняет два сигнала одной sphere;
-- hero/state/dayTone не изменены относительно baseline.
+- unmapped/group-without-sphere = 0;
+- old keys occurrences = 0;
+- invalid facet = 0;
+- one group → one sphere;
+- group clone count = 0;
+- repeated-sphere groups не теряются из-за diversity;
+- physical event IDs, group IDs/members, driver keys, hero pair, evidence level, group polarity, state и dayTone совпадают с baseline;
+- разрешённый delta: sphere/facet, selected top-N там, где раньше срабатывал diversity-gate, selected_spheres, narrative и UI labels.
+
+Если изменились physical groups, hero, state или dayTone, реализация останавливается: product projection вмешалась в запрещённую часть формулы.
 
 ---
 
-## 13. Порядок реализации
+## 11. Порядок реализации
 
-Работу выполнить одним атомарным пакетом в следующем порядке:
+1. Добавить replay instrumentation/parity и снять baseline.
+2. Создать `product_spheres.v1.yml`; `spheres.v1.yml` оставить техническим.
+3. Изменить `today_convergence.v1.yml`, themes при необходимости и strict loader.
+4. Добавить `technical_spheres` в CanonicalUnit; убрать product projection из unit.
+5. Переделать group projection на `sphere/facet`.
+6. Убрать diversity-gate и обновить per-state selection caps.
+7. Обновить wire validators, schema version и generated contracts.
+8. Обновить narrative/capability/sanitizer.
+9. Обновить sphere page/drilldown/natal cache consumers.
+10. Выполнить check-in preflight и data migration.
+11. Обновить frontend labels/types/navigator/fixtures/e2e.
+12. Прогнать focused backend, analysis, contract, frontend и PostgreSQL tests.
+13. Прогнать smoke и full replay; зафиксировать comparison report.
 
-1. сохранить baseline replay signatures;
-2. переделать `spheres.v1.yml` и `today_convergence.v1.yml`;
-3. обновить strict canon loader/resolver;
-4. изменить CanonicalUnit и group projection;
-5. изменить selection, убрав sphere-diversity gate;
-6. изменить Pydantic/OpenAPI/generated TS contracts;
-7. обновить narrative prompt/sanitizer;
-8. обновить frontend navigator, routes, pages и drilldown;
-9. заменить fixtures/snapshots и удалить старые keys/routes;
-10. прогнать focused tests;
-11. прогнать smoke, 20×365 и полный corpus replay;
-12. зафиксировать итоговый replay report и verification evidence.
-
-Не мержить промежуточное состояние, в котором backend уже отдаёт новые keys, а frontend/контракты ещё ожидают старые, либо наоборот.
+Не мержить состояние, где backend, generated contracts и frontend ожидают разные keys/shapes.
 
 ---
 
-## 14. Что не меняем
+## 12. Вне scope
 
-В рамках этого ТЗ запрещено менять:
+Не менять:
 
-- aspect weights и orb thresholds;
-- significance и eligibility;
-- direct-star grouping;
-- independence rule;
-- rare anchor registry;
-- hero C1;
+- aspect/orb thresholds;
+- significance/eligibility;
+- direct-star grouping и independence;
+- rare anchors и hero C1;
 - tone formula;
-- birth-time exact/bucket/unknown rules;
-- общий лимит публичных сигналов дня;
-- астрологические вычисления sidecar/ephemeris.
+- birth-time publication rules;
+- sidecar/ephemeris calculations;
+- существующие per-state content caps, кроме удаления sphere-diversity ограничения.
 
-Также не входят в scope:
+Не создавать:
 
-- доказательство научной валидности астрологии;
-- новая визуальная концепция экрана;
-- production migration/compatibility;
-- shadow/canary/feature flags;
-- отдельный универсальный ontology engine.
+- compatibility layer;
+- parallel v2 runtime;
+- отдельный facets service;
+- универсальный ontology engine;
+- shadow/canary инфраструктуру.
 
 ---
 
-## 15. Критерии приёмки
+## 13. Критерии приёмки
 
-Работа принята, когда одновременно выполнено следующее:
+Работа принята, когда одновременно:
 
-1. В UI и контрактах ровно 12 новых сфер в утверждённом порядке.
-2. `decisions` и `shopping` полностью удалены.
-3. `home_family` и `friends_goals` работают end-to-end.
-4. Physical group получает ровно одну sphere и один facet/null.
-5. Sphere/facet не участвуют в canonical event ID и group ID.
-6. Полярность хранится и объясняется на уровне отдельного сигнала.
-7. Два сигнала одной sphere с разными facets/polarities сохраняются одновременно.
-8. Тайлы корректно показывают count и сводную mixed-полярность.
-9. LLM не переносит полярность одного facet на всю sphere и не выдумывает конкретный facet.
-10. Все focused backend/frontend/e2e tests зелёные.
-11. Полный replay проходит без ошибок и unmapped spheres.
-12. Baseline и candidate совпадают по physical groups, hero, state и dayTone.
-13. Старые contracts, routes, fixtures и compatibility branches удалены, а не оставлены рядом.
+1. `spheres.v1.yml` остался техническим scoring-каноном.
+2. `product_spheres.v1.yml` является единственным источником 12 product spheres/facets.
+3. В runtime/UI ровно утверждённые 12 keys; `money/decisions/shopping` отсутствуют.
+4. `finance`, `home_family`, `friends_goals` работают end-to-end.
+5. Physical group получает одну sphere и facet/null; secondary sphere удалена.
+6. Sphere/facet не входят в event/group identity.
+7. Два signals одной sphere сохраняются одновременно и имеют собственные polarities.
+8. Wire validators принимают repeated sphere и не имеют sphere-union cap.
+9. Narrative соблюдает capability, sphere, facet, polarity и fact IDs.
+10. Check-in persisted values безопасно преобразованы либо доказано отсутствие строк.
+11. Production и analysis projection имеют parity fixtures.
+12. Focused backend/frontend/contract/PostgreSQL/analysis tests зелёные.
+13. Full replay проходит gates и не меняет physical groups, hero, state и dayTone.
+14. Старые keys, fixtures, generated unions и compatibility branches удалены.
 
-После выполнения этого ТЗ текущая v1 считается единственной актуальной реализацией сфер Today Convergence.
+После выполнения текущая реализация остаётся единственной актуальной версией продукта.
