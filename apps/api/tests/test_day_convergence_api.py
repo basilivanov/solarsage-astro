@@ -131,8 +131,8 @@ def _snapshot(user_id, *, target_date: date = TARGET_DATE, profile_hash: str = P
                         "anchor_event_id": "evt-1",
                         "member_event_ids": ["evt-1", "evt-2"],
                         "evidence_event_ids": ["evt-1", "evt-2"],
-                        "primary_sphere": "work",
-                        "secondary_sphere": "documents",
+                        "sphere": "work",
+                        "facet": "daily_work",
                         "polarity": "tense",
                         "evidence_level": "high",
                     }
@@ -140,7 +140,7 @@ def _snapshot(user_id, *, target_date: date = TARGET_DATE, profile_hash: str = P
                 "main_event": None,
                 "impulses": [],
                 "selected_unit_ids": ["evt-1", "evt-2"],
-                "selected_spheres": ["work", "documents"],
+                "selected_spheres": ["work"],
             },
         },
         canonical_input_json={

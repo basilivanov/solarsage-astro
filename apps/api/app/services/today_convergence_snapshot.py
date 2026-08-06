@@ -222,8 +222,17 @@ def _validate_event(event: CanonicalSelectedEvent, unit_by_id: dict[str, Canonic
     unit_id = event.unit.canonical_event_id
     if unit_id not in unit_by_id or unit_by_id[unit_id] is not event.unit:
         _fail("foreign_event_reference")
-    if event.product_sphere not in canon.canonical_spheres:
+    if event.sphere not in canon.canonical_spheres:
         _fail("unknown_selected_sphere")
+    if event.facet is not None:
+        product_sphere = canon.product_spheres.get(event.sphere)
+        if (
+            not isinstance(event.facet, str)
+            or not event.facet.strip()
+            or product_sphere is None
+            or event.facet not in {facet.key for facet in product_sphere.facets}
+        ):
+            _fail("unknown_selected_facet")
     if event.polarity not in {"supportive", "tense", "mixed"}:
         _fail("selected_polarity")
     if event.evidence_level not in {"high", "medium"}:
@@ -252,10 +261,17 @@ def _validate_selection(
         member_ids = [member.canonical_event_id for member in group.member_units]
         if any(unit_by_id.get(unit_id) is not member for unit_id, member in zip(member_ids, group.member_units, strict=True)):
             _fail("foreign_group_reference")
-        if group.anchor_unit_id not in member_ids or group.primary_sphere not in canon.canonical_spheres:
+        if group.anchor_unit_id not in member_ids or group.sphere not in canon.canonical_spheres:
             _fail("foreign_group_reference")
-        if group.secondary_sphere is not None and group.secondary_sphere not in canon.canonical_spheres:
-            _fail("unknown_selected_sphere")
+        if group.facet is not None:
+            product_sphere = canon.product_spheres.get(group.sphere)
+            if (
+                not isinstance(group.facet, str)
+                or not group.facet.strip()
+                or product_sphere is None
+                or group.facet not in {facet.key for facet in product_sphere.facets}
+            ):
+                _fail("unknown_selected_facet")
 
     selected_ids = selection.selected_unit_ids
     if not isinstance(selected_ids, tuple) or len(selected_ids) != len(set(selected_ids)):
@@ -360,7 +376,8 @@ def compute_today_profile_hash(profile: object, resolution: BirthTimeResolution)
 def _selected_event_payload(event: CanonicalSelectedEvent) -> dict[str, object]:
     return {
         "event_id": event.unit.canonical_event_id,
-        "sphere": event.product_sphere,
+        "sphere": event.sphere,
+        "facet": event.facet,
         "polarity": event.polarity,
         "evidence_level": event.evidence_level,
     }
@@ -379,8 +396,8 @@ def _result_pack(
                 "anchor_event_id": group.anchor_unit_id,
                 "member_event_ids": [unit.canonical_event_id for unit in group.member_units],
                 "evidence_event_ids": list(selected.evidence_event_ids),
-                "primary_sphere": group.primary_sphere,
-                "secondary_sphere": group.secondary_sphere,
+                "sphere": group.sphere,
+                "facet": group.facet,
                 "polarity": selected.polarity,
                 "evidence_level": group.evidence_level,
             }

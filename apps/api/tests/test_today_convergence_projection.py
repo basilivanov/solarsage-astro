@@ -102,7 +102,7 @@ def _factor(
         "aspect_type": aspect_type,
         "semantic_key": f"semantic-{event_id}",
         "driver_key": f"driver-{event_id}",
-        "product_spheres": ["work"],
+        "technical_spheres": ["work_status_achievement"],
         "polarity": polarity,
         "exact_at": exact_at,
         "active_from": active_from,
@@ -122,8 +122,8 @@ def _hero_result() -> dict[str, Any]:
                     "anchor_event_id": "evt-1",
                     "member_event_ids": ["evt-1", "evt-2"],
                     "evidence_event_ids": ["evt-1", "evt-2"],
-                    "primary_sphere": "work",
-                    "secondary_sphere": "documents",
+                    "sphere": "work",
+                    "facet": "daily_work",
                     "polarity": "tense",
                     "evidence_level": "high",
                 }
@@ -131,7 +131,7 @@ def _hero_result() -> dict[str, Any]:
             "main_event": None,
             "impulses": [],
             "selected_unit_ids": ["evt-1", "evt-2"],
-            "selected_spheres": ["work", "documents"],
+            "selected_spheres": ["work"],
         },
     }
 
@@ -148,8 +148,8 @@ def _overlapping_convergence_result() -> dict[str, Any]:
                     "anchor_event_id": "evt-shared",
                     "member_event_ids": ["evt-shared", "evt-first-only"],
                     "evidence_event_ids": ["evt-shared", "evt-first-only"],
-                    "primary_sphere": "work",
-                    "secondary_sphere": "documents",
+                    "sphere": "work",
+                    "facet": "daily_work",
                     "polarity": "tense",
                     "evidence_level": "high",
                 },
@@ -158,8 +158,8 @@ def _overlapping_convergence_result() -> dict[str, Any]:
                     "anchor_event_id": "evt-shared",
                     "member_event_ids": ["evt-shared", "evt-second-only"],
                     "evidence_event_ids": ["evt-shared", "evt-second-only"],
-                    "primary_sphere": "money",
-                    "secondary_sphere": "documents",
+                    "sphere": "finance",
+                    "facet": "personal_money",
                     "polarity": "supportive",
                     "evidence_level": "medium",
                 },
@@ -167,7 +167,7 @@ def _overlapping_convergence_result() -> dict[str, Any]:
             "main_event": None,
             "impulses": [],
             "selected_unit_ids": ["evt-shared", "evt-first-only", "evt-second-only"],
-            "selected_spheres": ["work", "documents", "money"],
+            "selected_spheres": ["work", "finance"],
         },
     }
 
@@ -230,9 +230,11 @@ def test_overlapping_convergences_union_shared_event_with_first_group_presentati
         "cvg-overlap-first",
         "cvg-overlap-second",
     ]
-    assert payload.convergences[0].primary_sphere == "work"
+    assert payload.convergences[0].sphere == "work"
+    assert payload.convergences[0].facet == "daily_work"
     assert payload.convergences[0].polarity == "tense"
-    assert payload.convergences[1].primary_sphere == "money"
+    assert payload.convergences[1].sphere == "finance"
+    assert payload.convergences[1].facet == "personal_money"
     assert payload.convergences[1].polarity == "supportive"
     assert [group.event_ids for group in payload.convergences] == [
         ["evt-shared", "evt-first-only"],
@@ -524,7 +526,7 @@ def test_preview_preserves_deterministic_teaser_and_hides_wire_content() -> None
     assert payload.state == "convergence_today"
     assert payload.day_tone == "supportive"
     assert payload.preview_teaser is not None
-    assert payload.preview_teaser.spheres == ["work", "documents"]
+    assert payload.preview_teaser.spheres == ["work"]
     assert payload.convergences == []
     assert payload.events == []
     assert payload.content_state == "not_needed"

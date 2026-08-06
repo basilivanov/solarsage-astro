@@ -132,8 +132,8 @@ def projection(result: CanonicalPipelineBuilt) -> dict:
                 "hero_anchor_id": group.hero_anchor_id,
                 "hero_confirmation_id": group.hero_confirmation_id,
                 "evidence_level": group.evidence_level,
-                "primary_sphere": group.primary_sphere,
-                "secondary_sphere": group.secondary_sphere,
+                "sphere": group.sphere,
+                "facet": group.facet,
             }
             for group in result.grouping.groups
         ],
@@ -156,7 +156,7 @@ def projection(result: CanonicalPipelineBuilt) -> dict:
                 "candidate_event_count": result.selection.audit.candidate_event_count,
                 "selected_event_count": result.selection.audit.selected_event_count,
                 "steady_exclusion_count": result.selection.audit.steady_exclusion_count,
-                "sphere_cap_exclusion_count": result.selection.audit.sphere_cap_exclusion_count,
+                "selection_cap_exclusion_count": result.selection.audit.selection_cap_exclusion_count,
             },
         },
     }

@@ -67,17 +67,17 @@ _NO_STRONG_ACCENT_TITLE = "Ровный фон без сильного акце�
 _MISSING = object()
 _SPHERES = frozenset({
     "work",
-    "money",
+    "finance",
     "documents",
     "relationships",
     "sport",
     "communication",
     "health",
-    "decisions",
+    "home_family",
     "travel",
     "creativity",
     "study",
-    "shopping",
+    "friends_goals",
 })
 _POLARITIES = frozenset({"supportive", "tense", "mixed"})
 _EVIDENCE_LEVELS = frozenset({"high", "medium"})
@@ -215,6 +215,7 @@ def _source_datetime(
 @dataclass(frozen=True)
 class _EventPresentation:
     sphere: str
+    facet: str | None
     polarity: str
     evidence_level: str
 
@@ -307,7 +308,7 @@ def _snapshot_selection(snapshot: TodaySnapshot) -> tuple[Mapping[str, Any], _Se
     impulse_values = _sequence(_value(selected, "impulses"), "impulses")
     impulses = [_mapping(value, "impulse") for value in impulse_values]
     selected_spheres = _text_list(_value(selected, "selected_spheres", "selectedSpheres"), "selected_spheres")
-    if any(sphere not in _SPHERES for sphere in selected_spheres) or len(selected_spheres) > 3:
+    if any(sphere not in _SPHERES for sphere in selected_spheres):
         _fail("selected_spheres")
     selected_unit_ids = _text_list(_value(selected, "selected_unit_ids", "selectedUnitIds"), "selected_unit_ids")
     return result, _Selection(
@@ -338,16 +339,17 @@ def _presentation(
     value: Mapping[str, Any],
     *,
     event_id_key: str = "event_id",
-) -> tuple[str, str, str, str]:
+) -> tuple[str, str | None, str, str, str]:
     event_id = _text(_value(value, event_id_key, "eventId"), "selected_event_id")
     sphere = _enum_text(_value(value, "sphere"), _SPHERES, "selected_sphere")
+    facet = _optional_text(_value(value, "facet", default=None), "selected_facet")
     polarity = _enum_text(_value(value, "polarity"), _POLARITIES, "selected_polarity")
     evidence_level = _enum_text(
         _value(value, "evidence_level", "evidenceLevel"),
         _EVIDENCE_LEVELS,
         "selected_evidence_level",
     )
-    return event_id, sphere, polarity, evidence_level
+    return event_id, sphere, facet, polarity, evidence_level
 
 
 def _register_presentation(
@@ -408,9 +410,8 @@ def _build_deterministic_blocks(
         event_ids = [_text(event_id, "evidence_event_id") for event_id in raw_event_ids]
         if len(event_ids) != 2 or len(set(event_ids)) != 2:
             _fail("evidence_pair")
-        primary = _enum_text(_value(group, "primary_sphere", "primarySphere"), _SPHERES, "selected_sphere")
-        raw_secondary = _value(group, "secondary_sphere", "secondarySphere", default=None)
-        secondary = None if raw_secondary is None else _enum_text(raw_secondary, _SPHERES, "selected_sphere")
+        sphere = _enum_text(_value(group, "sphere"), _SPHERES, "selected_sphere")
+        facet = _optional_text(_value(group, "facet", default=None), "selected_facet")
         polarity = _enum_text(_value(group, "polarity"), _POLARITIES, "selected_polarity")
         evidence = _enum_text(
             _value(group, "evidence_level", "evidenceLevel"),
@@ -426,7 +427,6 @@ def _build_deterministic_blocks(
             _fail("foreign_event_reference")
         for index, event_id in enumerate(event_ids):
             is_anchor = anchor_event_id == event_id or (anchor_event_id is None and index == 0)
-            sphere = primary if is_anchor or secondary is None else secondary
             unit_polarity = factor_units[event_id].get("polarity")
             event_polarity = (
                 polarity
@@ -445,7 +445,7 @@ def _build_deterministic_blocks(
                 event_evidence = "medium"
             _register_presentation(
                 event_id,
-                _EventPresentation(sphere=sphere, polarity=event_polarity, evidence_level=event_evidence),
+                _EventPresentation(sphere=sphere, facet=facet, polarity=event_polarity, evidence_level=event_evidence),
                 factor_units,
                 presentations,
                 ordered_ids,
@@ -453,8 +453,8 @@ def _build_deterministic_blocks(
             )
         groups.append({
             "id": group_id,
-            "primary_sphere": primary,
-            "secondary_sphere": secondary,
+            "sphere": sphere,
+            "facet": facet,
             "polarity": polarity,
             "evidence_level": evidence,
             "event_ids": event_ids,
@@ -465,10 +465,10 @@ def _build_deterministic_blocks(
 
     main_wire: dict[str, Any] | None = None
     if selection.main_event is not None:
-        event_id, sphere, polarity, evidence = _presentation(selection.main_event)
+        event_id, sphere, facet, polarity, evidence = _presentation(selection.main_event)
         _register_presentation(
             event_id,
-            _EventPresentation(sphere=sphere, polarity=polarity, evidence_level=evidence),
+            _EventPresentation(sphere=sphere, facet=facet, polarity=polarity, evidence_level=evidence),
             factor_units,
             presentations,
             ordered_ids,
@@ -477,6 +477,7 @@ def _build_deterministic_blocks(
             "id": f"mev_v1_{event_id}",
             "event_id": event_id,
             "sphere": sphere,
+            "facet": facet,
             "polarity": polarity,
             "evidence_level": evidence,
             "time": _event_time(factor_units[event_id], snapshot.birth_time_mode, timezone),
@@ -489,10 +490,10 @@ def _build_deterministic_blocks(
     if len(selection.impulses) > 3:
         _fail("impulse_cap")
     for impulse in selection.impulses:
-        event_id, sphere, polarity, evidence = _presentation(impulse)
+        event_id, sphere, facet, polarity, evidence = _presentation(impulse)
         _register_presentation(
             event_id,
-            _EventPresentation(sphere=sphere, polarity=polarity, evidence_level=evidence),
+            _EventPresentation(sphere=sphere, facet=facet, polarity=polarity, evidence_level=evidence),
             factor_units,
             presentations,
             ordered_ids,
@@ -500,6 +501,7 @@ def _build_deterministic_blocks(
         impulses_wire.append({
             "event_id": event_id,
             "sphere": sphere,
+            "facet": facet,
             "polarity": polarity,
             "evidence_level": evidence,
             "time": _event_time(factor_units[event_id], snapshot.birth_time_mode, timezone),
@@ -532,6 +534,7 @@ def _build_deterministic_blocks(
             "kind": kind,
             "title": build_today_convergence_event_title(unit),
             "sphere": presentation.sphere,
+            "facet": presentation.facet,
             "polarity": presentation.polarity,
             "evidence_level": presentation.evidence_level,
             "time": _event_time(unit, snapshot.birth_time_mode, timezone),
@@ -826,7 +829,7 @@ def _snapshot_payload(
 
     if access_state.state == "preview":
         wire: dict[str, Any] = {
-            "schema_version": 1,
+            "schema_version": 2,
             "snapshot_id": str(snapshot.id),
             "target_date": snapshot.target_date,
             "timezone": snapshot.timezone,
@@ -857,7 +860,7 @@ def _snapshot_payload(
         impulses,
     )
     wire = {
-        "schema_version": 1,
+        "schema_version": 2,
         "snapshot_id": str(snapshot.id),
         "target_date": snapshot.target_date,
         "timezone": snapshot.timezone,
@@ -936,7 +939,7 @@ def project_empty_payload(
         _fail("locked_unavailable_conflict")
     state = "unavailable" if unavailable else None
     wire: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "snapshot_id": None,
         "target_date": target_date,
         "timezone": timezone_name,

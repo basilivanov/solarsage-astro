@@ -66,7 +66,7 @@ def test_all_canonical_fixtures_validate_and_round_trip_by_alias() -> None:
     for name in FIXTURES:
         payload = TodayConvergencePayload.model_validate(fixture(name))
         dumped = payload.model_dump(by_alias=True, mode="json")
-        assert dumped["schemaVersion"] == 1
+        assert dumped["schemaVersion"] == 2
         assert TodayConvergencePayload.model_validate(dumped) == payload
 
 
@@ -266,12 +266,13 @@ def test_quiet_state_allows_main_event_three_impulses_and_lookahead() -> None:
     assert len(parsed.events) == 4
 
 
-def test_quiet_maximum_composition_rejects_fourth_presentation_sphere() -> None:
+def test_quiet_maximum_composition_allows_repeated_and_fourth_presentation_sphere() -> None:
     payload = _max_quiet_composition()
-    payload["impulses"][0]["sphere"] = "money"
-    payload["events"][1]["sphere"] = "money"
+    payload["impulses"][0]["sphere"] = "finance"
+    payload["events"][1]["sphere"] = "finance"
 
-    invalid(payload, "sphere_union_cap")
+    parsed = TodayConvergencePayload.model_validate(payload)
+    assert parsed.impulses[0].sphere == "finance"
 
 
 def test_quiet_state_requires_content() -> None:
@@ -316,10 +317,10 @@ def test_narrative_sources_must_reference_selected_events() -> None:
     invalid(payload, "narrative_source_event_unknown")
 
 
-def test_sphere_projection_is_closed_and_capped() -> None:
+def test_sphere_projection_accepts_repeated_spheres_without_union_cap() -> None:
     payload = fixture("today-convergence-full-hero-ready.json")
     payload["convergences"][0]["secondarySphere"] = "work"
-    invalid(payload, "group_sphere_distinct")
+    invalid(payload, "extra_forbidden")
 
     payload = fixture("today-convergence-full-hero-ready.json")
     payload["events"].extend([
@@ -328,8 +329,8 @@ def test_sphere_projection_is_closed_and_capped() -> None:
     ])
     payload["convergences"].append({
         "id": "cvg-2",
-        "primarySphere": "money",
-        "secondarySphere": "relationships",
+        "sphere": "finance",
+        "facet": "personal_money",
         "polarity": "tense",
         "evidenceLevel": "high",
         "eventIds": ["evt-3", "evt-4"],
@@ -337,7 +338,8 @@ def test_sphere_projection_is_closed_and_capped() -> None:
         "meaning": None,
         "action": None,
     })
-    invalid(payload, "sphere_union_cap")
+    parsed = TodayConvergencePayload.model_validate(payload)
+    assert [group.sphere for group in parsed.convergences] == ["work", "finance"]
 
 
 def test_birth_time_modes_and_capabilities_are_canonical() -> None:

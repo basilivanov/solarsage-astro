@@ -57,6 +57,7 @@ def copied_canons(tmp_path: Path) -> Path:
     target.mkdir()
     for name in (
         "today_convergence.v1.yml",
+        "product_spheres.v1.yml",
         "aspect_rules.v1.yml",
         "today_convergence_themes.v1.yml",
     ):

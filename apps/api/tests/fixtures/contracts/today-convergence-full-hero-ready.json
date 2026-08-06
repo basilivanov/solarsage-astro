@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "snapshotId": "snap-hero-2026-07-31",
   "targetDate": "2026-07-31",
   "timezone": "Europe/Moscow",
@@ -30,8 +30,8 @@
   "convergences": [
     {
       "id": "cvg-hero",
-      "primarySphere": "work",
-      "secondarySphere": "documents",
+      "sphere": "work",
+      "facet": "daily_work",
       "polarity": "tense",
       "evidenceLevel": "high",
       "eventIds": ["evt-1", "evt-2"],
@@ -53,6 +53,7 @@
       "title": null,
       "kind": "aspect",
       "sphere": "work",
+      "facet": "daily_work",
       "polarity": "tense",
       "evidenceLevel": "high",
       "time": {
@@ -68,7 +69,8 @@
       "id": "evt-2",
       "title": null,
       "kind": "structural",
-      "sphere": "documents",
+      "sphere": "work",
+      "facet": "daily_work",
       "polarity": "mixed",
       "evidenceLevel": "medium",
       "time": {

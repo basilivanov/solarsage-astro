@@ -310,7 +310,7 @@ async def test_day_endpoint_returns_new_convergence_envelope(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["schemaVersion"] == 1
+    assert body["schemaVersion"] == 2
     assert body["contentState"] == "ready"
     assert "dayStatus" not in body
     assert "topFlags" not in body

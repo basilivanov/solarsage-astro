@@ -12,7 +12,8 @@
 # dependencies: today_convergence_canon, today_convergence_units, today_convergence_ledger, today_convergence_groups, today_convergence_tone, and Python standard library only.
 # side_effects: reads frozen canon when omitted; no writes, network, database, or runtime logs.
 # emitted_logs: none.
-# invariants: only upstream-accepted units are selected; public polarity and sphere caps fail closed; output is permutation-deterministic.
+# invariants: only upstream-accepted units are selected; public polarity and
+# physical content caps fail closed; output is permutation-deterministic.
 # failure_policy: malformed records, invalid timezone/date, naive datetimes, foreign references, and invalid public mappings raise TodayConvergenceSelectionError.
 # END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SELECTION
 
@@ -28,7 +29,7 @@
 #   - INPUT_VALIDATION: validate one immutable ledger/group/tone universe and IANA local-time boundary.
 #   - GROUP_SELECTION: rank public hero/medium groups and preserve exact evidence pairs.
 #   - QUIET_SELECTION: select one rare main event and up to three fresh impulses.
-#   - SPHERE_CAP: preserve first-appearance presentation spheres and skip fourth-sphere candidates.
+#   - SPHERE_PROJECTION: preserve first-appearance unique spheres without using them as a selection gate.
 #   - AUDIT: materialize frozen sorted IDs and deterministic exclusion counters.
 # owned_tests:
 #   - apps/api/tests/test_today_convergence_selection.py
@@ -42,7 +43,11 @@ from math import isfinite
 from typing import Literal, NoReturn, Sequence, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.services.today_convergence_canon import TodayConvergenceCanon, load_today_convergence_canon
+from app.services.today_convergence_canon import (
+    TodayConvergenceCanon,
+    load_today_convergence_canon,
+    resolve_product_sphere,
+)
 from app.services.today_convergence_groups import CanonicalConvergenceGroup, CanonicalGroupingResult
 from app.services.today_convergence_ledger import CanonicalLedger
 from app.services.today_convergence_tone import CanonicalToneResult
@@ -73,21 +78,22 @@ class CanonicalSelectedEvent:
     """One selected main-event or impulse unit with one public sphere."""
 
     unit: CanonicalUnit
-    product_sphere: str
+    sphere: str
+    facet: str | None
     polarity: PublicPolarity
     evidence_level: EvidenceLevel
 
 
 @dataclass(frozen=True)
 class CanonicalSelectionAudit:
-    """Immutable candidate, selected, steady, and sphere-cap diagnostics."""
+    """Immutable candidate, selected, steady, and physical-cap diagnostics."""
 
     candidate_convergence_count: int
     selected_convergence_count: int
     candidate_event_count: int
     selected_event_count: int
     steady_exclusion_count: int
-    sphere_cap_exclusion_count: int
+    selection_cap_exclusion_count: int
 
 
 @dataclass(frozen=True)
@@ -219,9 +225,13 @@ def _validate_inputs(
                 _fail("hero_pair_reference")
         if group.evidence_level not in {"high", "medium"}:
             _fail("invalid_evidence_level")
-        _validate_group_sphere(group.primary_sphere, canonical_spheres, "unmapped_group_sphere")
-        if group.secondary_sphere is not None:
-            _validate_group_sphere(group.secondary_sphere, canonical_spheres, "unmapped_group_sphere")
+        _validate_group_sphere(group.sphere, canonical_spheres, "unmapped_group_sphere")
+        if group.facet is not None:
+            if not isinstance(group.facet, str) or not group.facet.strip():
+                _fail("unmapped_group_facet")
+            product_sphere = canon.product_spheres.get(group.sphere)
+            if product_sphere is None or group.facet not in {facet.key for facet in product_sphere.facets}:
+                _fail("unmapped_group_facet")
 
     if not isinstance(tone.group_tones, tuple):
         _fail("tone_group_tuple")
@@ -288,14 +298,21 @@ def _public_polarity(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> Publi
     return cast(PublicPolarity, polarity)
 
 
-def _presentation_sphere(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> str:
-    if not isinstance(unit.product_spheres, tuple):
+def _presentation_sphere_facet(
+    unit: CanonicalUnit,
+    canon: TodayConvergenceCanon,
+) -> tuple[str, str | None]:
+    resolved = resolve_product_sphere(
+        canon,
+        house=unit.house,
+        technical_spheres=unit.technical_spheres,
+        theme_keys=unit.theme_keys,
+        source_key=unit.source_key,
+        target_key=unit.target_key,
+    )
+    if resolved is None:
         _fail("unmapped_presentation_sphere")
-    canonical_order = {sphere: index for index, sphere in enumerate(canon.canonical_spheres)}
-    values = [sphere for sphere in unit.product_spheres if isinstance(sphere, str) and sphere in canonical_order]
-    if not values:
-        _fail("unmapped_presentation_sphere")
-    return min(values, key=canonical_order.__getitem__)
+    return resolved
 
 
 def _group_rank(
@@ -313,7 +330,7 @@ def _group_rank(
         -len(group.independent_driver_keys),
         evidence_rank,
         -_finite_unit_strength(anchor),
-        sphere_order[group.primary_sphere],
+        sphere_order[group.sphere],
         group.group_id,
     )
 
@@ -383,29 +400,18 @@ def _selected_convergences(
     selected: list[CanonicalSelectedConvergence] = []
     selected_spheres: list[str] = []
     selected_sphere_set: set[str] = set()
-    sphere_cap_exclusions = 0
+    selection_cap_exclusions = 0
     for group, polarity, pair in ordered:
         if len(selected) >= 3:
-            sphere_cap_exclusions += 1
-            continue
-        group_spheres = [group.primary_sphere]
-        if group.secondary_sphere is not None:
-            group_spheres.append(group.secondary_sphere)
-        group_sphere_set = set(group_spheres)
-        if selected and not group_sphere_set.difference(selected_sphere_set):
-            sphere_cap_exclusions += 1
-            continue
-        if len(selected_sphere_set | group_sphere_set) > 3:
-            sphere_cap_exclusions += 1
+            selection_cap_exclusions += 1
             continue
         selected.append(
             CanonicalSelectedConvergence(group=group, polarity=polarity, evidence_event_ids=pair)
         )
-        for sphere in group_spheres:
-            if sphere not in selected_sphere_set:
-                selected_spheres.append(sphere)
-                selected_sphere_set.add(sphere)
-    return tuple(selected), steady_exclusions, sphere_cap_exclusions, len(selected_spheres)
+        if group.sphere not in selected_sphere_set:
+            selected_spheres.append(group.sphere)
+            selected_sphere_set.add(group.sphere)
+    return tuple(selected), steady_exclusions, selection_cap_exclusions, len(selected_spheres)
 
 
 # END_BLOCK: GROUP_SELECTION
@@ -429,9 +435,11 @@ def _selected_event(
     polarity = _public_polarity(unit, canon)
     if polarity is None:
         _fail("steady_event_polarity")
+    sphere, facet = _presentation_sphere_facet(unit, canon)
     return CanonicalSelectedEvent(
         unit=unit,
-        product_sphere=_presentation_sphere(unit, canon),
+        sphere=sphere,
+        facet=facet,
         polarity=polarity,
         evidence_level="medium",
     )
@@ -484,24 +492,20 @@ def _quiet_selection(
     selected_spheres: list[str] = []
     if main is not None:
         selected_events.append(main)
-        selected_spheres.append(main.product_sphere)
-    sphere_cap_exclusions = 0
+        selected_spheres.append(main.sphere)
+    selection_cap_exclusions = 0
     max_event_count = 3 + (1 if main is not None else 0)
     for unit in ordered_impulses:
-        event = _selected_event(unit, canon)
         if len(selected_events) >= max_event_count:
-            if event.product_sphere not in selected_spheres and len(selected_spheres) >= 3:
-                sphere_cap_exclusions += 1
+            selection_cap_exclusions += 1
             continue
-        if event.product_sphere not in selected_spheres and len(selected_spheres) >= 3:
-            sphere_cap_exclusions += 1
-            continue
+        event = _selected_event(unit, canon)
         selected_events.append(event)
-        if event.product_sphere not in selected_spheres:
-            selected_spheres.append(event.product_sphere)
+        if event.sphere not in selected_spheres:
+            selected_spheres.append(event.sphere)
     impulse_start = 1 if main is not None else 0
     impulses = tuple(selected_events[impulse_start:])
-    return main, impulses, tuple(selected_spheres), steady_exclusions, sphere_cap_exclusions
+    return main, impulses, tuple(selected_spheres), steady_exclusions, selection_cap_exclusions
 
 
 # END_BLOCK: QUIET_SELECTION
@@ -541,9 +545,8 @@ def select_canonical_presentation(
         )
         selected_sphere_values: list[str] = []
         for selected in selected_convergences:
-            for sphere in (selected.group.primary_sphere, selected.group.secondary_sphere):
-                if sphere is not None and sphere not in selected_sphere_values:
-                    selected_sphere_values.append(sphere)
+            if selected.group.sphere not in selected_sphere_values:
+                selected_sphere_values.append(selected.group.sphere)
         selected_spheres = tuple(selected_sphere_values)
         return CanonicalSelectionResult(
             state="convergence_today",
@@ -564,7 +567,7 @@ def select_canonical_presentation(
                 ),
                 selected_event_count=len(selected_ids),
                 steady_exclusion_count=group_steady_exclusions,
-                sphere_cap_exclusion_count=group_sphere_exclusions,
+                selection_cap_exclusion_count=group_sphere_exclusions,
             ),
         )
 
@@ -588,7 +591,7 @@ def select_canonical_presentation(
             candidate_event_count=len(_candidate_units(ledger, grouping)),
             selected_event_count=len(selected_ids),
             steady_exclusion_count=group_steady_exclusions + event_steady_exclusions,
-            sphere_cap_exclusion_count=group_sphere_exclusions + event_sphere_exclusions,
+            selection_cap_exclusion_count=group_sphere_exclusions + event_sphere_exclusions,
         ),
     )
 

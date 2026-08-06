@@ -4,7 +4,7 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-SELECTION
-# purpose: Validate deterministic hero, main-event, impulse, sphere-cap, and fail-closed selection.
+# purpose: Validate deterministic hero, main-event, impulse, physical-cap, and fail-closed selection.
 # owns:
 #   - apps/api/tests/test_today_convergence_selection.py
 # inputs: Immutable canonical ledger, grouping, tone, and frozen canon records.
@@ -22,7 +22,7 @@
 # semantic_blocks:
 #   - CONVERGENCE: hero/medium group ranking and evidence pairs.
 #   - QUIET: rare main event and impulse ranking.
-#   - SPHERES: presentation union cap and first-appearance order.
+#   - SPHERES: resolver-backed sphere/facet projection and first-appearance order.
 #   - VALIDATION: timezone, references, polarity, and immutable-record failures.
 # owned_tests:
 #   - self
@@ -106,18 +106,6 @@ def unit_for(raw: RawPhysicalFact):
     return result.unit
 
 
-def with_product_spheres(ledger: CanonicalLedger, spheres_by_event_id: dict[str, tuple[str, ...]]) -> tuple[CanonicalLedger, object, object]:
-    units = tuple(
-        replace(unit, product_spheres=spheres_by_event_id.get(unit.canonical_event_id, unit.product_spheres))
-        for unit in ledger.units
-    )
-    controlled = replace(ledger, units=units)
-    grouping = build_canonical_groups(controlled, CANON)
-    selected = tuple(unit.canonical_event_id for unit in controlled.units)
-    tone = compute_canonical_tone(controlled, grouping, TARGET_DATE, "UTC", selected, CANON)
-    return controlled, grouping, tone
-
-
 # START_BLOCK: CONVERGENCE
 def test_hero_evidence_selection_excludes_non_evidence_group_members() -> None:
     hero_anchor = fact(source_key="Transit_JUPITER", target_key="Natal_SATURN")
@@ -135,14 +123,9 @@ def test_hero_evidence_selection_excludes_non_evidence_group_members() -> None:
         exact_at=datetime(2026, 7, 31, 13, 0, tzinfo=timezone.utc),
     )
     ledger, _, _ = pipeline(hero_anchor, hero_confirmation, hero_extra)
-    ledger, grouping, tone = with_product_spheres(
-        ledger,
-        {
-            unit_for(hero_anchor).canonical_event_id: ("work",),
-            unit_for(hero_confirmation).canonical_event_id: ("work",),
-            unit_for(hero_extra).canonical_event_id: ("work",),
-        },
-    )
+    grouping = build_canonical_groups(ledger, CANON)
+    selected = tuple(unit.canonical_event_id for unit in ledger.units)
+    tone = compute_canonical_tone(ledger, grouping, TARGET_DATE, "UTC", selected, CANON)
     result = select_canonical_presentation(ledger, grouping, tone, TARGET_DATE, "UTC", CANON)
 
     assert result.state == "convergence_today"
@@ -164,7 +147,7 @@ def test_hero_evidence_selection_excludes_non_evidence_group_members() -> None:
     assert result.impulses == ()
 
 
-def test_convergence_caps_groups_and_spheres_without_truncating_an_accepted_group() -> None:
+def test_convergence_caps_groups_without_diversity_gate() -> None:
     rows = [
         fact(source_key="Transit_JUPITER", target_key="Natal_SATURN", technical_spheres=("work_status_achievement",)),
         fact(source_key="Transit_SATURN", target_key="Natal_SATURN", aspect_type="TRINE", temporal_role="supporting", technical_spheres=("work_status_achievement",)),
@@ -187,11 +170,14 @@ def test_convergence_caps_groups_and_spheres_without_truncating_an_accepted_grou
 
     assert result.state == "convergence_today"
     assert 1 <= len(result.convergences) <= 3
-    assert len(result.selected_spheres) <= 3
+    assert result.selected_spheres == tuple(
+        dict.fromkeys(selected.group.sphere for selected in result.convergences)
+    )
     assert len({item.group.group_id for item in result.convergences}) == len(result.convergences)
+    assert sum(item.group.sphere == "work" for item in result.convergences) == 2
     assert candidate_occurrences > len(candidate_event_ids)
     assert result.audit.candidate_event_count == len(candidate_event_ids)
-    assert result.audit.sphere_cap_exclusion_count >= 1
+    assert result.audit.selection_cap_exclusion_count == 0
 
 
 # END_BLOCK: CONVERGENCE
@@ -221,7 +207,7 @@ def test_single_rare_anchor_is_quiet_main_event_not_convergence() -> None:
     assert result.impulses == ()
 
 
-def test_main_event_and_three_impulses_are_unique_and_sphere_capped() -> None:
+def test_main_event_and_three_impulses_are_unique_without_sphere_cap() -> None:
     main = fact(source_key="Transit_JUPITER", target_key="Natal_SATURN", strength=0.95)
     moon = fact(source_key="Transit_MOON", target_key="Natal_MOON", technical_spheres=("money_security_resources",), strength=0.9)
     mercury = fact(source_key="Transit_MERCURY", target_key="Natal_MERCURY", technical_spheres=("relationships_partnership",), strength=0.8)
@@ -229,16 +215,9 @@ def test_main_event_and_three_impulses_are_unique_and_sphere_capped() -> None:
     fourth = fact(source_key="Transit_MOON", target_key="Natal_MARS", technical_spheres=("work_status_achievement",), strength=0.75)
 
     ledger, _, _ = pipeline(main, moon, mercury, venus, fourth)
-    ledger, grouping, tone = with_product_spheres(
-        ledger,
-        {
-            unit_for(main).canonical_event_id: ("work",),
-            unit_for(moon).canonical_event_id: ("money",),
-            unit_for(mercury).canonical_event_id: ("relationships",),
-            unit_for(venus).canonical_event_id: ("relationships",),
-            unit_for(fourth).canonical_event_id: ("health",),
-        },
-    )
+    grouping = build_canonical_groups(ledger, CANON)
+    selected = tuple(unit.canonical_event_id for unit in ledger.units)
+    tone = compute_canonical_tone(ledger, grouping, TARGET_DATE, "UTC", selected, CANON)
     result = select_canonical_presentation(ledger, grouping, tone, TARGET_DATE, "UTC", CANON)
 
     assert result.state == "quiet_day"
@@ -246,14 +225,12 @@ def test_main_event_and_three_impulses_are_unique_and_sphere_capped() -> None:
     assert len(result.impulses) == 3
     selected_ids = result.selected_unit_ids
     assert len(selected_ids) == len(set(selected_ids)) == 4
-    expected_impulse_ids = tuple(
-        unit_for(row).canonical_event_id for row in (moon, mercury, venus)
-    )
+    expected_impulse_ids = tuple(unit_for(row).canonical_event_id for row in (moon, mercury, fourth))
     assert tuple(event.unit.canonical_event_id for event in result.impulses) == expected_impulse_ids
-    assert unit_for(fourth).canonical_event_id not in result.selected_unit_ids
+    assert unit_for(venus).canonical_event_id not in result.selected_unit_ids
     assert len(result.selected_spheres) == 3
-    assert result.selected_spheres[0] == "work"
-    assert result.audit.sphere_cap_exclusion_count >= 1
+    assert result.selected_spheres[0] == result.main_event.sphere
+    assert result.audit.selection_cap_exclusion_count >= 1
 
 
 def test_impulses_rank_strength_then_local_time_then_event_id_and_permute_stably() -> None:

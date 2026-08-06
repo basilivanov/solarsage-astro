@@ -59,17 +59,17 @@ from .access import ContentAccessState
 
 CanonicalSphere = Literal[
     "work",
-    "money",
+    "finance",
     "documents",
     "relationships",
     "sport",
     "communication",
     "health",
-    "decisions",
+    "home_family",
     "travel",
     "creativity",
     "study",
-    "shopping",
+    "friends_goals",
 ]
 ConvergenceState = Literal["convergence_today", "quiet_day", "unavailable"]
 DayTone = Literal["steady", "supportive", "mixed", "tense"]
@@ -181,7 +181,7 @@ class TodayConvergenceBirthTime(CamelModel):
 
 # START_BLOCK: CONTENT_BLOCKS
 class TodayConvergencePreviewTeaser(CamelModel):
-    spheres: list[CanonicalSphere] = Field(default_factory=list, max_length=3)
+    spheres: list[CanonicalSphere] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_spheres(self) -> TodayConvergencePreviewTeaser:
@@ -259,6 +259,7 @@ class TodayConvergenceEvent(CamelModel):
     kind: str
     title: str | None
     sphere: CanonicalSphere
+    facet: str | None = None
     polarity: Polarity
     evidence_level: EvidenceLevel
     time: TodayConvergenceEventTime
@@ -278,8 +279,8 @@ class TodayConvergenceEvent(CamelModel):
 
 class TodayConvergenceGroup(CamelModel):
     id: str
-    primary_sphere: CanonicalSphere
-    secondary_sphere: CanonicalSphere | None = None
+    sphere: CanonicalSphere
+    facet: str | None = None
     polarity: Polarity
     evidence_level: EvidenceLevel
     event_ids: list[str] = Field(..., min_length=2)
@@ -293,8 +294,6 @@ class TodayConvergenceGroup(CamelModel):
         _validate_id_list(self.event_ids)
         if len(self.event_ids) < 2:
             _fail("group_event_count")
-        if self.primary_sphere == self.secondary_sphere:
-            _fail("group_sphere_distinct")
         return self
 
 
@@ -302,6 +301,7 @@ class TodayConvergenceMainEvent(CamelModel):
     id: str
     event_id: str
     sphere: CanonicalSphere
+    facet: str | None = None
     polarity: Polarity
     evidence_level: EvidenceLevel
     time: TodayConvergenceEventTime
@@ -319,6 +319,7 @@ class TodayConvergenceMainEvent(CamelModel):
 class TodayConvergenceImpulse(CamelModel):
     event_id: str
     sphere: CanonicalSphere
+    facet: str | None = None
     polarity: Polarity
     evidence_level: EvidenceLevel
     time: TodayConvergenceEventTime
@@ -374,7 +375,7 @@ class TodayConvergenceLookahead(CamelModel):
 
 # START_BLOCK: ROOT_VALIDATION
 class TodayConvergencePayload(CamelModel):
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     snapshot_id: str | None
     target_date: date
     timezone: str
@@ -509,21 +510,14 @@ class TodayConvergencePayload(CamelModel):
         if actual_event_ids != selected_event_ids:
             _fail("event_ledger_mismatch")
 
-        presentation_spheres: set[str] = set()
         for group in self.convergences:
-            presentation_spheres.add(group.primary_sphere)
-            if group.secondary_sphere is not None:
-                presentation_spheres.add(group.secondary_sphere)
             for narrative in (group.summary, group.meaning, group.action):
                 self._validate_narrative(narrative, selected_event_ids)
         for block in (self.main_event, *self.impulses):
             if block is None:
                 continue
-            presentation_spheres.add(block.sphere)
             for narrative in (block.summary, block.meaning, block.action):
                 self._validate_narrative(narrative, selected_event_ids)
-        if len(presentation_spheres) > 3:
-            _fail("sphere_union_cap")
 
         presented_times = [event.time for event in self.events]
         if self.main_event is not None:
