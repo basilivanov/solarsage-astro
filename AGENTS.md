@@ -285,6 +285,16 @@ export async function runThing(input: string): Promise<Result> {
 
 Ограничение: маркеры — комментарии; `scripts/grace/check-markers.sh` проверяет их наличие и парность, но не истинность. Для навигации им доверять можно; перед правкой читать сам код блока и его callers.
 
+## Sandbox-прототипирование (канон)
+
+Любой UI-прототип делается СРАЗУ в боевых React-компонентах и смотрится через dev-only песочницу — отдельные HTML-макеты и мок-приложения запрещены (перенос «1 в 1» достигается по построению). Полный workflow — скилл `sandbox-prototype`.
+
+- Маршрут: `app/sandbox/` (`/sandbox` — индекс, `/sandbox/today?fixture=<name>` — экран дня). Guard `NODE_ENV=development`: в prod-сборке 404.
+- Фикстуры: `__tests__/fixtures/today_convergence_v2/*.json` — те же, что в unit/e2e тестах; новые состояния = новый JSON туда же.
+- Запуск: `npx next dev --webpack -p 3000` (ТОЛЬКО `--webpack`, Turbopack падает на inferred root). Порт 3000, вручную, по окончании процесс убить — не оставлять nohup-сирот.
+- Итерация: правка компонента → fast refresh ~1 сек → скрин/CF-туннель владельцу на апрув.
+- Sandbox-страницы не импортируют `lib/mocks/*`, auth и API; контент — только фикстуры.
+
 ## Тестирование
 
 ### Vitest (unit)
