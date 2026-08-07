@@ -6820,175 +6820,6 @@
         "title": "TodayPayload",
         "type": "object"
       },
-      "TodaySphereDrilldownConvergence": {
-        "additionalProperties": false,
-        "properties": {
-          "eventIds": {
-            "items": {
-              "type": "string"
-            },
-            "minItems": 2,
-            "title": "Eventids",
-            "type": "array"
-          },
-          "evidenceLevel": {
-            "enum": [
-              "high",
-              "medium"
-            ],
-            "title": "Evidencelevel",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "polarity": {
-            "enum": [
-              "supportive",
-              "tense",
-              "mixed"
-            ],
-            "title": "Polarity",
-            "type": "string"
-          },
-          "primarySphere": {
-            "enum": [
-              "work",
-              "finance",
-              "documents",
-              "relationships",
-              "sport",
-              "communication",
-              "health",
-              "home_family",
-              "travel",
-              "creativity",
-              "study",
-              "friends_goals"
-            ],
-            "title": "Primarysphere",
-            "type": "string"
-          },
-          "secondarySphere": {
-            "anyOf": [
-              {
-                "enum": [
-                  "work",
-                  "finance",
-                  "documents",
-                  "relationships",
-                  "sport",
-                  "communication",
-                  "health",
-                  "home_family",
-                  "travel",
-                  "creativity",
-                  "study",
-                  "friends_goals"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Secondarysphere"
-          }
-        },
-        "required": [
-          "id",
-          "primarySphere",
-          "secondarySphere",
-          "polarity",
-          "evidenceLevel",
-          "eventIds"
-        ],
-        "title": "TodaySphereDrilldownConvergence",
-        "type": "object"
-      },
-      "TodaySphereDrilldownPayload": {
-        "additionalProperties": false,
-        "properties": {
-          "birthTimeMode": {
-            "enum": [
-              "exact",
-              "bucket",
-              "unknown"
-            ],
-            "title": "Birthtimemode",
-            "type": "string"
-          },
-          "convergence": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TodaySphereDrilldownConvergence"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "dayTone": {
-            "enum": [
-              "steady",
-              "supportive",
-              "mixed",
-              "tense"
-            ],
-            "title": "Daytone",
-            "type": "string"
-          },
-          "events": {
-            "items": {
-              "$ref": "#/components/schemas/TodayConvergenceEvent"
-            },
-            "title": "Events",
-            "type": "array"
-          },
-          "snapshotId": {
-            "title": "Snapshotid",
-            "type": "string"
-          },
-          "sphere": {
-            "enum": [
-              "work",
-              "finance",
-              "documents",
-              "relationships",
-              "sport",
-              "communication",
-              "health",
-              "home_family",
-              "travel",
-              "creativity",
-              "study",
-              "friends_goals"
-            ],
-            "title": "Sphere",
-            "type": "string"
-          },
-          "state": {
-            "enum": [
-              "convergence_today",
-              "quiet_day"
-            ],
-            "title": "State",
-            "type": "string"
-          }
-        },
-        "required": [
-          "snapshotId",
-          "sphere",
-          "state",
-          "dayTone",
-          "birthTimeMode",
-          "events",
-          "convergence"
-        ],
-        "title": "TodaySphereDrilldownPayload",
-        "type": "object"
-      },
       "TodaySphereNatal": {
         "additionalProperties": false,
         "properties": {
@@ -7076,6 +6907,18 @@
             "title": "Periodidentity",
             "type": "string"
           },
+          "periodSynthesis": {
+            "anyOf": [
+              {
+                "maxLength": 600,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodsynthesis"
+          },
           "periodUnavailable": {
             "default": false,
             "title": "Periodunavailable",
@@ -7129,6 +6972,18 @@
             "minLength": 1,
             "title": "Id",
             "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 600,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
           },
           "technique": {
             "enum": [
@@ -9866,27 +9721,6 @@
           }
         },
         "summary": "Contracts  Todaypayload",
-        "tags": [
-          "__contracts__"
-        ]
-      }
-    },
-    "/__contracts__/todayspheredrilldownpayload": {
-      "get": {
-        "operationId": "contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TodaySphereDrilldownPayload"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Contracts  Todayspheredrilldownpayload",
         "tags": [
           "__contracts__"
         ]

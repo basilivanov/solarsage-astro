@@ -38,7 +38,6 @@ describe("contracts feature shims", () => {
       import("@/packages/contracts/horary"),
       import("@/packages/contracts/natal"),
       import("@/packages/contracts/profile"),
-      import("@/packages/contracts/today-sphere-drilldown"),
       import("@/packages/contracts/today-sphere-page"),
       import("@/packages/contracts/today-convergence"),
     ])
@@ -46,14 +45,13 @@ describe("contracts feature shims", () => {
     // Runtime (zod) shims must expose a non-empty surface; type-only shims
     // (day-history included) are covered by the clean dynamic import itself.
     const runtimeShims = [
-      modules[7], // today-sphere-drilldown
-      modules[8], // today-sphere-page
-      modules[9], // today-convergence
+      modules[7], // today-sphere-page
+      modules[8], // today-convergence
     ]
     for (const mod of runtimeShims) {
       expect(Object.keys(mod).length).toBeGreaterThan(0)
     }
-    expect(modules).toHaveLength(10)
+    expect(modules).toHaveLength(9)
   })
 })
 // END_BLOCK: IMPORTS

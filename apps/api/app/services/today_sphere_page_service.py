@@ -138,6 +138,11 @@ _SPECIAL_POINT_FAMILIES: dict[str, frozenset[str]] = {
     "selena": frozenset({"selena", "селена"}),
     "lilith": frozenset({"lilith", "лилит"}),
 }
+_NATAL_TEMPLATE_RESIDUE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bprefixes\b", re.IGNORECASE),
+    re.compile(r"знак\s+страсти", re.IGNORECASE),
+    re.compile(r"часть\s+домов", re.IGNORECASE),
+)
 
 _PLANET_GENITIVE_RU: dict[str, str] = {
     "SUN": "Солнца",
@@ -226,13 +231,16 @@ class _PeriodCandidate:
     id: str
     technique: SpherePeriodTechnique
     title: str
+    note: str
+    target_kind: Literal["planet", "house"]
+    target_value: str
     active_from: date
     active_until: date
 
 
 @lru_cache(maxsize=1)
-def _house_to_technical_spheres() -> dict[int, tuple[str, ...]]:
-    """Load the versioned house-to-technical map from the existing canon."""
+def _technical_sphere_definitions() -> dict[str, Mapping[str, Any]]:
+    """Load the unchanged technical scoring canon used by period projection."""
     try:
         from app.services.canon_service import CANON_DIR
 
@@ -242,23 +250,14 @@ def _house_to_technical_spheres() -> dict[int, tuple[str, ...]]:
     except (OSError, TypeError, ValueError, yaml.YAMLError):
         return {}
 
-    result: dict[int, list[str]] = {}
     spheres = raw.get("spheres") if isinstance(raw, Mapping) else None
     if not isinstance(spheres, Mapping):
         return {}
-    for technical_key, definition in spheres.items():
-        if not isinstance(definition, Mapping):
-            continue
-        houses = definition.get("houses", ())
-        if not isinstance(houses, Sequence) or isinstance(houses, (str, bytes)):
-            continue
-        for raw_house in houses:
-            try:
-                house = int(raw_house)
-            except (TypeError, ValueError):
-                continue
-            result.setdefault(house, []).append(str(technical_key).strip().lower())
-    return {house: tuple(sorted(values)) for house, values in result.items()}
+    return {
+        str(technical_key).strip().lower(): definition
+        for technical_key, definition in spheres.items()
+        if isinstance(definition, Mapping)
+    }
 
 
 def _canonical_planet_name(value: object) -> str:
@@ -276,16 +275,51 @@ def _house_numbers_for_sphere(
     sphere_key: str,
     canon: TodayConvergenceCanon,
 ) -> frozenset[int]:
-    technical_keys = {
-        key
-        for key, products in canon.technical_to_product.items()
-        if sphere_key in products
-    }
     return frozenset(
         house
-        for house, technical_values in _house_to_technical_spheres().items()
-        if technical_keys.intersection(technical_values)
+        for facet in canon.product_spheres[sphere_key].facets
+        for house in facet.houses
     )
+
+
+def _planet_technical_spheres(planet: str) -> frozenset[str]:
+    """Return technical clusters that explicitly contain one planet."""
+    normalized = _canonical_planet_name(planet)
+    result: set[str] = set()
+    for technical_key, definition in _technical_sphere_definitions().items():
+        planets = definition.get("planets", ())
+        if isinstance(planets, Mapping) and normalized in {
+            _canonical_planet_name(name) for name in planets
+        }:
+            result.add(technical_key)
+    return frozenset(result)
+
+
+def _sphere_planets(sphere_key: str, canon: TodayConvergenceCanon) -> frozenset[str]:
+    """Project the product sphere's allowed planet modifiers for natal facts."""
+    return frozenset(
+        _canonical_planet_name(planet)
+        for facet in canon.product_spheres[sphere_key].facets
+        for planet in facet.modifiers.get("planets", ())
+    )
+
+
+def _sphere_matches_planet(
+    sphere_key: str,
+    planet: str,
+    canon: TodayConvergenceCanon,
+) -> bool:
+    """Map a period planet through technical clusters and product modifiers."""
+    normalized = _canonical_planet_name(planet)
+    technical_spheres = _planet_technical_spheres(normalized)
+    product = canon.product_spheres[sphere_key]
+    if any(
+        technical_sphere in facet.technical_spheres
+        for facet in product.facets
+        for technical_sphere in technical_spheres
+    ):
+        return True
+    return normalized in _sphere_planets(sphere_key, canon)
 
 
 def _safe_date(value: object) -> date | None:
@@ -358,18 +392,19 @@ def _period_matches_sphere(
     if target is None:
         return None
     target_kind, target_value = target
-    if target_kind == "planet":
-        if sphere_key in canon.planet_to_product.get(target_value, ()):
-            return target
-        return None
+    if target_kind == "house":
+        return target if int(target_value) in _house_numbers_for_sphere(sphere_key, canon) else None
 
-    technical_values = _house_to_technical_spheres().get(int(target_value), ())
-    if any(
-        sphere_key in canon.technical_to_product.get(technical_key, ())
-        for technical_key in technical_values
-    ):
+    # Solar-return payloads may carry a diagnostic house alongside a planet.
+    # That house is more specific than the planet's broad technical mapping.
+    raw_house = entry.get("house")
+    try:
+        diagnostic_house = int(raw_house) if raw_house is not None else None
+    except (TypeError, ValueError):
+        diagnostic_house = None
+    if diagnostic_house in _house_numbers_for_sphere(sphere_key, canon):
         return target
-    return None
+    return target if _sphere_matches_planet(sphere_key, target_value, canon) else None
 
 
 def _period_title(
@@ -393,12 +428,92 @@ def _period_title(
     return f"Соляр: {_PLANET_NOMINATIVE_RU.get(target_value, target_value)}"
 
 
+_PLANET_PERIOD_MEANINGS: dict[str, str] = {
+    "SUN": "самовыражение и ясные цели",
+    "MOON": "эмоции, привычки и ощущение опоры",
+    "MERCURY": "мысли, расчёты и разговоры",
+    "VENUS": "ценности, симпатии и удовольствие",
+    "MARS": "действия, темп и физическая энергия",
+    "JUPITER": "рост, знания и расширение возможностей",
+    "SATURN": "дисциплина, границы и долгие обязательства",
+    "URANUS": "обновления, свобода и неожиданные повороты",
+    "NEPTUNE": "воображение, чувствительность и внутренний образ",
+    "PLUTO": "глубокая перестройка и контроль ресурсов",
+}
+_SPHERE_PERIOD_TOPICS: dict[str, str] = {
+    "work": "рабочих задач и карьеры",
+    "finance": "денег и ресурсов",
+    "documents": "документов и оформления",
+    "relationships": "отношений и партнёрства",
+    "sport": "движения и тренировок",
+    "communication": "общения и договорённостей",
+    "health": "самочувствия и режима",
+    "home_family": "дома и семейной опоры",
+    "travel": "поездок и расширения горизонта",
+    "creativity": "творчества и самовыражения",
+    "study": "учёбы и развития навыков",
+    "friends_goals": "друзей, сообществ и планов",
+}
+_SPHERE_PERIOD_EFFECTS: dict[str, str] = {
+    "work": "результат растёт через последовательные действия",
+    "finance": "личные ресурсы и обязательства требуют общей системы",
+    "documents": "ясные формулировки и порядок в бумагах экономят силы",
+    "relationships": "важны равный обмен и заранее оговорённые правила",
+    "sport": "нагрузка лучше работает в устойчивом, повторяемом режиме",
+    "communication": "разговоры и договорённости стоит сразу переводить в ясные шаги",
+    "health": "режим и восстановление важнее разовых рывков",
+    "home_family": "решения о быте и опоре закрепляются надолго",
+    "travel": "расширение маршрута требует подготовки и гибкости",
+    "creativity": "идеи получают форму, когда для них выделено регулярное место",
+    "study": "система и практика дают больше, чем разрозненные усилия",
+    "friends_goals": "новые связи помогают пересмотреть направление и цели",
+}
+
+
+def _period_note(
+    sphere_key: str,
+    technique: SpherePeriodTechnique,
+    target_kind: Literal["planet", "house"],
+    target_value: str,
+) -> str:
+    """Build a short human explanation without starting another provider call."""
+    topic = _SPHERE_PERIOD_TOPICS.get(sphere_key, sphere_key)
+    effect = _SPHERE_PERIOD_EFFECTS.get(sphere_key, "тема раскрывается через последовательные решения")
+    technique_text = {
+        "firdar_major": "Большой фирдар задаёт длинный фон",
+        "firdar_minor": "Малый фирдар показывает акцент ближайшего периода",
+        "annual_profection": "Год профекции делает эту тему заметной в течение года",
+        "solar_return": "Соляр описывает сюжет личного года",
+    }[technique]
+    if target_kind == "house":
+        return f"{technique_text}: {target_value}-й дом связан с темой {topic}. Здесь полезно помнить, что {effect}."
+    planet = _PLANET_NOMINATIVE_RU.get(target_value, target_value)
+    meaning = _PLANET_PERIOD_MEANINGS.get(target_value, "свойства выбранного фактора")
+    return f"{planet} — это {meaning}. {technique_text} применительно к теме {topic}: {effect}."
+
+
+def _period_synthesis(
+    sphere_key: str,
+    items: Sequence[TodaySpherePeriodItem],
+    canon: TodayConvergenceCanon,
+) -> str | None:
+    """Summarize the active period stack; empty layers remain explicitly null."""
+    if not items:
+        return None
+    title = canon.product_spheres[sphere_key].title.casefold()
+    if len(items) == 1:
+        return f"Период «{items[0].title}» задаёт основной фон темы «{title}»."
+    titles = ", ".join(item.title for item in items)
+    effect = _SPHERE_PERIOD_EFFECTS.get(sphere_key, "тема усиливается через последовательные решения")
+    return f"Одновременно действуют {len(items)} периода в теме «{title}»: {titles}. Их сумма: {effect}."
+
+
 def _period_item_id(technique: str, target: str, active_from: date) -> str:
     value = f"{technique}|{target}|{active_from.isoformat()}"
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:32]
 
 
-def _period_identity(items: Sequence[_PeriodCandidate]) -> str:
+def _period_identity(items: Sequence[TodaySpherePeriodItem]) -> str:
     value = "|".join(
         f"{item.id}:{item.active_from.isoformat()}:{item.active_until.isoformat()}"
         for item in items
@@ -460,11 +575,7 @@ def build_sphere_natal_fact_pack(
     active_canon = canon or load_today_convergence_canon()
     sphere = _canonical_sphere_or_raise(sphere_key, active_canon)
     exact = birth_time_mode == "exact"
-    selected_planets = {
-        name.upper()
-        for name, products in active_canon.planet_to_product.items()
-        if sphere in products
-    }
+    selected_planets = _sphere_planets(sphere, active_canon)
     related_houses = _house_numbers_for_sphere(sphere, active_canon) if exact else frozenset()
 
     planets = [
@@ -692,6 +803,12 @@ def _validate_natal_provider_response(
         clean_text = sanitize_narrative_text(text_value)
         if clean_text is None:
             raise _NatalNarrativeError("schema_invalid")
+        # Known fragments of the retired natal templates must never enter the
+        # cache or wire response.  Keep this fail-closed at the provider
+        # boundary so the existing unavailable state remains honest.
+        if any(pattern.search(clean_text) for pattern in _NATAL_TEMPLATE_RESIDUE_PATTERNS):
+            raise _NatalNarrativeError("schema_invalid")
+        clean_text = re.sub(r"ответственой", "ответственной", clean_text, flags=re.IGNORECASE)
         if _CLOCK_TEXT_RE.search(clean_text) or _RELATIVE_DAY_RE.search(clean_text):
             raise _NatalNarrativeError("capability_violation")
         if _SPECIAL_POINT_RE.search(clean_text):
@@ -838,18 +955,14 @@ class TodaySpherePageService:
             natal=natal,
             period=period,
             period_identity="" if period_unavailable else _period_identity(
-                [
-                    _PeriodCandidate(
-                        id=item.id,
-                        technique=item.technique,
-                        title=item.title,
-                        active_from=item.active_from,
-                        active_until=item.active_until,
-                    )
-                    for item in period
-                ]
+                period
             ),
             period_unavailable=period_unavailable,
+            period_synthesis=None if period_unavailable else _period_synthesis(
+                normalized_sphere,
+                period,
+                self.canon,
+            ),
         )
     # END_BLOCK: ACCESS_AND_DATE
 
@@ -907,6 +1020,14 @@ class TodaySpherePageService:
                 id=item_id,
                 technique=technique,  # type: ignore[arg-type]
                 title=_period_title(technique, target_kind, target_value),  # type: ignore[arg-type]
+                note=_period_note(
+                    sphere_key,
+                    technique,  # type: ignore[arg-type]
+                    target_kind,
+                    target_value,
+                ),
+                target_kind=target_kind,
+                target_value=target_value,
                 active_from=active_from,
                 active_until=active_until,
             )
@@ -918,6 +1039,7 @@ class TodaySpherePageService:
                 id=item.id,
                 technique=item.technique,
                 title=item.title,
+                note=item.note,
                 active_from=item.active_from,
                 active_until=item.active_until,
             )
@@ -946,12 +1068,19 @@ class TodaySpherePageService:
             return None
         try:
             content = TodaySphereNatalContent.model_validate(row.content_json)
-            if any(
-                sanitize_narrative_text(paragraph.text) is None
-                for paragraph in content.paragraphs
-            ):
-                return None
-            return content
+            cleaned_paragraphs: list[TodaySphereNatalParagraph] = []
+            for paragraph in content.paragraphs:
+                clean_text = sanitize_narrative_text(paragraph.text)
+                if clean_text is None or any(
+                    pattern.search(clean_text)
+                    for pattern in _NATAL_TEMPLATE_RESIDUE_PATTERNS
+                ):
+                    return None
+                clean_text = re.sub(
+                    r"ответственой", "ответственной", clean_text, flags=re.IGNORECASE
+                )
+                cleaned_paragraphs.append(paragraph.model_copy(update={"text": clean_text}))
+            return content.model_copy(update={"paragraphs": cleaned_paragraphs})
         except Exception:
             return None
 

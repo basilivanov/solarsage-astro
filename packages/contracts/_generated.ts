@@ -603,23 +603,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/__contracts__/todayspheredrilldownpayload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Contracts  Todayspheredrilldownpayload */
-        get: operations["contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/__contracts__/todayspherepagepayload": {
         parameters: {
             query?: never;
@@ -3241,58 +3224,6 @@ export interface components {
             whyThisHappens: components["schemas"]["WhyThisHappens"];
             yesterdayEcho?: components["schemas"]["YesterdayEcho"] | null;
         };
-        /** TodaySphereDrilldownConvergence */
-        TodaySphereDrilldownConvergence: {
-            /** Eventids */
-            eventIds: string[];
-            /**
-             * Evidencelevel
-             * @enum {string}
-             */
-            evidenceLevel: "high" | "medium";
-            /** Id */
-            id: string;
-            /**
-             * Polarity
-             * @enum {string}
-             */
-            polarity: "supportive" | "tense" | "mixed";
-            /**
-             * Primarysphere
-             * @enum {string}
-             */
-            primarySphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
-            /** Secondarysphere */
-            secondarySphere: ("work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals") | null;
-        };
-        /** TodaySphereDrilldownPayload */
-        TodaySphereDrilldownPayload: {
-            /**
-             * Birthtimemode
-             * @enum {string}
-             */
-            birthTimeMode: "exact" | "bucket" | "unknown";
-            convergence: components["schemas"]["TodaySphereDrilldownConvergence"] | null;
-            /**
-             * Daytone
-             * @enum {string}
-             */
-            dayTone: "steady" | "supportive" | "mixed" | "tense";
-            /** Events */
-            events: components["schemas"]["TodayConvergenceEvent"][];
-            /** Snapshotid */
-            snapshotId: string;
-            /**
-             * Sphere
-             * @enum {string}
-             */
-            sphere: "work" | "finance" | "documents" | "relationships" | "sport" | "communication" | "health" | "home_family" | "travel" | "creativity" | "study" | "friends_goals";
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "convergence_today" | "quiet_day";
-        };
         /** TodaySphereNatal */
         TodaySphereNatal: {
             /** Paragraphs */
@@ -3324,6 +3255,8 @@ export interface components {
             period: components["schemas"]["TodaySpherePeriodItem"][];
             /** Periodidentity */
             periodIdentity: string;
+            /** Periodsynthesis */
+            periodSynthesis?: string | null;
             /**
              * Periodunavailable
              * @default false
@@ -3349,6 +3282,8 @@ export interface components {
             activeUntil: string;
             /** Id */
             id: string;
+            /** Note */
+            note?: string | null;
             /**
              * Technique
              * @enum {string}
@@ -4507,26 +4442,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayPayload"];
-                };
-            };
-        };
-    };
-    contracts__todayspheredrilldownpayload___contracts___todayspheredrilldownpayload_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TodaySphereDrilldownPayload"];
                 };
             };
         };

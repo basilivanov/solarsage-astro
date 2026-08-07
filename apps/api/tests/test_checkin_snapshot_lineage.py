@@ -134,8 +134,8 @@ def snapshot(
 
 def test_checkin_schema_accepts_all_canonical_spheres_null_and_empty() -> None:
     values = [
-        "work", "money", "documents", "relationships", "sport", "communication",
-        "health", "decisions", "travel", "creativity", "study", "shopping",
+        "work", "finance", "documents", "relationships", "sport", "communication",
+        "health", "home_family", "travel", "creativity", "study", "friends_goals",
     ]
 
     assert CheckinCreate(target_date=TARGET_DATE, mood=3, observed_spheres=values).observed_spheres == values
@@ -190,13 +190,13 @@ async def test_new_checkin_binds_day_snapshot_and_emits_exact_log(monkeypatch) -
     session = FakeSession([None, [], candidate])
 
     row = await CheckinService(session).create_checkin(
-        OWNER_ID, TARGET_DATE, 4, 2, 5, ["calm"], "note", ["work", "money"]
+        OWNER_ID, TARGET_DATE, 4, 2, 5, ["calm"], "note", ["work", "finance"]
     )
 
     assert row.forecast_snapshot_id == SNAPSHOT_ID
     assert row.prediction_seen_at == candidate.first_day_seen_at
     assert row.prediction_seen_surface == "day"
-    assert row.observed_spheres == ["work", "money"]
+    assert row.observed_spheres == ["work", "finance"]
     assert events == [
         ("checkin.lineage_bound", {"msg": "checkin snapshot lineage", "payload": {"surface": "day"}})
     ]
@@ -274,12 +274,12 @@ async def test_update_preserves_lineage_updates_spheres_and_emits_preserved(monk
     session = FakeSession([existing, []])
 
     row = await CheckinService(session).create_checkin(
-        OWNER_ID, TARGET_DATE, 5, 3, 4, [], "updated", ["money"]
+        OWNER_ID, TARGET_DATE, 5, 3, 4, [], "updated", ["finance"]
     )
 
     assert row.forecast_snapshot_id == SNAPSHOT_ID
     assert row.prediction_seen_surface == "day"
-    assert row.observed_spheres == ["money"]
+    assert row.observed_spheres == ["finance"]
     assert events == [
         ("checkin.lineage_preserved", {"msg": "checkin snapshot lineage", "payload": {"has_lineage": True}})
     ]
@@ -385,7 +385,7 @@ async def test_api_day_has_priority_over_newer_lookahead_and_edit_does_not_rebin
     await db_session.commit()
     second = await async_client.post(
         "/api/checkin",
-        json={"targetDate": TARGET_DATE.isoformat(), "mood": 5, "observedSpheres": ["money"]},
+        json={"targetDate": TARGET_DATE.isoformat(), "mood": 5, "observedSpheres": ["finance"]},
     )
 
     assert second.status_code == 200
@@ -393,7 +393,7 @@ async def test_api_day_has_priority_over_newer_lookahead_and_edit_does_not_rebin
     assert second_data["forecastSnapshotId"] == first_data["forecastSnapshotId"]
     assert second_data["predictionSeenAt"] == first_data["predictionSeenAt"]
     assert second_data["predictionSeenSurface"] == "day"
-    assert second_data["observedSpheres"] == ["money"]
+    assert second_data["observedSpheres"] == ["finance"]
 
 
 @pytest.mark.asyncio

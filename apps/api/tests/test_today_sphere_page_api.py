@@ -24,6 +24,7 @@
 #   - test_sphere_page_requires_authentication
 #   - test_sphere_page_rejects_invalid_and_incomplete_requests
 #   - test_sphere_page_returns_natal_and_period_layers
+#   - test_sphere_page_accepts_all_canonical_keys
 #   - test_sphere_page_keeps_natal_when_period_sidecar_is_unavailable
 # semantic_blocks:
 #   - AUTH_AND_PROFILE: session, canonical key, and onboarding checks.
@@ -45,6 +46,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, UserProfile
 from app.schemas.natal import NatalChartPlanet, NatalContextData
+from app.services.today_sphere_page_service import CANONICAL_SPHERES
 
 
 async def _login(async_client: AsyncClient, make_initdata, user_id: int) -> None:
@@ -136,9 +138,10 @@ async def test_sphere_page_rejects_invalid_and_incomplete_requests(
     make_initdata,
 ) -> None:
     await _login(async_client, make_initdata, 247001)
-    invalid = await async_client.get("/api/spheres/not-a-sphere")
-    assert invalid.status_code == 422
-    assert invalid.json() == {"detail": {"code": "INVALID_SPHERE"}}
+    for invalid_key in ("not-a-sphere", "money", "decisions", "shopping"):
+        invalid = await async_client.get(f"/api/spheres/{invalid_key}")
+        assert invalid.status_code == 422
+        assert invalid.json() == {"detail": {"code": "INVALID_SPHERE"}}
 
     incomplete = await async_client.get("/api/spheres/work")
     assert incomplete.status_code == 422
@@ -188,10 +191,48 @@ async def test_sphere_page_returns_natal_and_period_layers(
     assert data["natal"]["state"] == "ready"
     assert data["natal"]["paragraphs"][0]["sourceFactIds"] == ["natal:planet:SUN"]
     assert data["period"][0]["title"] == "Большой фирдар Солнца"
+    assert data["period"][0]["note"]
+    assert data["periodSynthesis"]
     assert data["periodUnavailable"] is False
     assert len(data["periodIdentity"]) == 32
     assert client.calls == 1
     assert user.id
+
+
+@pytest.mark.asyncio
+async def test_sphere_page_accepts_all_canonical_keys(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    await _login(async_client, make_initdata, 247005)
+    await _complete_profile(db_session, 247005)
+    from app.schemas.access import ContentAccessState
+
+    with (
+        patch("app.services.today_sphere_page_service.get_solarsage_client", return_value=_PeriodClient()),
+        patch(
+            "app.services.today_sphere_page_service.AccessService.can_access_day",
+            new=AsyncMock(
+                return_value=ContentAccessState(
+                    state="full",
+                    reason="active_subscription",
+                    referral_days_left=None,
+                    subscription_active=True,
+                    access_until="2027-01-01",
+                )
+            ),
+        ),
+        patch(
+            "app.services.today_sphere_page_service.NatalContextService.get_or_build_natal_context",
+            new=AsyncMock(return_value=_context()),
+        ),
+        patch("app.services.llm_service.LLMService", return_value=_NatalLLM()),
+    ):
+        for sphere_key in sorted(CANONICAL_SPHERES):
+            response = await async_client.get(f"/api/spheres/{sphere_key}")
+            assert response.status_code == 200
+            assert response.json()["sphere"] == sphere_key
 
 
 @pytest.mark.asyncio
@@ -231,6 +272,7 @@ async def test_sphere_page_keeps_natal_when_period_sidecar_is_unavailable(
     data = response.json()
     assert data["period"] == []
     assert data["periodIdentity"] == ""
+    assert data["periodSynthesis"] is None
     assert data["periodUnavailable"] is True
     assert data["natal"]["state"] == "ready"
     assert data["housesAvailable"] is False

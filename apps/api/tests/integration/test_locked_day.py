@@ -27,6 +27,15 @@ import pytest
 from httpx import AsyncClient
 from datetime import timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.schemas.today_convergence import TodayConvergencePayload
+
+
+def _parse_convergence_payload(data: dict) -> TodayConvergencePayload:
+    """Validate the public sphere/facet convergence envelope, not legacy Today."""
+    assert "headline" not in data
+    assert "reading" not in data
+    assert "dayStatus" not in data
+    return TodayConvergencePayload.model_validate(data)
 
 
 async def _onboard_user(async_client: AsyncClient, db_session: AsyncSession, make_initdata, user_id: int):
@@ -66,9 +75,9 @@ async def _onboard_user(async_client: AsyncClient, db_session: AsyncSession, mak
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_locked_day_returns_preview(async_client: AsyncClient, make_initdata, db_session: AsyncSession):
+async def test_locked_day_returns_locked_envelope(async_client: AsyncClient, make_initdata, db_session: AsyncSession):
     """
-    W-ACCESS.3: Locked day returns preview payload.
+    W-ACCESS.3: Locked day returns the new empty convergence envelope.
 
     Test that days beyond referral bonus (day 15+) return locked preview.
     """
@@ -87,15 +96,12 @@ async def test_locked_day_returns_preview(async_client: AsyncClient, make_initda
     assert data["access"]["state"] == "locked"
     assert data["access"]["reason"] == "outside_access_window"
 
-    # W-ACCESS.3: Preview payload characteristics
-    assert "подписке" in data["headline"].lower() or "доступен" in data["headline"].lower()
-    assert len(data["topFlags"]) == 0  # No flags for preview
-    assert data["dayStatus"] == "steady"  # Neutral status
-    assert len(data["reading"]["paragraphs"]) > 0
-    assert "подпишитесь" in data["reading"]["paragraphs"][0].lower()
-
-    # Meta should indicate fresh generation (not cached)
-    assert data["meta"]["cached"] is False
+    payload = _parse_convergence_payload(data)
+    assert payload.state is None
+    assert payload.content_state == "not_needed"
+    assert payload.snapshot_id is None
+    assert payload.convergences == []
+    assert payload.events == []
 
 
 @pytest.mark.asyncio
@@ -130,12 +136,13 @@ async def test_full_access_day_returns_full_payload(async_client: AsyncClient, m
     assert data["access"]["state"] == "full"
     assert data["access"]["reason"] == "active_referral_days"
 
-    # Full payload characteristics (not preview)
-    assert "подписке" not in data["headline"].lower()
-    # Should have real day_status (not just "steady")
-    assert data["dayStatus"] in ["steady", "challenging", "favorable"]
-    # Should have real reading (not preview text)
-    assert "подпишитесь" not in data["reading"]["paragraphs"][0].lower()
+    payload = _parse_convergence_payload(data)
+    assert payload.access.state == "full"
+    if payload.content_state == "unavailable":
+        assert payload.state == "unavailable"
+        assert payload.snapshot_id is None
+    else:
+        assert payload.state in {"convergence_today", "quiet_day"}
 
 
 @pytest.mark.asyncio
@@ -178,5 +185,9 @@ async def test_locked_day_with_subscription(async_client: AsyncClient, make_init
     assert data["access"]["reason"] == "active_subscription"
     assert data["access"]["subscriptionActive"] is True
 
-    # Should be full payload (not preview)
-    assert "подписке" not in data["headline"].lower()
+    payload = _parse_convergence_payload(data)
+    assert payload.access.state == "full"
+    if payload.content_state == "unavailable":
+        assert payload.state == "unavailable"
+    else:
+        assert payload.state in {"convergence_today", "quiet_day"}

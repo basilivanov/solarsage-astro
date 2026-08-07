@@ -27,6 +27,15 @@ import pytest
 from httpx import AsyncClient
 from datetime import timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.schemas.today_convergence import TodayConvergencePayload
+
+
+def _parse_convergence_payload(data: dict) -> TodayConvergencePayload:
+    """Validate the current public convergence wire shape and reject legacy Today."""
+    assert "headline" not in data
+    assert "reading" not in data
+    assert "dayStatus" not in data
+    return TodayConvergencePayload.model_validate(data)
 
 
 async def _onboard_user(async_client: AsyncClient, db_session: AsyncSession, make_initdata, user_id: int):
@@ -77,10 +86,10 @@ async def test_complete_user_flow(async_client: AsyncClient, make_initdata, db_s
     response = await async_client.get("/api/day/today")
     assert response.status_code == 200
     data = response.json()
-    assert "headline" in data
-    assert "reading" in data
+    payload = _parse_convergence_payload(data)
     # Access should be preview (no referral/subscription yet)
-    assert data["access"]["state"] == "preview"
+    assert payload.access.state == "preview"
+    assert payload.content_state in {"not_needed", "unavailable"}
 
     # Step 4: Create referrer
     await _onboard_user(async_client, db_session, make_initdata, user_id=8888)
@@ -98,8 +107,14 @@ async def test_complete_user_flow(async_client: AsyncClient, make_initdata, db_s
     response = await async_client.get("/api/day/today")
     assert response.status_code == 200
     data = response.json()
-    assert data["access"]["state"] == "full"
-    assert data["access"]["referralDaysLeft"] is not None
+    payload = _parse_convergence_payload(data)
+    assert payload.access.state == "full"
+    assert payload.access.referral_days_left is not None
+    if payload.content_state == "unavailable":
+        assert payload.state == "unavailable"
+        assert payload.snapshot_id is None
+    else:
+        assert payload.state in {"convergence_today", "quiet_day"}
 
 
 @pytest.mark.asyncio
@@ -127,7 +142,8 @@ async def test_calendar_navigation_flow(async_client: AsyncClient, make_initdata
     response = await async_client.get(f"/api/day/{day_date}")
     assert response.status_code == 200
     day_data = response.json()
-    assert day_data["date"] == day_date
+    day_payload = _parse_convergence_payload(day_data)
+    assert day_payload.target_date.isoformat() == day_date
 
 
 @pytest.mark.asyncio
@@ -155,5 +171,7 @@ async def test_access_expiration_flow(async_client: AsyncClient, make_initdata, 
     response = await async_client.get("/api/day/today")
     assert response.status_code == 200
     data = response.json()
-    assert data["access"]["state"] == "preview"
-    assert data["access"]["reason"] == "expired_access"
+    payload = _parse_convergence_payload(data)
+    assert payload.access.state == "preview"
+    assert payload.access.reason == "expired_access"
+    assert payload.content_state in {"not_needed", "unavailable"}

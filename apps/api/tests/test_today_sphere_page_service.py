@@ -55,6 +55,7 @@ from app.schemas.natal import (
 from app.services.natal_context_service import NatalContextService
 from app.services.today_sphere_page_service import (
     TodaySpherePageService,
+    _period_synthesis,
     _validate_natal_provider_response,
     build_sphere_natal_fact_pack,
 )
@@ -205,6 +206,10 @@ async def test_period_layer_filters_sorts_caps_and_uses_exact_techniques() -> No
     assert items[0].title == "Соляр: Солнце"
     assert items[1].title == "Год профекции: 10 дом"
     assert items[2].title == "Большой фирдар Юпитера"
+    assert all(item.note for item in items)
+    synthesis = _period_synthesis("work", items, service.canon)
+    assert synthesis is not None
+    assert "Их сумма" in synthesis
     assert all(word not in item.title.casefold() for item in items for word in ("сегодня", "завтра"))
 # END_BLOCK: PERIOD_GATES
 
@@ -249,6 +254,46 @@ def test_natal_provider_machine_driver_text_is_rejected(text: str) -> None:
             frozenset({"natal:planet:SUN"}),
             frozenset(),
         )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "В prefixes у знака Козерога есть шаблонный остаток.",
+        "В знак Страсти со Сагитария попал старый шаблон.",
+        "Четвёртая часть домов не должна быть видна пользователю.",
+    ],
+)
+def test_natal_template_residue_is_rejected(text: str) -> None:
+    with pytest.raises(ValueError, match="schema_invalid"):
+        _validate_natal_provider_response(
+            {
+                "paragraphs": [
+                    {
+                        "text": text,
+                        "sourceFactIds": ["natal:planet:SUN"],
+                    }
+                ]
+            },
+            frozenset({"natal:planet:SUN"}),
+            frozenset(),
+        )
+
+
+def test_natal_template_typo_is_repaired_before_publish() -> None:
+    content = _validate_natal_provider_response(
+        {
+            "paragraphs": [
+                {
+                    "text": "Сатурн помогает быть ответственой за свои решения.",
+                    "sourceFactIds": ["natal:planet:SUN"],
+                }
+            ]
+        },
+        frozenset({"natal:planet:SUN"}),
+        frozenset(),
+    )
+    assert "ответственной" in content.paragraphs[0].text
 
 
 # START_BLOCK: NATAL_CACHE_GATES

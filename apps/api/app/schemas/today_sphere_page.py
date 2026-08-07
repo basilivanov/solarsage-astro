@@ -89,6 +89,7 @@ class TodaySpherePeriodItem(CamelModel):
     id: str = Field(..., min_length=1, max_length=64)
     technique: SpherePeriodTechnique
     title: str = Field(..., min_length=1, max_length=160)
+    note: str | None = Field(default=None, max_length=600)
     active_from: date
     active_until: date
 
@@ -111,11 +112,14 @@ class TodaySpherePagePayload(CamelModel):
     period: list[TodaySpherePeriodItem] = Field(..., max_length=5)
     period_identity: str
     period_unavailable: bool = False
+    period_synthesis: str | None = Field(default=None, max_length=600)
 
     @model_validator(mode="after")
     def validate_period_state(self) -> TodaySpherePagePayload:
         if self.period_unavailable and (self.period or self.period_identity):
             raise ValueError("unavailable period must be empty")
+        if self.period_unavailable and self.period_synthesis is not None:
+            raise ValueError("unavailable period must not carry synthesis")
         if self.birth_time_mode != "exact" and self.houses_available:
             raise ValueError("non-exact birth time cannot expose houses")
         if self.birth_time_mode == "exact" and not self.houses_available:

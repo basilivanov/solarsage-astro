@@ -16,7 +16,6 @@
 // outputs:
 //   - named type aliases: TodayPayload, NatalPayload, CalendarPayload,
 //     DayHistoryItem, DayHistoryPayload, YesterdayForecastRecap,
-//     TodaySphereDrilldownPayload,
 //     ReadingBody, AccessSummary, TodayV2Block, TodayV2ActivatedTarget,
 //     TodayV2ActivationSummary, TodayV2WhyTodayItem, TodayV2Audit,
 //     ActivationEvidence, SphereScoreV2, PromoCodeRequest, PromoOffer,
@@ -38,7 +37,7 @@
 // START_MODULE_MAP: M-WEB-CONTRACTS.barrel
 // public_entrypoints:
 //   - TodayPayload, NatalPayload, CalendarPayload, DayHistoryItem,
-//     DayHistoryPayload, YesterdayForecastRecap, TodaySphereDrilldownPayload,
+//     DayHistoryPayload, YesterdayForecastRecap,
 //     ReadingBody, AccessSummary,
 //     TodayV2Block, TodayV2ActivatedTarget, TodayV2ActivationSummary,
 //     TodayV2WhyTodayItem, TodayV2Audit, ActivationEvidence, SphereScoreV2,
@@ -59,8 +58,6 @@ export type CalendarPayload = components["schemas"]["CalendarPayload"];
 export type DayHistoryItem = components["schemas"]["DayHistoryItem"];
 export type DayHistoryPayload = components["schemas"]["DayHistoryPayload"];
 export type YesterdayForecastRecap = components["schemas"]["YesterdayForecastRecap"];
-export type TodaySphereDrilldownPayload = components["schemas"]["TodaySphereDrilldownPayload"];
-export type TodaySphereDrilldownConvergence = components["schemas"]["TodaySphereDrilldownConvergence"];
 export type ReadingBody = components["schemas"]["ReadingBody"];
 export type AccessSummary = components["schemas"]["AccessSummary"];
 export type ContentAccessState = components["schemas"]["ContentAccessState"];
