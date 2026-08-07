@@ -41,12 +41,13 @@ import yaml
 
 from convergence_canon import resolve_product_sphere
 
-ANALYSIS = Path("/opt/solarsage-astro/docs/work/2026-07-29_today-convergence-rewrite/analysis")
+_REPO = Path(__file__).resolve().parents[4]
+ANALYSIS = _REPO / "docs/work/2026-07-29_today-convergence-rewrite/analysis"
 DUMP_PATH = ANALYSIS / "factor_dump.json"
 GRID_PATH = ANALYSIS / "ablation_grid.json"
 REPORT_PATH = ANALYSIS / "ablation_report.md"
-CANON_PATH = Path("/opt/solarsage-astro/grace/canon/aspect_rules.v1.yml")
-CONVERGENCE_CANON_PATH = Path("/opt/solarsage-astro/grace/canon/today_convergence.v1.yml")
+CANON_PATH = _REPO / "grace/canon/aspect_rules.v1.yml"
+CONVERGENCE_CANON_PATH = _REPO / "grace/canon/today_convergence.v1.yml"
 
 TIME_LORD_FAMILIES = {
     "firdar", "profection", "solar_return", "lunar_return",
