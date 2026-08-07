@@ -59,34 +59,34 @@ const DAY_PATH = `${DAY_PATHNAME}?why=1`
 const HORIZONS = ["long", "medium", "fast"] as const
 const SPHERE_KEYS = [
   "work",
-  "money",
+  "finance",
   "documents",
   "relationships",
   "sport",
   "communication",
   "health",
-  "decisions",
+  "home_family",
   "travel",
   "creativity",
   "study",
-  "shopping",
+  "friends_goals",
 ] as const
 
 type SphereKey = (typeof SPHERE_KEYS)[number]
 
 const SPHERE_ROW_SELECTOR: Record<SphereKey, string> = {
   work: '[data-testid="concrete-day-advice-row"][data-sphere-key="work"]',
-  money: '[data-testid="concrete-day-advice-row"][data-sphere-key="money"]',
+  finance: '[data-testid="concrete-day-advice-row"][data-sphere-key="finance"]',
   documents: '[data-testid="concrete-day-advice-row"][data-sphere-key="documents"]',
   relationships: '[data-testid="concrete-day-advice-row"][data-sphere-key="relationships"]',
   sport: '[data-testid="concrete-day-advice-row"][data-sphere-key="sport"]',
   communication: '[data-testid="concrete-day-advice-row"][data-sphere-key="communication"]',
   health: '[data-testid="concrete-day-advice-row"][data-sphere-key="health"]',
-  decisions: '[data-testid="concrete-day-advice-row"][data-sphere-key="decisions"]',
+  home_family: '[data-testid="concrete-day-advice-row"][data-sphere-key="home_family"]',
   travel: '[data-testid="concrete-day-advice-row"][data-sphere-key="travel"]',
   creativity: '[data-testid="concrete-day-advice-row"][data-sphere-key="creativity"]',
   study: '[data-testid="concrete-day-advice-row"][data-sphere-key="study"]',
-  shopping: '[data-testid="concrete-day-advice-row"][data-sphere-key="shopping"]',
+  friends_goals: '[data-testid="concrete-day-advice-row"][data-sphere-key="friends_goals"]',
 }
 
 function requiredAttribute(element: { getAttribute(name: string): Promise<string | null> }, name: string): Promise<string> {

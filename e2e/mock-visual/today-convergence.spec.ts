@@ -1,6 +1,6 @@
 // ############################################################################
 // AI_HEADER: MODULE_E2E_MOCK_VISUAL_TODAY_CONVERGENCE_SPEC — Today convergence visual and structural gate.
-// ROLE: Exercises the generated Today payload matrix, sheet drilldown, static sphere page, and check-in recap.
+// ROLE: Exercises the generated Today payload matrix, sheet drilldown, removed sphere routes, and check-in recap.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-TODAY-CONVERGENCE-SPEC
@@ -8,7 +8,7 @@
 // owns:
 //   - e2e/mock-visual/today-convergence.spec.ts
 // inputs: generated fixture barrel, inline sphere payloads, Playwright route interception, and E2E_BASE_URL.
-// outputs: structural assertions, curated Today PNG baselines, sheet drilldown checks, and WebKit smoke coverage.
+// outputs: structural assertions, curated Today PNG baselines, sheet drilldown/route checks, and WebKit smoke coverage.
 // dependencies: @playwright/test; route-interception; screenshot; generated contracts.
 // side_effects: none outside Playwright snapshots.
 // emitted_logs: none.
@@ -25,7 +25,7 @@
 // public_entrypoints:
 //   - 16-fixture Today structural matrix
 //   - curated Today visual baselines
-//   - sheet drilldown and static sphere navigation
+//   - sheet drilldown and removed sphere route proof
 //   - Yesterday check-in pre/post/no-snapshot flows
 //   - WebKit ready/loading/error smoke tests
 // semantic_blocks:
@@ -34,7 +34,7 @@
 //   - TODAY_LAYOUT: desktop single-column stack geometry.
 //   - IMPULSE_GEOMETRY: desktop title/time one-row visibility and mobile overflow safety.
 //   - VISUAL_BASELINES: key Today states.
-//   - CHECKIN_AND_SPHERE: Yesterday recap and static sphere route wiring.
+//   - CHECKIN_AND_REMOVED_SPHERE: Yesterday recap and removed static sphere route proof.
 //   - WEBKIT_SMOKE: minimal cross-engine transport/navigation proof.
 // owned_tests:
 //   - self
@@ -49,6 +49,7 @@ import {
   heroMixed,
   heroTense,
   quietSteady,
+  quietFacetsNewSpheres,
   stateUnavailable,
   todayConvergenceFixtures,
   yesterdayNoSnapshot,
@@ -65,6 +66,20 @@ import { profilePayload, referralPayload } from "./fixtures/profile"
 import { prepareForScreenshot } from "./screenshot"
 
 const TODAY_DATE = "2026-08-01"
+const PRODUCT_SPHERE_KEYS = [
+  "work",
+  "finance",
+  "documents",
+  "relationships",
+  "sport",
+  "communication",
+  "health",
+  "home_family",
+  "travel",
+  "creativity",
+  "study",
+  "friends_goals",
+] as const
 const LONG_IMPULSE_EVENT_ID = "evt_v1_long_title_time"
 const LONG_IMPULSE_TITLE = "Луна в гармонии с твоим жребием Брака"
 const LONG_IMPULSE_TIME_TEXT = "пик 2 августа, 18:48, окно: с 2 августа, 03:58 до 3 августа, 09:28"
@@ -130,6 +145,16 @@ const spherePagePayload: TodaySpherePagePayload = {
   sphere: "work",
 }
 
+const financeSpherePagePayload: TodaySpherePagePayload = {
+  ...spherePagePayload,
+  sphere: "finance",
+}
+
+const emptySpherePagePayload: TodaySpherePagePayload = {
+  ...spherePagePayload,
+  sphere: "home_family",
+}
+
 type YesterdayFixture = typeof yesterdayPreSubmit
 
 // START_BLOCK: FIXTURE_MATRIX
@@ -156,6 +181,8 @@ function buildTodayFixtures(
     "/api/referral": { body: referralPayload },
     "/api/payment/products": { body: { products: [] } },
     "/api/spheres/work": { body: spherePagePayload },
+    "/api/spheres/finance": { body: financeSpherePagePayload },
+    "/api/spheres/home_family": { body: emptySpherePagePayload },
   }
 
   if (payload.snapshotId) {
@@ -241,6 +268,14 @@ function expectPayloadRoot(
   else expect(root).not.toHaveAttribute("data-day-tone")
 }
 
+async function expectCanonicalSphereTiles(page: Page): Promise<void> {
+  const tiles = page.locator('button[data-testid^="sphere-tile-"]')
+  await expect(tiles).toHaveCount(PRODUCT_SPHERE_KEYS.length)
+  expect(
+    await tiles.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-testid"))),
+  ).toEqual(PRODUCT_SPHERE_KEYS.map((key) => `sphere-tile-${key}`))
+}
+
 // START_BLOCK: TODAY_CONTRACT
 test.describe("Mock Visual — Today Convergence", () => {
   test("covers all 16 Today fixtures on the desktop public contract", async ({ page }, testInfo) => {
@@ -264,10 +299,10 @@ test.describe("Mock Visual — Today Convergence", () => {
       const root = page.getByTestId("today-screen")
       await expect(root).toHaveAttribute("data-screen-state", "ready", { timeout: 15000 })
       expectPayloadRoot(root, payload)
-      await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
+      await expectCanonicalSphereTiles(page)
 
       if (payload.state === "convergence_today" && payload.access.state === "full") {
-        await expect(page.getByTestId("convergence-hero")).toBeVisible()
+        await expect(page.getByTestId("convergence-unified-list")).toBeVisible()
       }
       if (payload.state === "unavailable") await expect(page.getByTestId("today-unavailable")).toBeVisible()
       if (payload.access.state === "preview") await expect(page.getByTestId("today-preview-teaser")).toBeVisible()
@@ -281,6 +316,7 @@ test.describe("Mock Visual — Today Convergence", () => {
   })
 
   test("renders hero tense, hero mixed, quiet steady, birth unknown, unavailable, and content-unavailable baselines", async ({ page }) => {
+    test.setTimeout(120_000)
     const cases = [
       ["hero-tense", heroTense],
       ["hero-mixed", heroMixed],
@@ -311,9 +347,42 @@ test.describe("Mock Visual — Today Convergence", () => {
 
     await page.getByTestId("sphere-tile-work").click()
     await expect(page).toHaveURL(new RegExp(`/day/${TODAY_DATE}$`))
-    await expect(page.getByTestId("impulse-drilldown-sheet")).toHaveAttribute("data-sphere", "work")
+    const sheet = page.getByTestId("impulse-drilldown-sheet")
+    await expect(sheet).toHaveAttribute("data-sphere", "work")
+    await expect(sheet).toHaveAttribute("data-context-state", "ready")
     await expect(page.getByTestId("impulse-drilldown-today-facts")).toBeVisible()
-    await expect(page.getByTestId("impulse-drilldown-full-link")).toHaveAttribute("href", "/day/spheres/work")
+    await expect(page.getByTestId("impulse-drilldown-full-link")).toHaveCount(0)
+    await prepareForScreenshot(page)
+    await expect(page).toHaveScreenshot("today-drilldown.png", {
+      fullPage: true,
+      mask: [page.getByTestId("today-narrative")],
+    })
+    await expectNoMissingApiFixtures(page, tracker)
+  })
+
+  test("opens an empty canonical sphere with the empty-state sheet", async ({ page }) => {
+    const tracker = await openToday(page, heroTense)
+    await expectCanonicalSphereTiles(page)
+    await page.getByTestId("sphere-tile-home_family").click()
+
+    const sheet = page.getByTestId("impulse-drilldown-sheet")
+    await expect(sheet).toHaveAttribute("data-sphere", "home_family")
+    await expect(page.getByTestId("impulse-drilldown-empty")).toHaveAttribute("data-state", "empty")
+    await expect(page.getByTestId("impulse-drilldown-full-link")).toHaveCount(0)
+    await expectNoMissingApiFixtures(page, tracker)
+  })
+
+  test("opens a signal sheet with its facet line and no full-analysis link", async ({ page }) => {
+    const tracker = await openToday(page, quietFacetsNewSpheres)
+    await page.getByTestId("sphere-tile-finance").click()
+
+    const financeImpulse = quietFacetsNewSpheres.impulses.find((impulse) => impulse.sphere === "finance")
+    if (!financeImpulse) throw new Error("The facet fixture must include a finance impulse")
+    const sheet = page.getByTestId("impulse-drilldown-sheet")
+    await expect(sheet).toHaveAttribute("data-sphere", "finance")
+    await expect(page.getByTestId(`impulse-drilldown-fact-${financeImpulse.eventId}`)).toHaveAttribute("data-facet", "personal_money")
+    await expect(page.getByTestId(`impulse-drilldown-signal-label-${financeImpulse.eventId}`)).toHaveText("Личные деньги")
+    await expect(page.getByTestId("impulse-drilldown-full-link")).toHaveCount(0)
     await expectNoMissingApiFixtures(page, tracker)
   })
 
@@ -400,7 +469,7 @@ test.describe("Mock Visual — Today Convergence", () => {
 })
 // END_BLOCK: TODAY_CONTRACT
 
-// START_BLOCK: CHECKIN_AND_SPHERE
+// START_BLOCK: CHECKIN_AND_REMOVED_SPHERE
 test.describe("Mock Visual — Today downstream routes", () => {
   test("shows Yesterday forecast before submit and snapshot recap after submit", async ({ page }) => {
     let submitted = false
@@ -438,24 +507,24 @@ test.describe("Mock Visual — Today downstream routes", () => {
     await expectNoMissingApiFixtures(page, tracker)
   })
 
-  test("opens the static sphere page from the generated route contract", async ({ page }) => {
+  test("returns 404 for removed legacy sphere routes", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildTodayFixtures(quietSteady))
     await installMockVisualRuntime(page)
-    await page.goto("/day/spheres/work", { waitUntil: "domcontentloaded" })
-    await expect(page.getByTestId("sphere-page")).toHaveAttribute("data-state", "ready", { timeout: 15000 })
-    await expect(page.getByTestId("sphere-natal")).toBeVisible()
-    await expect(page.getByTestId("sphere-period")).toBeVisible()
+    for (const oldKey of ["money", "decisions", "shopping"] as const) {
+      const response = await page.goto(`/day/spheres/${oldKey}`, { waitUntil: "domcontentloaded" })
+      expect(response?.status(), `legacy route ${oldKey} must be gone`).toBe(404)
+    }
     await expectNoMissingApiFixtures(page, tracker)
   })
 })
-// END_BLOCK: CHECKIN_AND_SPHERE
+// END_BLOCK: CHECKIN_AND_REMOVED_SPHERE
 
 // START_BLOCK: WEBKIT_SMOKE
 test.describe("WebKit Today smoke", () => {
   test("@webkit-smoke reaches ready Today navigation", async ({ page }) => {
     const tracker = await openToday(page, heroTense)
     await expect(page.getByTestId("today-screen")).toHaveAttribute("data-screen-state", "ready")
-    await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
+    await expectCanonicalSphereTiles(page)
     await expectNoMissingApiFixtures(page, tracker)
   })
 

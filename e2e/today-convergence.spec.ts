@@ -39,6 +39,20 @@ import {
 
 const REAL_E2E_SKIP_REASON = "Skipped: E2E_BASE_URL is not set; this suite requires a real Telegram-authenticated stack."
 const DAY_TIMEOUT = 240_000
+const PRODUCT_SPHERE_KEYS = [
+  "work",
+  "finance",
+  "documents",
+  "relationships",
+  "sport",
+  "communication",
+  "health",
+  "home_family",
+  "travel",
+  "creativity",
+  "study",
+  "friends_goals",
+] as const
 
 test.describe("Today Convergence — Real API", () => {
   test.skip(!process.env.E2E_BASE_URL, REAL_E2E_SKIP_REASON)
@@ -65,7 +79,11 @@ test.describe("Today Convergence — Real API", () => {
     const tone = await screen.getAttribute("data-day-tone")
     if (tone !== null) expect(tone).toMatch(/^(steady|supportive|mixed|tense)$/)
     await expect(page.getByTestId("sphere-navigator")).toBeVisible()
-    await expect(page.locator('a[data-testid^="sphere-tile-"]')).toHaveCount(12)
+    const tiles = page.locator('button[data-testid^="sphere-tile-"]')
+    await expect(tiles).toHaveCount(PRODUCT_SPHERE_KEYS.length)
+    expect(
+      await tiles.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-testid"))),
+    ).toEqual(PRODUCT_SPHERE_KEYS.map((key) => `sphere-tile-${key}`))
 
     const state = await screen.getAttribute("data-state")
     if (state === "convergence_today") {
