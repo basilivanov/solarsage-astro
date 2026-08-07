@@ -93,6 +93,7 @@ def _factor(
     *,
     event_class: str = "aspect",
     polarity: str = "supportive",
+    house: int | None = 6,
 ) -> dict[str, object]:
     return {
         "canonical_event_id": event_id,
@@ -101,23 +102,30 @@ def _factor(
         "source_key": f"activation-{event_id}",
         "semantic_key": f"semantic-{event_id}",
         "driver_key": f"driver-{event_id}",
-        "product_spheres": ["work"],
+        "technical_spheres": ["work"],
         "polarity": polarity,
         "evidence_level": "high",
+        "house": house,
         "exact_at": "2026-07-31T15:40:00+03:00",
         "active_from": "2026-07-31T13:00:00+03:00",
         "active_until": "2026-07-31T18:00:00+03:00",
     }
 
 
-def _group(group_id: str, event_ids: list[str], *, sphere: str) -> dict[str, object]:
+def _group(
+    group_id: str,
+    event_ids: list[str],
+    *,
+    sphere: str,
+    facet: str | None = "daily_work",
+) -> dict[str, object]:
     return {
         "group_id": group_id,
         "anchor_event_id": event_ids[0],
         "member_event_ids": list(event_ids),
         "evidence_event_ids": list(event_ids),
-        "primary_sphere": sphere,
-        "secondary_sphere": "documents",
+        "sphere": sphere,
+        "facet": facet,
         "polarity": "supportive",
         "evidence_level": "high",
     }
@@ -127,11 +135,13 @@ def _single(
     event_id: str,
     *,
     sphere: str,
+    facet: str | None = None,
     polarity: str = "supportive",
 ) -> dict[str, object]:
     return {
         "event_id": event_id,
         "sphere": sphere,
+        "facet": facet,
         "polarity": polarity,
         "evidence_level": "medium",
     }
@@ -158,7 +168,7 @@ def _snapshot(
     selected_ids.extend(impulse["event_id"] for impulse in impulses)  # type: ignore[index]
 
     selected_spheres = [
-        group["primary_sphere"]  # type: ignore[index]
+        group["sphere"]  # type: ignore[index]
         for group in convergences
     ]
     if main_event is not None:
@@ -230,9 +240,9 @@ def _snapshot(
 # START_BLOCK: MAX_SHAPES
 def _hero_max() -> TodaySnapshot:
     groups = [
-        _group("cvg-1", ["evt_v1_1", "evt_v1_2"], sphere="work"),
-        _group("cvg-2", ["evt_v1_3", "evt_v1_4"], sphere="money"),
-        _group("cvg-3", ["evt_v1_5", "evt_v1_6"], sphere="relationships"),
+        _group("cvg-1", ["evt_v1_1", "evt_v1_2"], sphere="work", facet="daily_work"),
+        _group("cvg-2", ["evt_v1_3", "evt_v1_4"], sphere="finance", facet="personal_money"),
+        _group("cvg-3", ["evt_v1_5", "evt_v1_6"], sphere="relationships", facet="partnership"),
     ]
     selected_ids = [
         event_id
@@ -253,11 +263,11 @@ def _hero_max() -> TodaySnapshot:
 
 
 def _quiet_max() -> TodaySnapshot:
-    main_event = _single("evt_v1_main", sphere="work")
+    main_event = _single("evt_v1_main", sphere="work", facet="daily_work")
     impulses = [
-        _single("evt_v1_impulse_1", sphere="documents", polarity="mixed"),
-        _single("evt_v1_impulse_2", sphere="health", polarity="tense"),
-        _single("evt_v1_impulse_3", sphere="study", polarity="supportive"),
+        _single("evt_v1_impulse_1", sphere="documents", facet="admin_documents", polarity="mixed"),
+        _single("evt_v1_impulse_2", sphere="health", facet="general_condition", polarity="tense"),
+        _single("evt_v1_impulse_3", sphere="study", facet="skills_courses", polarity="supportive"),
     ]
     selected_ids = ["evt_v1_main", "evt_v1_impulse_1", "evt_v1_impulse_2", "evt_v1_impulse_3"]
     factors = [_factor("evt_v1_main", event_class="structural")]
@@ -378,10 +388,10 @@ async def test_max_shapes_are_bounded_and_measured(
     assert 0 <= result.output_tokens <= fake.calls[0]["max_output_tokens"]  # type: ignore[operator]
 
     prompt = fake.calls[0]["prompt"]
-    # Each selected ID is intentionally present in the bounded input and the
-    # exact response template; keep a small allowance for structural key text.
+    # Each selected ID is intentionally present in bounded source evidence and
+    # the exact response template; keep a small allowance for structural text.
     # The hard anti-ledger guards are the not-in-prompt assertions below.
-    assert prompt.count("evt_") <= selected_event_count * 2 + 5
+    assert prompt.count("evt_") <= selected_event_count * 3 + 5
     assert "factor_units" not in prompt
     assert '"audit"' not in prompt
     assert "evt_v1_unused_" not in prompt

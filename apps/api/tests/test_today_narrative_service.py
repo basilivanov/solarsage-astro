@@ -26,7 +26,7 @@
 #   - FIXTURES: stable snapshots, factors, and fake provider.
 #   - HAPPY_PATH: convergence and quiet-day canonical content.
 #   - EVENT_TIME: date-aware absolute instants in bounded prompt evidence.
-#   - GROUNDING: deterministic titles/themes and fail-closed sphere/polarity claims.
+#   - GROUNDING: deterministic titles/themes and fail-closed sphere/facet/polarity claims.
 #   - VALIDATION: schema, binding, length, block identity, and capability gates.
 #   - OPERATIONS: deadline, provider error, prompt bounds, tokens, and logs.
 # owned_tests:
@@ -86,6 +86,7 @@ def _factor(
     *,
     event_class: str = "aspect",
     polarity: str = "tense",
+    house: int | None = 6,
     exact_at: str = "2026-07-31T15:40:00+03:00",
     active_from: str | None = "2026-07-31T13:00:00+03:00",
     active_until: str | None = "2026-07-31T18:00:00+03:00",
@@ -97,32 +98,46 @@ def _factor(
         "source_key": f"activation-{event_id}",
         "semantic_key": f"semantic-{event_id}",
         "driver_key": f"driver-{event_id}",
-        "product_spheres": ["work"],
+        "technical_spheres": ["work"],
         "polarity": polarity,
         "evidence_level": "high",
+        "house": house,
         "exact_at": exact_at,
         "active_from": active_from,
         "active_until": active_until,
     }
 
 
-def _group(group_id: str, event_ids: list[str], *, sphere: str = "work") -> dict[str, object]:
+def _group(
+    group_id: str,
+    event_ids: list[str],
+    *,
+    sphere: str = "work",
+    facet: str | None = "daily_work",
+) -> dict[str, object]:
     return {
         "group_id": group_id,
         "anchor_event_id": event_ids[0],
         "member_event_ids": list(event_ids),
         "evidence_event_ids": list(event_ids),
-        "primary_sphere": sphere,
-        "secondary_sphere": "documents",
+        "sphere": sphere,
+        "facet": facet,
         "polarity": "tense",
         "evidence_level": "high",
     }
 
 
-def _single(event_id: str, *, sphere: str, polarity: str = "supportive") -> dict[str, object]:
+def _single(
+    event_id: str,
+    *,
+    sphere: str,
+    facet: str | None = None,
+    polarity: str = "supportive",
+) -> dict[str, object]:
     return {
         "event_id": event_id,
         "sphere": sphere,
+        "facet": facet,
         "polarity": polarity,
         "evidence_level": "medium",
     }
@@ -150,7 +165,7 @@ def _snapshot(
     selected_ids.extend(impulse["event_id"] for impulse in impulses)  # type: ignore[index]
     selected_ids = list(dict.fromkeys(selected_ids))
     selected_spheres = [
-        group["primary_sphere"]  # type: ignore[index]
+        group["sphere"]  # type: ignore[index]
         for group in convergences
     ]
     selected_spheres.extend(
@@ -208,9 +223,9 @@ def _snapshot(
 
 def _convergence_snapshot(*, extra_factors: int = 0) -> TodaySnapshot:
     groups = [
-        _group("cvg-1", ["evt_v1_1", "evt_v1_2"], sphere="work"),
-        _group("cvg-2", ["evt_v1_3", "evt_v1_4"], sphere="money"),
-        _group("cvg-3", ["evt_v1_5", "evt_v1_6"], sphere="relationships"),
+        _group("cvg-1", ["evt_v1_1", "evt_v1_2"], sphere="work", facet="daily_work"),
+        _group("cvg-2", ["evt_v1_3", "evt_v1_4"], sphere="finance", facet="personal_money"),
+        _group("cvg-3", ["evt_v1_5", "evt_v1_6"], sphere="relationships", facet="partnership"),
     ]
     factors = [
         _factor(event_id, event_class="aspect" if index % 2 else "structural")
@@ -229,8 +244,8 @@ def _convergence_snapshot(*, extra_factors: int = 0) -> TodaySnapshot:
 
 
 def _shared_convergence_snapshot() -> TodaySnapshot:
-    first = _group("cvg-shared-first", ["evt_v1_shared", "evt_v1_first"], sphere="work")
-    second = _group("cvg-shared-second", ["evt_v1_shared", "evt_v1_second"], sphere="money")
+    first = _group("cvg-shared-first", ["evt_v1_shared", "evt_v1_first"], sphere="work", facet="daily_work")
+    second = _group("cvg-shared-second", ["evt_v1_shared", "evt_v1_second"], sphere="finance", facet="personal_money")
     second["polarity"] = "supportive"
     second["evidence_level"] = "medium"
     factors = [
@@ -265,11 +280,11 @@ def _shared_convergence_snapshot() -> TodaySnapshot:
 
 
 def _quiet_snapshot(*, mode: str = "exact", capabilities: dict[str, bool] | None = None) -> TodaySnapshot:
-    main_event = _single("evt_v1_main", sphere="work")
+    main_event = _single("evt_v1_main", sphere="work", facet="daily_work")
     impulses = [
-        _single("evt_v1_impulse_1", sphere="documents", polarity="mixed"),
-        _single("evt_v1_impulse_2", sphere="health", polarity="tense"),
-        _single("evt_v1_impulse_3", sphere="study", polarity="supportive"),
+        _single("evt_v1_impulse_1", sphere="documents", facet="admin_documents", polarity="mixed"),
+        _single("evt_v1_impulse_2", sphere="health", facet="general_condition", polarity="tense"),
+        _single("evt_v1_impulse_3", sphere="study", facet="skills_courses", polarity="supportive"),
     ]
     factors = [_factor("evt_v1_main", event_class="structural")]
     factors.extend(_factor(impulse["event_id"], event_class="activation") for impulse in impulses)  # type: ignore[index]
@@ -287,9 +302,9 @@ def _quiet_snapshot(*, mode: str = "exact", capabilities: dict[str, bool] | None
 
 def _quiet_impulses_only_snapshot() -> TodaySnapshot:
     impulses = [
-        _single("evt_v1_impulse_only_1", sphere="money", polarity="mixed"),
-        _single("evt_v1_impulse_only_2", sphere="work", polarity="supportive"),
-        _single("evt_v1_impulse_only_3", sphere="documents", polarity="supportive"),
+        _single("evt_v1_impulse_only_1", sphere="finance", facet="personal_money", polarity="mixed"),
+        _single("evt_v1_impulse_only_2", sphere="work", facet="daily_work", polarity="supportive"),
+        _single("evt_v1_impulse_only_3", sphere="documents", facet="admin_documents", polarity="supportive"),
     ]
     factors = [
         _factor(impulse["event_id"], event_class="activation")  # type: ignore[index]
@@ -391,7 +406,7 @@ def _grounded_mercury_uranus_snapshot() -> TodaySnapshot:
         state="quiet_day",
         convergences=[],
         main_event=None,
-        impulses=[_single(event_id, sphere="documents", polarity="supportive")],
+        impulses=[_single(event_id, sphere="documents", facet="admin_documents", polarity="supportive")],
         factors=[factor],
     )
 
@@ -480,9 +495,12 @@ def test_shared_convergence_evidence_keeps_both_group_keys_and_pairs_in_prompt()
     prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
 
     assert '"groupId":"cvg-shared-first"' in prompt
-    assert '"evidenceEventIds":["evt_v1_shared","evt_v1_first"]' in prompt
+    assert '"sourceFactIds":["evt_v1_shared","evt_v1_first"]' in prompt
     assert '"groupId":"cvg-shared-second"' in prompt
-    assert '"evidenceEventIds":["evt_v1_shared","evt_v1_second"]' in prompt
+    assert '"sourceFactIds":["evt_v1_shared","evt_v1_second"]' in prompt
+    assert '"sphere":"finance"' in prompt
+    assert '"facet":"personal_money"' in prompt
+    assert '"grounding":{"house":6,"planets":[]}' in prompt
 
 
 @pytest.mark.asyncio
@@ -550,8 +568,11 @@ async def test_quiet_day_main_event_and_three_impulses_accepts_bound_claims() ->
     assert (
         "- Текст claim никогда не должен содержать часы, даты, окна или длительности:\n"
         "  EventTime — только display-only данные для интерфейса. Формулируй текст claim\n"
-        "  только общими словами по kind, sphere и polarity; не упоминай house, angle или\n"
-        "  lot, если соответствующая capability не равна true."
+        "  только общими словами по kind, sphere, facet и polarity. Поля grounding с\n"
+        "  house и planets — внутренние детерминированные источники: называй house\n"
+        "  только при capabilities.houses=true; не раскрывай planets как машинные\n"
+        "  идентификаторы. Не упоминай angle или lot, если соответствующая capability\n"
+        "  не равна true."
     ) in prompt
     assert "Замени только пустые значения summary.text на текст и верни этот JSON." in prompt
 
@@ -851,8 +872,9 @@ async def test_prompt_is_bounded_to_selected_units_and_forwards_700_tokens() -> 
     selected_count = len(snapshot.deterministic_result_json["selected"]["selected_unit_ids"])  # type: ignore[index]
 
     assert isinstance(result, TodayNarrativeSuccess)
-    # Each selected ID appears once in the input and once in the exact template.
-    assert prompt.count("evt_v1_") <= selected_count * 2
+    # Each selected ID appears in bounded source evidence and the exact template;
+    # convergence groups repeat the source list at block and event level.
+    assert prompt.count("evt_v1_") <= selected_count * 3
     assert "factor_units" not in prompt
     assert '"audit"' not in prompt
     assert '"profile"' not in prompt

@@ -2,7 +2,7 @@
 # AI_HEADER: TODAY_NARRATIVE_SERVICE — grounded, claim-bound Today narrative generation.
 # ROLE: Builds a small public evidence prompt from deterministic driver titles
 #       and themes, performs bounded strict-JSON provider calls, and publishes
-#       only sanitized, sphere/polarity-grounded claims.
+#       only sanitized, sphere/facet/polarity-grounded claims.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TODAY-NARRATIVE
@@ -89,6 +89,20 @@ from app.services.today_convergence_titles import build_today_convergence_event_
 _MISSING = object()
 _BIRTH_MODES = frozenset({"exact", "bucket", "unknown"})
 _POLARITIES = frozenset({"supportive", "tense", "mixed"})
+_SPHERES = frozenset({
+    "work",
+    "finance",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "home_family",
+    "travel",
+    "creativity",
+    "study",
+    "friends_goals",
+})
 _DAY_STATES = frozenset({"convergence_today", "quiet_day"})
 _DAY_TONES = frozenset({"steady", "supportive", "mixed", "tense"})
 _NARRATIVE_FIELDS = ("summary", "meaning", "action")
@@ -165,8 +179,11 @@ class _PromptEvent:
     event_id: str
     kind: str
     sphere: str
+    facet: str | None
     polarity: str
     event_time: dict[str, Any]
+    house: int | None = None
+    planets: tuple[str, ...] = ()
     title: str | None = None
     driver_themes: tuple[str, ...] = ()
 
@@ -176,9 +193,19 @@ class _NarrativeBlock:
     block_id: str
     event_ids: tuple[str, ...]
     events: tuple[_PromptEvent, ...]
-    primary_sphere: str | None = None
-    secondary_sphere: str | None = None
-    polarity: str | None = None
+    sphere: str
+    facet: str | None
+    polarity: str
+
+
+@dataclass(frozen=True)
+class _BlockGrounding:
+    """Claim grounding indexed by the source facts cited by a block."""
+
+    allowed_spheres: frozenset[str]
+    allowed_facets: frozenset[str]
+    polarity: str
+    event_grounding: dict[str, tuple[str, str | None, str]]
 
 
 @dataclass(frozen=True)
@@ -201,6 +228,7 @@ class _ProviderText:
 
 _CLOCK_TEXT_RE = re.compile(r"(?<!\d)\d{1,2}:\d{2}(?!\d)")
 _HOUSE_TEXT_RE = re.compile(r"(?<!\w)(?:дом\w*|house\w*)", re.IGNORECASE)
+_HOUSE_NUMBER_RE = re.compile(r"(?<!\w)(?:дом\w*|house)\s*(\d{1,2})(?!\d)", re.IGNORECASE)
 _ANGLE_TEXT_RE = re.compile(
     r"(?<!\w)(?:асцендент\w*|ascendant\w*|asc|mc)(?!\w)",
     re.IGNORECASE,
@@ -508,33 +536,79 @@ def _driver_themes(unit: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _block_grounding(block: _NarrativeBlock) -> tuple[frozenset[str], str]:
+def _block_grounding(block: _NarrativeBlock) -> _BlockGrounding:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_grounding
-    # purpose: Collect all product spheres represented by one narrative block
-    #   and its canonical polarity for claim validation.
+    # purpose: Collect one sphere/facet contract and per-source polarity for
+    #   one narrative block.
     # inputs: validated narrative block.
-    # returns: (allowed spheres, polarity).
+    # returns: immutable sphere/facet/polarity grounding indexed by event ID.
     # side_effects: none.
     # emitted_logs: none.
     # error_behavior: malformed internal block data raises the validation error.
     # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_grounding
-    spheres = {event.sphere for event in block.events}
-    if block.primary_sphere is not None:
-        spheres.add(block.primary_sphere)
-    if block.secondary_sphere is not None:
-        spheres.add(block.secondary_sphere)
-    if len(spheres) == 0:
+    if not block.events or block.sphere not in _SPHERES:
         raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
-    polarity = block.polarity or block.events[0].polarity
-    if polarity not in _POLARITIES:
+    if any(event.sphere != block.sphere for event in block.events):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
-    if has_narrative_grounding_violation(
-        "",
-        allowed_spheres=spheres,
-        polarity=polarity,
+    event_facets = {event.facet for event in block.events}
+    if event_facets != {block.facet}:
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
+    if block.polarity not in _POLARITIES or any(
+        event.polarity not in _POLARITIES for event in block.events
     ):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
-    return frozenset(spheres), polarity
+    facets = frozenset({block.facet} if block.facet is not None else set())
+    if has_narrative_grounding_violation(
+        "",
+        allowed_spheres={block.sphere},
+        allowed_facets=facets,
+        polarity=block.polarity,
+    ):
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
+    return _BlockGrounding(
+        allowed_spheres=frozenset({block.sphere}),
+        allowed_facets=facets,
+        polarity=block.polarity,
+        event_grounding={
+            event.event_id: (event.sphere, event.facet, event.polarity)
+            for event in block.events
+        },
+    )
+
+
+def _claim_grounding(
+    grounding: _BlockGrounding,
+    source_ids: Sequence[str],
+) -> tuple[frozenset[str], frozenset[str], str]:
+    """Narrow a block contract to the facts cited by one claim."""
+
+    source_context = [grounding.event_grounding[event_id] for event_id in source_ids]
+    spheres = frozenset(item[0] for item in source_context)
+    facets = frozenset(item[1] for item in source_context if item[1] is not None)
+    polarities = {item[2] for item in source_context}
+    polarity = next(iter(polarities)) if len(polarities) == 1 else "mixed"
+    return spheres, facets, polarity
+
+
+def _prompt_planets(unit: Mapping[str, Any]) -> tuple[str, ...]:
+    values: list[str] = []
+    for key in ("source_key", "sourceKey", "target_key", "targetKey"):
+        value = unit.get(key)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        normalized = strip_prefix(value.strip()).upper()
+        if not normalized or normalized.startswith("ACTIVATION-"):
+            continue
+        if normalized not in values:
+            values.append(normalized)
+    return tuple(values)
+
+
+def _prompt_house(unit: Mapping[str, Any]) -> int | None:
+    value = unit.get("house")
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 12:
+        return None
+    return value
 
 
 def _event_for_selection(
@@ -553,6 +627,10 @@ def _event_for_selection(
     if kind is None:
         kind = _text(unit.get("technique_horizon", unit.get("techniqueHorizon")), "factor_event_kind")
     selected_sphere = _text(_value(selection, "sphere"), "selected_sphere")
+    selected_facet = _optional_text(
+        _value(selection, "facet", default=None),
+        "selected_facet",
+    )
     selected_polarity = polarity or _text(_value(selection, "polarity"), "selected_polarity")
     if selected_polarity not in _POLARITIES:
         raise _NarrativeInputError("selected_polarity")
@@ -560,8 +638,11 @@ def _event_for_selection(
         event_id=event_id,
         kind=kind,
         sphere=selected_sphere,
+        facet=selected_facet,
         polarity=selected_polarity,
         event_time=_event_time(unit, birth_mode, timezone),
+        house=_prompt_house(unit),
+        planets=_prompt_planets(unit),
         title=build_today_convergence_event_title(unit),
         driver_themes=_driver_themes(unit),
     )
@@ -575,10 +656,10 @@ def _group_events(
 ) -> _NarrativeBlock:
     group_id = _text(_value(group, "group_id", "groupId"), "group_id")
     event_ids = _evidence_pair(_value(group, "evidence_event_ids", "evidenceEventIds"))
-    primary_sphere = _text(_value(group, "primary_sphere", "primarySphere"), "selected_sphere")
-    secondary_sphere = _optional_text(
-        _value(group, "secondary_sphere", "secondarySphere", default=None),
-        "selected_sphere",
+    sphere = _text(_value(group, "sphere"), "selected_sphere")
+    facet = _optional_text(
+        _value(group, "facet", default=None),
+        "selected_facet",
     )
     group_polarity = _enum_text(_value(group, "polarity"), _POLARITIES, "selected_polarity")
     raw_anchor = _value(group, "anchor_event_id", "anchorEventId", default=None)
@@ -589,19 +670,19 @@ def _group_events(
     events: list[_PromptEvent] = []
     for event_id in event_ids:
         is_anchor = event_id == anchor
-        sphere = primary_sphere if is_anchor or secondary_sphere is None else secondary_sphere
-        unit_polarity = units[event_id].get("polarity") if event_id in units else None
+        unit = units.get(event_id)
+        unit_polarity = unit.get("polarity") if unit is not None else None
         event_polarity = group_polarity
         if not is_anchor and isinstance(unit_polarity, str) and unit_polarity in _POLARITIES:
             event_polarity = unit_polarity
-        selection = {"sphere": sphere, "polarity": event_polarity}
+        selection = {"sphere": sphere, "facet": facet, "polarity": event_polarity}
         events.append(_event_for_selection(event_id, selection, units, birth_mode, timezone, polarity=event_polarity))
     return _NarrativeBlock(
         block_id=group_id,
         event_ids=event_ids,
         events=tuple(events),
-        primary_sphere=primary_sphere,
-        secondary_sphere=secondary_sphere,
+        sphere=sphere,
+        facet=facet,
         polarity=group_polarity,
     )
 
@@ -614,7 +695,14 @@ def _single_event_block(
 ) -> _NarrativeBlock:
     event_id = _text(_value(value, "event_id", "eventId"), "selected_event_id")
     event = _event_for_selection(event_id, value, units, birth_mode, timezone)
-    return _NarrativeBlock(block_id=event_id, event_ids=(event_id,), events=(event,))
+    return _NarrativeBlock(
+        block_id=event_id,
+        event_ids=(event_id,),
+        events=(event,),
+        sphere=event.sphere,
+        facet=event.facet,
+        polarity=event.polarity,
+    )
 
 
 def _birth_context(snapshot: object, canonical_input: Mapping[str, Any]) -> tuple[str, dict[str, bool]]:
@@ -701,11 +789,11 @@ def _snapshot_context(snapshot: object) -> _SnapshotContext:
 
 
 # START_BLOCK: PROMPT
-def _prompt_event(event: _PromptEvent, *, include_event_id: bool = False) -> dict[str, Any]:
+def _prompt_event(event: _PromptEvent) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._prompt_event
     # purpose: Project one selected event into the bounded, human-readable
     #   prompt evidence shape.
-    # inputs: validated prompt event and optional block event id flag.
+    # inputs: validated prompt event.
     # returns: prompt-safe mapping with title omitted when unavailable.
     # side_effects: none.
     # emitted_logs: none.
@@ -714,12 +802,16 @@ def _prompt_event(event: _PromptEvent, *, include_event_id: bool = False) -> dic
     result: dict[str, Any] = {
         "kind": event.kind,
         "sphere": event.sphere,
+        "facet": event.facet,
         "polarity": event.polarity,
+        "sourceFactIds": [event.event_id],
         "eventTime": event.event_time,
         "driverThemes": list(event.driver_themes),
+        "grounding": {
+            "house": event.house,
+            "planets": list(event.planets),
+        },
     }
-    if include_event_id:
-        result["eventId"] = event.event_id
     if event.title is not None:
         result["title"] = event.title
     return result
@@ -733,10 +825,10 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
         "convergences": [
             {
                 "groupId": group.block_id,
-                "primarySphere": group.primary_sphere,
-                "secondarySphere": group.secondary_sphere,
+                "sphere": group.sphere,
+                "facet": group.facet,
                 "polarity": group.polarity,
-                "evidenceEventIds": list(group.event_ids),
+                "sourceFactIds": list(group.event_ids),
                 "evidence": [_prompt_event(event) for event in group.events],
             }
             for group in context.convergences
@@ -744,10 +836,10 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
         "mainEvent": (
             None
             if context.main_event is None
-            else _prompt_event(context.main_event.events[0], include_event_id=True)
+            else _prompt_event(context.main_event.events[0])
         ),
         "impulses": [
-            _prompt_event(impulse.events[0], include_event_id=True)
+            _prompt_event(impulse.events[0])
             for impulse in context.impulses
         ],
         "birthTime": {
@@ -794,13 +886,20 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 - Не изменяй state, dayTone, сферы, polarity, event IDs или EventTime.
 - В каждом ненулевом claim укажи один или несколько sourceEventIds только из
   соответствующего блока. Не выдумывай IDs и не оставляй список пустым.
+- Для каждого блока соблюдай ровно переданные sphere, facet (или null),
+  polarity и sourceFactIds. Не переноси claim в соседнюю сферу или facet и не
+  распространяй polarity узкого facet на всю сферу.
 - Каждый summary обязан опираться на title события, если title передан, и на
   driverThemes. Коротко объясни, что это за детерминированный фактор и почему
-  он относится к разрешённой сфере блока; не подменяй эту связь общей фразой.
+  он относится к разрешённой sphere/facet блока; не подменяй эту связь общей
+  фразой. При facet=null используй только общий язык sphere.
 - Текст claim никогда не должен содержать часы, даты, окна или длительности:
   EventTime — только display-only данные для интерфейса. Формулируй текст claim
-  только общими словами по kind, sphere и polarity; не упоминай house, angle или
-  lot, если соответствующая capability не равна true.
+  только общими словами по kind, sphere, facet и polarity. Поля grounding с
+  house и planets — внутренние детерминированные источники: называй house
+  только при capabilities.houses=true; не раскрывай planets как машинные
+  идентификаторы. Не упоминай angle или lot, если соответствующая capability
+  не равна true.
 - Эти правила относятся к summary.text: только русский язык, не более 220
   символов, практичный короткий текст без категоричных предсказаний. Не
   выдумывай реальные события, чувства, исходы или неподтверждённые детали.
@@ -954,11 +1053,33 @@ def _provider_text(value: object) -> _ProviderText | None:
 
 
 # START_BLOCK: VALIDATE
+def _raw_claim_texts(content: Mapping[str, Any]) -> list[str]:
+    texts: list[str] = []
+    raw_convergences = content.get("convergences")
+    if isinstance(raw_convergences, Mapping):
+        blocks: list[object] = list(raw_convergences.values())
+    else:
+        blocks = []
+    if content.get("main_event") is not None:
+        blocks.append(content.get("main_event"))
+    raw_impulses = content.get("impulses")
+    if isinstance(raw_impulses, Mapping):
+        blocks.extend(raw_impulses.values())
+    for block in blocks:
+        if not isinstance(block, Mapping):
+            continue
+        for field in _NARRATIVE_FIELDS:
+            claim = block.get(field)
+            if isinstance(claim, Mapping) and isinstance(claim.get("text"), str):
+                texts.append(claim["text"])
+    return texts
+
+
 def _claim(
     value: object,
     allowed_event_ids: frozenset[str],
     *,
-    grounding: tuple[frozenset[str], str],
+    grounding: _BlockGrounding,
     allow_grounding_nulls: bool,
 ) -> dict[str, Any] | None:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._claim
@@ -989,10 +1110,11 @@ def _claim(
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
     if len(source_ids) != len(set(source_ids)) or not set(source_ids).issubset(allowed_event_ids):
         raise _NarrativeValidationError(TodayNarrativeErrorCode.CLAIM_BINDING)
-    allowed_spheres, polarity = grounding
+    allowed_spheres, allowed_facets, polarity = _claim_grounding(grounding, source_ids)
     if has_narrative_grounding_violation(
         clean_text,
         allowed_spheres=allowed_spheres,
+        allowed_facets=allowed_facets,
         polarity=polarity,
     ):
         if allow_grounding_nulls:
@@ -1009,8 +1131,8 @@ def _block_content(
     allow_grounding_nulls: bool,
 ) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE._block_content
-    # purpose: Validate one exact narrative block and apply its sphere/polarity
-    #   grounding policy to every claim field.
+    # purpose: Validate one exact narrative block and apply its
+    #   sphere/facet/polarity grounding policy to every claim field.
     # inputs: raw provider block, its selected event ids, block evidence, and
     #   whether grounding failures may become null claims.
     # returns: canonical block with only sanitized, bound claims.
@@ -1059,6 +1181,7 @@ def _validate_response(
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID) from exc
     if not isinstance(parsed, dict) or set(parsed) != {"convergences", "main_event", "impulses"}:
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+    _validate_capability_texts(_raw_claim_texts(parsed), context)
 
     raw_convergences = parsed["convergences"]
     raw_impulses = parsed["impulses"]
@@ -1127,6 +1250,10 @@ def _claim_texts(content: Mapping[str, Any]) -> list[str]:
 
 
 def _validate_capabilities(content: Mapping[str, Any], context: _SnapshotContext) -> None:
+    _validate_capability_texts(_claim_texts(content), context)
+
+
+def _validate_capability_texts(texts: Sequence[str], context: _SnapshotContext) -> None:
     banned: list[re.Pattern[str]] = [_CLOCK_TEXT_RE]
     if context.birth_mode != "exact" or not context.capabilities["houses"]:
         banned.append(_HOUSE_TEXT_RE)
@@ -1134,9 +1261,25 @@ def _validate_capabilities(content: Mapping[str, Any], context: _SnapshotContext
         banned.append(_ANGLE_TEXT_RE)
     if context.birth_mode != "exact" or not context.capabilities["lots"]:
         banned.append(_LOT_TEXT_RE)
-    for text in _claim_texts(content):
+    available_houses = {
+        event.house
+        for block in (*context.convergences, context.main_event, *context.impulses)
+        if block is not None
+        for event in block.events
+        if event.house is not None
+    }
+    for text in texts:
         if any(pattern.search(text) is not None for pattern in banned):
             raise _NarrativeValidationError(TodayNarrativeErrorCode.CAPABILITY_VIOLATION)
+        if context.birth_mode == "exact" and context.capabilities["houses"]:
+            if _HOUSE_TEXT_RE.search(text) is not None:
+                if not available_houses:
+                    raise _NarrativeValidationError(TodayNarrativeErrorCode.CAPABILITY_VIOLATION)
+                referenced_houses = {
+                    int(match.group(1)) for match in _HOUSE_NUMBER_RE.finditer(text)
+                }
+                if referenced_houses and not referenced_houses.issubset(available_houses):
+                    raise _NarrativeValidationError(TodayNarrativeErrorCode.CAPABILITY_VIOLATION)
 
 
 # END_BLOCK: CAPABILITY

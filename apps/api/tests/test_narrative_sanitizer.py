@@ -1,7 +1,7 @@
 # ############################################################################
 # AI_HEADER: TEST_NARRATIVE_SANITIZER — machine-token leak guard coverage.
 # ROLE: Verifies that public narrative text fails closed on known provider
-#       signal-name artifacts.
+#       signal-name artifacts and the sphere/facet contract.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-NARRATIVE-SANITIZER
@@ -9,7 +9,7 @@
 #   either provider orchestration path.
 # owns:
 #   - apps/api/tests/test_narrative_sanitizer.py
-# inputs: safe and provider-leaked text samples.
+# inputs: safe, provider-leaked, and sphere/facet-bound text samples.
 # outputs: sanitizer boolean and safe-text assertions.
 # dependencies: app.services.narrative_sanitizer, pytest.
 # side_effects: none.
@@ -73,9 +73,91 @@ def test_grounding_rejects_an_explicit_polarity_antonym() -> None:
     ) is True
 
 
-def test_grounding_allows_explicitly_related_spheres() -> None:
+def test_grounding_rejects_a_foreign_sphere_without_related_allowance() -> None:
     assert has_narrative_grounding_violation(
         "Коммуникация и обучение помогают проверить документы.",
         allowed_spheres={"documents"},
         polarity="supportive",
+    ) is True
+
+
+def test_personal_money_rejects_credit_and_tax_language() -> None:
+    assert has_narrative_grounding_violation(
+        "Кредит и налог требуют отдельного внимания.",
+        allowed_spheres={"finance"},
+        allowed_facets={"personal_money"},
+        polarity="tense",
+    ) is True
+
+
+def test_financial_obligations_does_not_generalize_tension_to_finance() -> None:
+    assert has_narrative_grounding_violation(
+        "Во всех финансах сегодня напряжение.",
+        allowed_spheres={"finance"},
+        allowed_facets={"financial_obligations"},
+        polarity="tense",
+    ) is True
+
+
+def test_nullable_finance_facet_rejects_purchase_and_debt_language() -> None:
+    assert has_narrative_grounding_violation(
+        "Покупка и долг требуют точного расчёта.",
+        allowed_spheres={"finance"},
+        polarity="mixed",
+    ) is True
+
+
+def test_health_claim_rejects_diagnosis() -> None:
+    assert has_narrative_grounding_violation(
+        "Диагноз нельзя выводить из этого сигнала.",
+        allowed_spheres={"health"},
+        allowed_facets={"general_condition"},
+        polarity="mixed",
+    ) is True
+
+
+@pytest.mark.parametrize(
+    ("text", "spheres", "facets"),
+    [
+        ("Финансы помогают внимательнее распределить личные средства.", {"finance"}, {"personal_money"}),
+        ("Дом и семья поддерживают спокойную бытовую опору.", {"home_family"}, {None}),
+        ("Планы помогают удержать долгосрочное направление.", {"friends_goals"}, {"long_term_goals"}),
+    ],
+)
+def test_valid_new_spheres_and_facets_are_accepted(
+    text: str,
+    spheres: set[str],
+    facets: set[str | None],
+) -> None:
+    normalized_facets = {facet for facet in facets if facet is not None}
+    assert has_narrative_grounding_violation(
+        text,
+        allowed_spheres=spheres,
+        allowed_facets=normalized_facets,
+        polarity="supportive",
     ) is False
+
+
+def test_foreign_facet_is_rejected_even_inside_the_same_sphere() -> None:
+    assert has_narrative_grounding_violation(
+        "Покупка требует отдельной проверки.",
+        allowed_spheres={"finance"},
+        allowed_facets={"personal_money"},
+        polarity="mixed",
+    ) is True
+
+
+@pytest.mark.parametrize(
+    ("spheres", "facets"),
+    [({"money"}, set()), ({"finance"}, {"unknown_facet"})],
+)
+def test_unknown_sphere_or_facet_fails_closed(
+    spheres: set[str],
+    facets: set[str],
+) -> None:
+    assert has_narrative_grounding_violation(
+        "Спокойный общий фокус.",
+        allowed_spheres=spheres,
+        allowed_facets=facets,
+        polarity="mixed",
+    ) is True
