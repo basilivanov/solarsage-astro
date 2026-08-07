@@ -117,7 +117,7 @@ Nginx (`/etc/nginx/sites-enabled/astro.conf`): `dev.astro.vasiliy-ivanov.ru` и 
 
 ```bash
 cd /opt/solarsage-astro && git pull   # рабочее дерево = то, что крутится
-NODE_ENV=production npm run build     # собирает в .next-prod (см. lib/env/next-dist-dir.mjs)
+NODE_ENV=production npm run build     # собирает в .next-prod (см. lib/env/next-dist-dir.mjs); build = `next build --webpack`, Turbopack падает на inferred root
 systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 ```
 
