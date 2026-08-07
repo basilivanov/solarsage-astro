@@ -8,7 +8,7 @@ reviewer.
 apps/api/.venv/bin/python docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py --output-dir /var/tmp/spheres-smoke --residues 0,1,2,3,4 --limit-charts 5 --from-date 2026-07-01 --to-date 2026-07-30 --workers 4
 ```
 
-Candidate fingerprint: `269d52b75f8de92ce5063531c31d807d55545738cf7d8ee2476a611f9ddfe308`
+Candidate fingerprint: `c86c4f8b54b1f8803f31f094c20f53ee17f2a9817e3dc7e4126c4638877ec83c`
 
 ## Gate result
 
@@ -18,7 +18,7 @@ Candidate fingerprint: `269d52b75f8de92ce5063531c31d807d55545738cf7d8ee2476a611f
 | chart errors | 0 |
 | physical signatures | 900 |
 | group without sphere | 0 in every mode |
-| unmapped | 0 in every mode |
+| unmapped | day 48; evening 48; exact 2180; morning 47; night 48; unknown 47 |
 | old keys (`decisions`/`shopping`) | 0 |
 | invalid facet | 0 |
 | nullable facet | observed; no invalid values |
@@ -30,8 +30,12 @@ Aggregate and JSONL artifacts are in `/var/tmp/spheres-smoke/`:
 ## Signature example
 
 ```jsonl
-{"birth_mode":"day","canonical_event_ids":["act:firdar_major__PERIOD_LORD__MERCURY","act:firdar_minor__SUBPERIOD_LORD__SATURN","act:t2n__JUPITER__CONJUNCTION__SUN","act:t2n__MARS__SQUARE__URANUS","act:t2n__MERCURY__CONJUNCTION__SUN","act:t2n__MOON__OPPOSITION__SUN","act:t2n__NEPTUNE__SQUARE__SATURN","act:t2n__SATURN__SEXTILE__NEPTUNE","act:t2n__SATURN__TRINE__MERCURY","act:t2n__SATURN__TRINE__PLUTO","act:t2n__SUN__CONJUNCTION__SATURN","act:t2n__SUN__TRINE__MARS","act:t2n__VENUS__CONJUNCTION__JUPITER","act:t2n__VENUS__TRINE__PLUTO"],"chart_id":"syn-000-moscow","date":"2026-07-01","dayTone":"mixed","driver_keys":["fam:firdar","src:JUPITER","src:MARS","src:MERCURY","src:MOON","src:NEPTUNE","src:SATURN","src:SUN","src:VENUS"],"group_ids":["group:241abd7a32afc1193f11b00a01d50342da344b5cced9a36f782bd70e0ef1c9d1"],"group_polarity":{"group:241abd7a32afc1193f11b00a01d50342da344b5cced9a36f782bd70e0ef1c9d1":"tense"},"groups":[{"driver_keys":["src:JUPITER","src:MERCURY","src:MOON"],"group_id":"group:241abd7a32afc1193f11b00a01d50342da344b5cced9a36f782bd70e0ef1c9d1","hero":false,"hero_anchor_id":null,"hero_confirmation_id":null,"hero_evidence_level":null,"independence_keys":["src:JUPITER","src:MERCURY","src:MOON"],"member_event_ids":["act:t2n__JUPITER__CONJUNCTION__SUN","act:t2n__MERCURY__CONJUNCTION__SUN","act:t2n__MOON__OPPOSITION__SUN"],"n_independent":3,"polarity":"tense","spheres":["work"]}],"hero_anchor_ids":[],"hero_confirmation_ids":[],"hero_evidence_level":null,"independence_keys":["src:JUPITER","src:MERCURY","src:MOON"],"mode":"day","repeated_sphere_selected_count":3,"repeated_spheres":["creativity"],"schema_version":"today-convergence-physical-signature.v1","selected_event_ids":["act:t2n__JUPITER__CONJUNCTION__SUN","act:t2n__MERCURY__CONJUNCTION__SUN","act:t2n__MOON__OPPOSITION__SUN"],"selected_group_ids":["group:241abd7a32afc1193f11b00a01d50342da344b5cced9a36f782bd70e0ef1c9d1"],"selected_sphere_counts":{"creativity":3},"state":"quiet_day","target_date":"2026-07-01"}
+{"schema_version":"today-convergence-physical-signature.v1","chart_id":"syn-000-moscow","birth_mode":"exact","target_date":"2026-07-01","canonical_event_ids":["...MARS__SQUARE__URANUS","...URANUS__SQUARE__URANUS"],"audit_only_event_ids":["act:annual_profection__HOUSE__11","act:lunar_return__ANGLE_MC__NATAL_HOUSE_11"],"unmapped_event_ids":["act:t2n__URANUS__SQUARE__URANUS"],"group_ids":["group:6f7538341e727bc20a2fe5cc6c7f7d857ba068db416e6d5cc784bbda30407941"],"groups":[{"group_id":"group:6f7538341e727bc20a2fe5cc6c7f7d857ba068db416e6d5cc784bbda30407941","member_event_ids":["act:t2n__MARS__SQUARE__URANUS","act:t2n__URANUS__SQUARE__URANUS"],"polarity":"tense","spheres":["work"]}],"selected_group_ids":["group:6f7538341e727bc20a2fe5cc6c7f7d857ba068db416e6d5cc784bbda30407941"],"state":"quiet_day","dayTone":"mixed"}
 ```
 
-The baseline replay was still running when this candidate smoke completed; no
-baseline output was modified or awaited.
+The example is a compact excerpt of the actual JSONL row. The unresolved
+URANUS unit remains a physical group member and is counted by `unmapped`; the
+group is resolver-backed (`work`), so `group_without_sphere` stays zero here.
+
+Parity replay against `/var/tmp/s1-verify` (same 2 charts × 5 days × 6 modes):
+`days compared: 60`, `physical mismatches: 0`, `PASS: physical parity baseline==candidate`.
