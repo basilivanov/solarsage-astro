@@ -78,6 +78,9 @@ def test_direct_day_builds_canonical_factor_ledger() -> None:
     assert day.invalid_ledger_count == 0
     assert day.timing_deferred_count > 0
     assert "aspect:PLUTO:trine:natal_planet:SATURN" in semantic_keys
+    unresolved = [factor for factor in day.factors if not factor["spheres"]]
+    assert unresolved
+    assert all(factor["facet"] is None for factor in unresolved)
 # END_BLOCK: DIRECT_DAY
 
 

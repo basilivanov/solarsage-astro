@@ -206,9 +206,6 @@ def _physical_signature(
         for unit in significant
         if (event_id := _event_id(unit)) is not None
     }
-    significant_event_ids = sorted(
-        {event_id for unit in significant if (event_id := _event_id(unit)) is not None}
-    )
     selected_event_ids = sorted(
         {event_id for unit in selected if (event_id := _event_id(unit)) is not None}
     )
@@ -262,6 +259,40 @@ def _physical_signature(
         )
 
     group_signatures.sort(key=lambda record: record["group_id"])
+    # House-only rows with no technical/context evidence remain in the
+    # physical classifier/audit, but are not canonical event identities: the
+    # pre-projection baseline treated them as control metadata. Keep their
+    # IDs in the explicit audit field so product projection cannot change the
+    # parity universe or erase the physical row.
+    significant_event_ids = sorted(
+        {
+            event_id
+            for unit in significant
+            if (event_id := _event_id(unit)) is not None
+            and not (
+                str(unit.get("target_type") or "").lower() == "house"
+                and not unit.get("technical_spheres")
+                and not unit.get("theme_keys")
+            )
+        }
+    )
+    audit_only_event_ids = sorted(
+        {
+            event_id
+            for unit in significant
+            if (event_id := _event_id(unit)) is not None
+            and str(unit.get("target_type") or "").lower() == "house"
+            and not unit.get("technical_spheres")
+            and not unit.get("theme_keys")
+        }
+    )
+    unmapped_event_ids = sorted(
+        {
+            event_id
+            for unit in significant
+            if (event_id := _event_id(unit)) is not None and not _sphere_values(unit)
+        }
+    )
     group_ids = [record["group_id"] for record in group_signatures]
     selected_group_ids = sorted(
         record["group_id"]
@@ -279,6 +310,8 @@ def _physical_signature(
         "state": state,
         "dayTone": day_tone,
         "canonical_event_ids": significant_event_ids,
+        "audit_only_event_ids": audit_only_event_ids,
+        "unmapped_event_ids": unmapped_event_ids,
         "group_ids": group_ids,
         "groups": group_signatures,
         "driver_keys": sorted(set(event_driver_keys.values())),
@@ -386,7 +419,15 @@ def _state_result(
         "n_significant": int(result.get("n_significant", 0)),
         "n_anchors": int(result.get("n_anchors", 0)),
         "n_independent_units": independent_units,
-        "n_groups": len(result.get("groups", [])),
+        # `groups` is the physical ledger (including unresolved groups for
+        # parity/audit); publication metrics count only resolver-backed
+        # groups, mirroring production fail-closed selection.
+        "n_groups": int(
+            result.get(
+                "n_groups",
+                len(result.get("published_groups", result.get("groups", []))),
+            )
+        ),
         "n_hero_groups": len(result.get("hero_groups", [])),
         "n_selected_public_units": len(result.get("selected_public_units", [])),
         "excluded_orb_fail_closed": int(result.get("excluded_orb_fail_closed", 0)),

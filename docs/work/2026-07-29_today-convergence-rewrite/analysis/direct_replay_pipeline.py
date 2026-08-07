@@ -433,12 +433,11 @@ class DirectReplayPipeline:
                 house=house if isinstance(house, int) and not isinstance(house, bool) else None,
                 theme_keys=theme_keys,
             )
-            # Match the production unit boundary: an unresolved product
-            # projection is excluded fail-closed before publication. The
-            # physical classifier already ignores such rows; keeping them out
-            # here prevents replay from reporting a published unmapped event.
-            if projection is None:
-                continue
+            # Keep the physical unit even when product projection is
+            # unresolved. Production resolves sphere/facet after the unit
+            # and physical-group boundaries; replay must therefore carry the
+            # unresolved row into canonical IDs, grouping, and audit, while
+            # publication/selection remains fail-closed downstream.
             records.append(
                 {
                     "semantic_key": semantic_key,

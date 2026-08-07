@@ -142,4 +142,63 @@ def test_group_projection_does_not_clone_one_physical_group() -> None:
     assert result["groups"][0]["spheres"] == ("finance",)
     assert result["groups"][0]["facet"] == "shared_money"
     assert all(len(group["spheres"]) == 1 for group in result["groups"])
+
+
+def test_unresolved_group_stays_physical_but_is_not_published() -> None:
+    factors = [
+        {
+            "semantic_key": "mars:square:uranus",
+            "factor_id": "factor:mars:square:uranus",
+            "source": "activation",
+            "temporal_role": "anchor_today",
+            "technique": "transit_to_natal",
+            "technique_family": "transit",
+            "source_planet": "MARS",
+            "aspect_type": "square",
+            "orb": 1.0,
+            "strength": 0.9,
+            "polarity": "tense",
+            "target_type": "natal_planet",
+            "target_key": "URANUS",
+            "theme_keys": [],
+            "technical_spheres": [],
+            "house": None,
+            "spheres": [],
+            "facet": None,
+            "exact_at": "2026-07-30T12:00:00+03:00",
+        },
+        {
+            "semantic_key": "uranus:square:uranus",
+            "factor_id": "factor:uranus:square:uranus",
+            "source": "activation",
+            "temporal_role": "supporting",
+            "technique": "transit_to_natal",
+            "technique_family": "transit",
+            "source_planet": "URANUS",
+            "aspect_type": "square",
+            "orb": 1.0,
+            "strength": 0.9,
+            "polarity": "tense",
+            "target_type": "natal_planet",
+            "target_key": "URANUS",
+            "theme_keys": [],
+            "technical_spheres": [],
+            "house": None,
+            "spheres": [],
+            "facet": None,
+            "exact_at": None,
+        },
+    ]
+
+    result = classify_day_v2(factors, 0.55, 0.5, rule="B")
+
+    assert len(result["sig_units"]) == 2
+    assert len(result["groups"]) == 1
+    assert {
+        member["semantic_key"] for member in result["groups"][0]["members"]
+    } == {"mars:square:uranus", "uranus:square:uranus"}
+    assert result["groups"][0]["spheres"] == ()
+    assert result["published_groups"] == []
+    assert result["selected_public_units"] == []
+    assert result["group_without_sphere_count"] == 1
 # END_BLOCK: DELTA_GATES

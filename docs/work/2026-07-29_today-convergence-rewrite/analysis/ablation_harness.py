@@ -888,9 +888,14 @@ def select_public_units_v2(sig_units: list[dict], groups: list[dict]) -> list[di
     tense merely because they exist in the ledger.
     """
     if groups:
-        candidate_units = [u for g in groups for u in g["members"]]
+        candidate_units = [
+            unit
+            for group in groups
+            for unit in group["members"]
+            if unit.get("spheres")
+        ]
     else:
-        candidate_units = list(sig_units)
+        candidate_units = [unit for unit in sig_units if unit.get("spheres")]
     unique: dict[str, dict] = {}
     for unit in candidate_units:
         if unit.get("temporal_role") == "background":
@@ -935,7 +940,11 @@ def classify_day_v2(
     """Fixed five-layer classification. hero = valid group whose >=1 anchor is
     rare_anchor_eligible. States: hero/convergence/single_impulse/quiet_impulses/quiet."""
     fx = dict(FIXES if fixes is None else fixes)
-    units = [dict(f) for f in factors if f["spheres"]]
+    # Product projection is deliberately later than the physical unit
+    # boundary. Keep unresolved units in significance and direct grouping so
+    # their event/group IDs and members remain in the replay ledger. Only the
+    # published group/selection views below are fail-closed on sphere.
+    units = [dict(f) for f in factors]
 
     delta_upgraded = 0
     if fx.get("F4_delta_fixed") and trigger_keys:
@@ -997,13 +1006,14 @@ def classify_day_v2(
                 raise AssertionError("one convergence group may expose at most one sphere")
             groups.append(g)
 
-    hero_groups = [g for g in groups if g["hero"]]
-    selected_public_units = select_public_units_v2(sig_units, groups)
+    published_groups = [g for g in groups if g["spheres"]]
+    hero_groups = [g for g in published_groups if g["hero"]]
+    selected_public_units = select_public_units_v2(sig_units, published_groups)
     n_sig = len(sig_units)
     n_anchor = sum(1 for u in sig_units if u["temporal_role"] == "anchor_today")
     if hero_groups:
         state = "hero"
-    elif groups:
+    elif published_groups:
         state = "convergence"
     elif n_anchor >= 1:
         state = "single_impulse"
@@ -1017,6 +1027,9 @@ def classify_day_v2(
         "n_anchors": n_anchor,
         "tense": any(u["polarity"] == "tense" for u in selected_public_units),
         "groups": groups,
+        "published_groups": published_groups,
+        "n_groups": len(published_groups),
+        "group_without_sphere_count": sum(not g["spheres"] for g in groups),
         "hero_groups": hero_groups,
         "sig_units": sig_units,
         "selected_public_units": selected_public_units,
