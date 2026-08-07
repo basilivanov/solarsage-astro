@@ -227,6 +227,10 @@ def _install_profile_hash(monkeypatch) -> None:
     monkeypatch.setattr("app.api.day.compute_today_profile_hash", lambda profile, resolution: PROFILE_HASH)
 
 
+def _install_local_today(monkeypatch, local_today: date = TARGET_DATE) -> None:
+    monkeypatch.setattr(day_api, "resolve_user_local_date", lambda *_args: local_today)
+
+
 def _install_current_snapshot(monkeypatch, snapshot: TodaySnapshot | None) -> AsyncMock:
     lookup = AsyncMock(return_value=snapshot)
     monkeypatch.setattr("app.api.day.TodaySnapshotService.load_current", lookup)
@@ -305,6 +309,7 @@ async def test_full_cold_get_publishes_pending_then_warm_get_is_ready(
     snapshot = _snapshot(user.id)
     _install_access(monkeypatch, "full")
     _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch)
     _install_current_snapshot(monkeypatch, None)
     publication = _install_publication(monkeypatch, snapshot)
     lease = _install_lease(monkeypatch, snapshot)
@@ -334,6 +339,7 @@ async def test_full_cold_get_publishes_pending_then_warm_get_is_ready(
 # END_BLOCK: FULL_PATH
 
 
+# START_BLOCK: FULL_PATH
 @pytest.mark.asyncio
 async def test_full_warm_hit_never_calls_runtime_or_provider(
     async_client, db_session, make_initdata, monkeypatch
@@ -342,6 +348,7 @@ async def test_full_warm_hit_never_calls_runtime_or_provider(
     snapshot = _snapshot(user.id)
     _install_access(monkeypatch, "full")
     _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch, TARGET_DATE + timedelta(days=1))
     _install_current_snapshot(monkeypatch, snapshot)
     lease = _install_lease(monkeypatch, snapshot, initial_status="ready")
     calculate = AsyncMock()
@@ -352,6 +359,7 @@ async def test_full_warm_hit_never_calls_runtime_or_provider(
     response = await async_client.get(f"/api/day/{TARGET_DATE.isoformat()}")
 
     assert response.status_code == 200, response.text
+    assert response.json()["state"] == "convergence_today"
     assert response.json()["contentState"] == "ready"
     calculate.assert_not_awaited()
     generate.assert_not_awaited()
@@ -359,6 +367,7 @@ async def test_full_warm_hit_never_calls_runtime_or_provider(
 # END_BLOCK: FULL_PATH
 
 
+# START_BLOCK: FULL_PATH
 @pytest.mark.asyncio
 async def test_preview_publishes_projection_without_events_or_llm(
     async_client, db_session, make_initdata, monkeypatch
@@ -389,6 +398,7 @@ async def test_preview_publishes_projection_without_events_or_llm(
 # END_BLOCK: FULL_PATH
 
 
+# START_BLOCK: FULL_PATH
 @pytest.mark.asyncio
 async def test_locked_returns_empty_envelope_without_snapshot_or_sidecar(
     async_client, db_session, make_initdata, monkeypatch
@@ -415,6 +425,7 @@ async def test_locked_returns_empty_envelope_without_snapshot_or_sidecar(
 # END_BLOCK: FULL_PATH
 
 
+# START_BLOCK: FULL_PATH
 @pytest.mark.asyncio
 async def test_unavailable_calculation_is_http_200_without_snapshot(
     async_client, db_session, make_initdata, monkeypatch
@@ -422,6 +433,7 @@ async def test_unavailable_calculation_is_http_200_without_snapshot(
     await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60105)
     _install_access(monkeypatch, "full")
     _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch)
     _install_current_snapshot(monkeypatch, None)
     unavailable = TodayConvergenceCalculationUnavailable(
         state="unavailable",
@@ -447,6 +459,42 @@ async def test_unavailable_calculation_is_http_200_without_snapshot(
     assert payload["snapshotId"] is None
     assert payload["contentState"] == "unavailable"
     publish.assert_not_awaited()
+# END_BLOCK: FULL_PATH
+
+
+# START_BLOCK: FULL_PATH
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["get", "post"])
+async def test_past_date_without_snapshot_is_unavailable_for_get_and_retry(
+    async_client, db_session, make_initdata, monkeypatch, method: str
+) -> None:
+    await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60112)
+    _install_access(monkeypatch, "full")
+    _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch, TARGET_DATE + timedelta(days=1))
+    _install_current_snapshot(monkeypatch, None)
+    calculate = AsyncMock(side_effect=AssertionError("past date calculated without snapshot"))
+    publish = AsyncMock(side_effect=AssertionError("past date published without snapshot"))
+    monkeypatch.setattr("app.api.day.calculate_today_convergence", calculate)
+    monkeypatch.setattr("app.api.day.TodaySnapshotService.publish_or_load", publish)
+    events: list[str] = []
+    monkeypatch.setattr(day_api, "_log_day_event", lambda event, **_kwargs: events.append(event))
+
+    request = (
+        async_client.get(f"/api/day/{TARGET_DATE.isoformat()}")
+        if method == "get"
+        else async_client.post(f"/api/day/{TARGET_DATE.isoformat()}/retry")
+    )
+    response = await request
+    payload = response.json()
+
+    assert response.status_code == 200, response.text
+    assert payload["state"] == "unavailable"
+    assert payload["snapshotId"] is None
+    assert payload["contentState"] == "unavailable"
+    calculate.assert_not_awaited()
+    publish.assert_not_awaited()
+    assert events == ["day.viewed"]
 # END_BLOCK: FULL_PATH
 
 
@@ -478,6 +526,7 @@ async def test_retry_pending_returns_202_and_retry_after_without_provider_call(
 # END_BLOCK: RETRY_SINGLE_FLIGHT
 
 
+# START_BLOCK: RETRY_SINGLE_FLIGHT
 @pytest.mark.asyncio
 async def test_retry_unavailable_cooldown_returns_202_without_provider_call(
     async_client, db_session, make_initdata, monkeypatch
@@ -511,6 +560,8 @@ async def test_retry_unavailable_cooldown_returns_202_without_provider_call(
     generate.assert_not_awaited()
 
 
+# END_BLOCK: RETRY_SINGLE_FLIGHT
+# START_BLOCK: RETRY_SINGLE_FLIGHT
 @pytest.mark.asyncio
 async def test_retry_due_unavailable_claims_again_and_ready_is_noop(
     async_client, db_session, make_initdata, monkeypatch
@@ -540,6 +591,7 @@ async def test_retry_due_unavailable_claims_again_and_ready_is_noop(
 # END_BLOCK: RETRY_SINGLE_FLIGHT
 
 
+# START_BLOCK: RETRY_SINGLE_FLIGHT
 @pytest.mark.asyncio
 async def test_background_exception_completes_unavailable_with_future_retry(
     async_client, db_session, make_initdata, monkeypatch
@@ -548,6 +600,7 @@ async def test_background_exception_completes_unavailable_with_future_retry(
     snapshot = _snapshot(user.id)
     _install_access(monkeypatch, "full")
     _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch)
     _install_current_snapshot(monkeypatch, None)
     _install_publication(monkeypatch, snapshot)
     lease = _install_lease(monkeypatch, snapshot)
@@ -571,6 +624,7 @@ async def test_background_exception_completes_unavailable_with_future_retry(
 # END_BLOCK: RETRY_SINGLE_FLIGHT
 
 
+# START_BLOCK: RETRY_SINGLE_FLIGHT
 @pytest.mark.asyncio
 async def test_two_parallel_retries_have_one_claim_and_one_provider_call(
     async_client, db_session, make_initdata, monkeypatch

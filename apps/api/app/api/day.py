@@ -40,10 +40,11 @@
 #   - Locked requests never calculate or publish a snapshot.
 #   - A matching current profile hash never calls the deterministic runtime.
 #   - Preview requests never acquire or launch a narrative lease.
+#   - A past local date without a matching snapshot never calculates or publishes.
 #   - Background narrative work always completes ready or unavailable.
 # failure_policy:
 #   - HTTPException with stable code + message in detail; calculation failures
-#     return HTTP 200 with state=unavailable.
+#     and past-date snapshot misses return HTTP 200 with state=unavailable.
 # non_goals:
 #   - changing TodayService, Today payloads, or convergence/lease internals
 # END_MODULE_CONTRACT: M-API-DAY
@@ -374,6 +375,16 @@ async def _serve_day(
     *,
     retry_requested: bool,
 ) -> tuple[TodayConvergencePayload, datetime | None]:
+    # START_FUNCTION_CONTRACT: F-M-API-DAY._serve_day
+    # purpose: Orchestrate access, snapshot lookup, past-date boundary, calculation, publication, and projection.
+    # inputs: date_str, request, authenticated user, DB session, background task collector, and retry flag.
+    # returns: TodayConvergencePayload plus an optional retry timestamp for narrative cooldown responses.
+    # side_effects: access read; optional calculation, snapshot publication, narrative lease, background generation,
+    #   and day.viewed logging.
+    # emitted_logs: day.viewed, day.snapshot_*, day.narrative_*, day.narrative_generation_*, system.error.
+    # error_behavior: invalid boundary inputs raise the existing HTTPException contracts; a past local date with
+    #   no matching snapshot returns HTTP 200 unavailable without calculation or publication.
+    # END_FUNCTION_CONTRACT: F-M-API-DAY._serve_day
     # START_BLOCK: DAY_ORCHESTRATION
     target_date, timezone_name = _resolve_target_date(user, date_str)
     _ensure_onboarded(user)
@@ -394,7 +405,25 @@ async def _serve_day(
     profile_hash = compute_today_profile_hash(user.profile, resolution)
     snapshot_service = TodaySnapshotService(db)
     snapshot = await snapshot_service.load_current(user.id, target_date)
-    if snapshot is None or snapshot.profile_hash != profile_hash:
+    snapshot_needs_publication = snapshot is None or snapshot.profile_hash != profile_hash
+    if snapshot_needs_publication:
+        try:
+            local_today = resolve_user_local_date(user, datetime.now(UTC))
+        except UserLocalDateError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "INVALID_USER_TIMEZONE", "reason": exc.code},
+            ) from None
+        if target_date < local_today:
+            payload = project_empty_payload(
+                target_date=target_date,
+                timezone_name=timezone_name,
+                birth_time=birth_time,
+                access_state=access_state,
+                unavailable=True,
+            )
+            _viewed_payload(payload, request)
+            return payload, None
         try:
             calculation = await calculate_today_convergence(user.profile, target_date)
         except Exception as exc:
@@ -473,7 +502,8 @@ async def get_day(
     #   day.snapshot_published, day.snapshot_conflict_reused, day.snapshot_superseded,
     #   day.narrative_lease_*, day.narrative_generation_*, day.viewed, system.error.
     # error_behavior: 401 from require_session; 422 for invalid date/timezone,
-    #   onboarding, or birth-time state; calculation failure is HTTP 200 unavailable.
+    #   onboarding, or birth-time state; calculation failure and past-date snapshot
+    #   miss are HTTP 200 unavailable.
     # END_FUNCTION_CONTRACT: F-M-API-DAY.get_day
     payload, _ = await _serve_day(
         date_str,
@@ -512,8 +542,8 @@ async def retry_day(
     #   or unavailable narrative whose retry cooldown has not elapsed.
     # side_effects: same owner/access/snapshot/lease boundary as get_day.
     # emitted_logs: same day snapshot/narrative lifecycle events as get_day.
-    # error_behavior: 401/422 use the GET boundary; pending/cooldown returns 202
-    #   without a second provider call.
+    # error_behavior: 401/422 use the GET boundary; past-date snapshot miss is
+    #   HTTP 200 unavailable; pending/cooldown returns 202 without a second provider call.
     # END_FUNCTION_CONTRACT: F-M-API-DAY.retry_day
     payload, retry_at = await _serve_day(
         date_str,
