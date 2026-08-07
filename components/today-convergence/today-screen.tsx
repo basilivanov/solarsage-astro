@@ -40,7 +40,6 @@ import type {
 import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-page";
 import type { NatalPreviewChart } from "@/lib/contracts/natal";
 import { BirthTimeBanner } from "./birth-time-banner";
-import { ConvergenceHero } from "./convergence-hero";
 import { ConvergenceUnifiedList } from "./convergence-unified-list";
 import { DayGeneralSky } from "./day-general-sky";
 import { HowCalculated } from "./how-calculated";
@@ -66,8 +65,6 @@ export type TodayScreenProps = {
   onRetry?: () => void;
   birthTimeDismissed?: boolean;
   onBirthTimeDismiss?: () => void;
-  /** Prototype seam (sandbox only): "band" renders the tone tint as a header band; "unified" replaces the hero with the quiet-day-style signal list. */
-  heroVariant?: "full" | "band" | "unified";
   /** Prototype seam (sandbox only): fixture-provided sphere context payloads replacing the /api/spheres fetch. */
   sphereContexts?: Record<string, TodaySpherePagePayload>;
   /** Prototype seam (sandbox only): natal chart data for the HowCalculated wheel. */
@@ -179,7 +176,6 @@ function ReadyContent({
   onRetry,
   birthTimeDismissed,
   onBirthTimeDismiss,
-  heroVariant,
   sphereContexts,
   natalChart,
 }: Omit<TodayScreenProps, "screenState">) {
@@ -227,26 +223,15 @@ function ReadyContent({
         ) : null}
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "convergence_today" ? (
-          heroVariant === "unified" ? (
-            <ConvergenceUnifiedList
-              groups={payload.convergences}
-              events={payload.events}
-              targetDate={payload.targetDate}
-              timezone={payload.timezone}
-              contentState={payload.contentState}
-              onOpenDrilldown={setOpenSphere}
-              onRetry={onRetry}
-            />
-          ) : (
-            <ConvergenceHero
-              groups={payload.convergences}
-              targetDate={payload.targetDate}
-              dayTone={payload.dayTone}
-              contentState={payload.contentState}
-              heroVariant={heroVariant === "band" ? "band" : "full"}
-              onRetry={onRetry}
-            />
-          )
+          <ConvergenceUnifiedList
+            groups={payload.convergences}
+            events={payload.events}
+            targetDate={payload.targetDate}
+            timezone={payload.timezone}
+            contentState={payload.contentState}
+            onOpenDrilldown={setOpenSphere}
+            onRetry={onRetry}
+          />
         ) : null}
 
         {!isUnavailable && !isLocked && !isPreview && payload.state === "quiet_day" ? (
@@ -255,6 +240,7 @@ function ReadyContent({
               <MainEvent
                 event={payload.mainEvent}
                 timezone={payload.timezone}
+                onOpenDrilldown={setOpenSphere}
               />
             ) : null}
             <ImpulsesList
@@ -299,7 +285,6 @@ export function TodayScreen({
   onRetry,
   birthTimeDismissed = false,
   onBirthTimeDismiss,
-  heroVariant,
   sphereContexts,
   natalChart,
 }: TodayScreenProps) {
@@ -335,7 +320,6 @@ export function TodayScreen({
           onRetry={onRetry}
           birthTimeDismissed={birthTimeDismissed}
           onBirthTimeDismiss={onBirthTimeDismiss}
-          heroVariant={heroVariant}
           sphereContexts={sphereContexts}
           natalChart={natalChart}
         />

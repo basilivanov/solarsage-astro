@@ -37,8 +37,6 @@ import { TabBar } from "@/components/today/tab-bar";
 type Props = {
   payload: unknown;
   fixtureName: string;
-  /** Optional hero variant from ?hero=full|band|unified (prototype comparison). */
-  heroVariant?: "full" | "band" | "unified";
   /** Fixture-provided sphere context payloads (replaces the /api/spheres fetch in sandbox). */
   sphereContexts?: Record<string, unknown>;
   /** Fixture-provided natal chart for the HowCalculated wheel (sandbox only). */
@@ -68,7 +66,7 @@ function useSandboxTheme() {
 // END_BLOCK: THEME
 
 // START_BLOCK: FRAME
-export function SandboxTodayClient({ payload, fixtureName, heroVariant, sphereContexts, natalChart }: Props) {
+export function SandboxTodayClient({ payload, fixtureName, sphereContexts, natalChart }: Props) {
   useSandboxTheme();
   return (
     <main className="h-[var(--app-height)] overflow-hidden bg-background">
@@ -83,7 +81,6 @@ export function SandboxTodayClient({ payload, fixtureName, heroVariant, sphereCo
             onRetry={() => {}}
             birthTimeDismissed={false}
             onBirthTimeDismiss={() => {}}
-            heroVariant={heroVariant}
             sphereContexts={sphereContexts as TodayScreenProps["sphereContexts"]}
             natalChart={natalChart as TodayScreenProps["natalChart"]}
           />

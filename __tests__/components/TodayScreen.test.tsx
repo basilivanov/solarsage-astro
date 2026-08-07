@@ -20,7 +20,7 @@
 // public_entrypoints:
 //   - TodayScreen state acceptance tests
 // semantic_blocks:
-//   - READY_STATES: hero and quiet deterministic projections.
+//   - READY_STATES: unified convergence and quiet deterministic projections.
 //   - ACCESS_STATES: preview and locked projections.
 //   - TRANSPORT_STATES: loading/error root semantics.
 // owned_tests:
@@ -53,16 +53,17 @@ function renderToday(payload: typeof heroSupportive, overrides?: Partial<Compone
 
 // START_BLOCK: READY_STATES
 describe("TodayScreen generated payload states", () => {
-  it("renders a convergence hero from the generated payload", () => {
+  it("renders the unified convergence list from the generated payload", () => {
     renderToday(heroSupportive);
     const root = screen.getByTestId("today-screen");
 
     expect(root.getAttribute("data-screen-state")).toBe("ready");
     expect(root.getAttribute("data-state")).toBe("convergence_today");
     expect(root.getAttribute("data-day-tone")).toBe("supportive");
-    expect(screen.getByTestId("convergence-hero")).toBeTruthy();
-    expect(screen.getByTestId("convergence-sphere-work").getAttribute("data-polarity")).toBe("supportive");
-    expect(screen.getByTestId("today-narrative").getAttribute("data-state")).toBe("ready");
+    expect(screen.getByTestId("convergence-unified-list")).toBeTruthy();
+    expect(screen.getByTestId("unified-group-work").getAttribute("data-sphere")).toBe("work");
+    expect(screen.getByTestId("unified-signal-cvg_v1_00000000000000000000000000000001").getAttribute("data-polarity")).toBe("supportive");
+    expect(screen.queryByTestId("today-narrative")).toBeNull();
   });
 
   it("renders quiet deterministic content and pending narrative separately", () => {
@@ -72,7 +73,7 @@ describe("TodayScreen generated payload states", () => {
 
     cleanup();
     renderToday(contentPending);
-    expect(screen.getByTestId("convergence-hero")).toBeTruthy();
+    expect(screen.getByTestId("convergence-unified-list")).toBeTruthy();
     expect(screen.getByTestId("today-narrative").getAttribute("data-state")).toBe("pending");
     expect(screen.getByRole("status")).toBeTruthy();
     expect(screen.queryByTestId("today-loading-skeleton")).toBeNull();
@@ -91,7 +92,7 @@ describe("TodayScreen generated payload states", () => {
     const onRetry = vi.fn();
     renderToday(stateUnavailable, { onRetry });
     expect(screen.getByTestId("today-unavailable").getAttribute("role")).toBe("alert");
-    expect(screen.queryByTestId("convergence-hero")).toBeNull();
+    expect(screen.queryByTestId("convergence-unified-list")).toBeNull();
     expect(screen.queryByTestId("impulses-list")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Обновить" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
@@ -105,7 +106,7 @@ describe("TodayScreen access projections", () => {
     renderToday(accessPreview);
     expect(screen.getByTestId("today-preview-teaser")).toBeTruthy();
     expect(screen.getByTestId("paywall")).toBeTruthy();
-    expect(screen.queryByTestId("convergence-hero")).toBeNull();
+    expect(screen.queryByTestId("convergence-unified-list")).toBeNull();
     expect(screen.queryByTestId("impulses-list")).toBeNull();
   });
 

@@ -59,10 +59,9 @@ function loadFixture(name: string): unknown | null {
 export default async function SandboxTodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fixture?: string; hero?: string }>;
+  searchParams: Promise<{ fixture?: string }>;
 }) {
-  const { fixture, hero } = await searchParams;
-  const heroVariant = hero === "band" ? "band" : hero === "unified" ? "unified" : "full";
+  const { fixture } = await searchParams;
   const raw = fixture ? loadFixture(fixture) : null;
   let payload: unknown = null;
   let sphereContexts: Record<string, unknown> | undefined;
@@ -100,5 +99,5 @@ export default async function SandboxTodayPage({
     );
   }
 
-  return <SandboxTodayClient payload={payload} fixtureName={fixture ?? "unknown"} heroVariant={heroVariant} sphereContexts={sphereContexts} natalChart={natalChart} />;
+  return <SandboxTodayClient payload={payload} fixtureName={fixture ?? "unknown"} sphereContexts={sphereContexts} natalChart={natalChart} />;
 }

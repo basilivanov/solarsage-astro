@@ -37,10 +37,11 @@ import {
 type Props = {
   event: TodayConvergenceMainEvent;
   timezone?: string | null;
+  onOpenDrilldown?: (sphere: string) => void;
 };
 
 // START_BLOCK: MAIN_EVENT
-export function MainEvent({ event, timezone }: Props) {
+export function MainEvent({ event, timezone, onOpenDrilldown }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
   // purpose: Render the deterministic main event block.
   // inputs: event — generated main event payload; timezone — payload timezone for absolute event time.
@@ -49,7 +50,6 @@ export function MainEvent({ event, timezone }: Props) {
   // emitted_logs: none.
   // error_behavior: generated event fields are rendered as received.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
-  const href = `/day/spheres/${event.sphere}`;
   const content = (
     <>
       <p className="text-[11px] font-medium uppercase leading-[18px] tracking-[0.18em] text-muted-foreground/80">
@@ -77,12 +77,15 @@ export function MainEvent({ event, timezone }: Props) {
       data-has-summary={event.summary ? "true" : "false"}
       className="rounded-[24px] border border-border/40 bg-card p-5 shadow-(--shadow-card)"
     >
-      <a
-        href={href}
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={`Открыть разбор сферы «${getTodaySphereLabel(event.sphere)}»`}
+        onClick={() => onOpenDrilldown?.(event.sphere)}
         className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {content}
-      </a>
+      </button>
     </article>
   );
 }

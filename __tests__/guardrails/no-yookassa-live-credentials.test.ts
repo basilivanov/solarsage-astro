@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { execFileSync } from "node:child_process"
 
@@ -14,7 +14,13 @@ function trackedTextFiles() {
     .toString("utf8")
     .split("\0")
     .filter(Boolean)
-    .filter((path) => !readFileSync(join(root, path)).includes(0))
+    // A local worktree may contain an uncommitted deletion. Keep the guardrail
+    // usable during review diffs; the reviewer commit removes the path from
+    // git ls-files, while unexpected read errors still surface below.
+    .filter((path) => {
+      if (!existsSync(join(root, path))) return false
+      return !readFileSync(join(root, path)).includes(0)
+    })
 }
 
 function findYooKassaCredentialLeaks(text: string) {

@@ -23,7 +23,7 @@
 // semantic_blocks:
 //   - UNIFIED_LIST: per-sphere grouping, evidence badge, signal cards.
 // owned_tests:
-//   - none (sandbox prototype ahead of the spheres/facets implementation)
+//   - __tests__/components/today-convergence/today-screen.test.tsx
 // END_MODULE_MAP: M-TODAY-CONVERGENCE-UNIFIED
 
 import { ChevronRight } from "lucide-react";
@@ -80,9 +80,9 @@ export function ConvergenceUnifiedList({
   const eventById = new Map(events.map((event) => [event.id, event] as const));
   const bySphere = new Map<string, TodayConvergenceGroup[]>();
   for (const group of groups) {
-    const bucket = bySphere.get(group.primarySphere);
+    const bucket = bySphere.get(group.sphere);
     if (bucket) bucket.push(group);
-    else bySphere.set(group.primarySphere, [group]);
+    else bySphere.set(group.sphere, [group]);
   }
   const sphereGroups = Array.from(bySphere, ([sphere, sphereSignals]) => ({
     sphere,

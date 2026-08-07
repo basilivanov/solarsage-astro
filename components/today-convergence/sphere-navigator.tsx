@@ -4,13 +4,13 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR
-// purpose: Render the fixed canonical sphere order with public Today signal summaries and real sphere paths.
+// purpose: Render the fixed canonical sphere order with public Today signal summaries and sheet triggers.
 // owns:
 //   - components/today-convergence/sphere-navigator.tsx
 // inputs: generated TodayConvergencePayload.
-// outputs: nav, 12 tile selectors, visible active summaries, dialog triggers for marked tiles, and static sphere links otherwise.
+// outputs: nav, 12 tile selectors, visible active summaries, and dialog triggers for every tile.
 // dependencies: lib/display/sphere-labels, packages/contracts/today-convergence.ts.
-// side_effects: delegates marked-sphere drilldown; unmarked tiles use ordinary navigation.
+// side_effects: delegates every tile to the parent-owned sphere drilldown.
 // emitted_logs: none.
 // invariants: order is canonical; active state is conveyed by text as well as a neutral supplementary dot; inactive tiles have no Today summary.
 // failure_policy: absent selected blocks mean all markers are false.
@@ -105,10 +105,10 @@ function activeSummary(summary: SphereTodaySummary | undefined): string | null {
 // START_BLOCK: NAVIGATOR
 export function SphereNavigator({ payload, rail = false, onOpenDrilldown }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR.SphereNavigator
-  // purpose: Render all twelve canonical sphere links and visible summaries for spheres with Today facts.
+  // purpose: Render all twelve canonical sphere tiles and visible summaries for spheres with Today facts.
   // inputs: payload — generated Today Convergence envelope.
   // returns: accessible sphere navigation and marked-sphere dialog triggers.
-  // side_effects: delegates marked-sphere drilldown or performs ordinary link navigation.
+  // side_effects: delegates the selected sphere to the parent-owned drilldown.
   // emitted_logs: none.
   // error_behavior: absent Today facts render twelve unmarked tiles; period/lookahead context alone never marks a sphere.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SPHERE-NAVIGATOR.SphereNavigator

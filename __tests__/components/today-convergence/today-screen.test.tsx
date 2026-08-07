@@ -52,6 +52,7 @@ import {
   quietSteady,
   quietZeroImpulses,
   stateUnavailable,
+  spheresFacetsFinance,
   todayConvergenceFixtures,
 } from "../../fixtures/today_convergence_v2";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
@@ -107,7 +108,7 @@ function renderToday(payload: TodayConvergencePayload, overrides?: Partial<React
   return render(<TodayScreen payload={payload} {...overrides} />);
 }
 
-const readySpherePayload: TodaySpherePagePayload = {
+const readySpherePayload = {
   birthTimeMode: "exact",
   housesAvailable: true,
   natal: {
@@ -126,12 +127,14 @@ const readySpherePayload: TodaySpherePagePayload = {
       title: "Годовая тема профессионального роста",
       activeFrom: "2026-01-01",
       activeUntil: "2026-12-31",
+      note: "Рабочая тема года лучше раскрывается через устойчивый ритм и последовательные шаги.",
     },
   ],
+  periodSynthesis: "Сейчас рабочий фон поддерживает системное движение без резких рывков.",
   periodIdentity: "period-work-v1",
   periodUnavailable: false,
   sphere: "work",
-};
+} as unknown as TodaySpherePagePayload;
 
 const groupedImpulsesPayload: TodayConvergencePayload = {
   ...quietSteady,
@@ -170,32 +173,30 @@ describe("Today Convergence screen fixture matrix", () => {
     }
   });
 
-  it("renders hero only for convergence states and exposes claim text", () => {
+  it("renders the unified list only for convergence states and exposes signal copy", () => {
     for (const fixture of [heroSupportive, heroTense, heroMixed, heroThreeSpheres, contentPending]) {
       cleanup();
       renderToday(fixture);
-      expect(screen.getByTestId("convergence-hero")).toBeTruthy();
+      expect(screen.getByTestId("convergence-unified-list")).toBeTruthy();
     }
 
     cleanup();
     renderToday(heroThreeSpheres);
-    expect(screen.getAllByTestId("convergence-secondary")).toHaveLength(2);
-    expect(screen.getByTestId("convergence-hero").textContent).toContain("Что сошлось 1 августа");
+    expect(screen.getAllByTestId(/^unified-signal-/)).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Что сошлось 1 августа" })).toBeTruthy();
     expect(screen.getByTestId("today-screen").textContent).toContain(
       heroThreeSpheres.convergences[0].summary?.text ?? "",
     );
-    expect(screen.getByTestId("convergence-hero").getAttribute("data-evidence-level")).toBe("high");
+    expect(screen.getByTestId("convergence-evidence-badge").getAttribute("data-evidence-level")).toBe("high");
   });
 
-  it("uses the payload target date for hero, secondary, and preview copy", () => {
+  it("uses the payload target date for unified and preview copy", () => {
     const targetDate = "2026-08-03";
     expect(formatTargetDateRu(targetDate)).toBe("3 августа");
 
     renderToday({ ...heroThreeSpheres, targetDate });
     expect(screen.getByRole("heading", { name: "Что сошлось 3 августа" })).toBeTruthy();
-    expect(screen.getByText("Также 3 августа", { exact: true })).toBeTruthy();
     expect(screen.queryByText("Что сошлось сегодня")).toBeNull();
-    expect(screen.queryByText("Также сегодня")).toBeNull();
 
     cleanup();
     renderToday({ ...accessPreview, targetDate });
@@ -216,9 +217,9 @@ describe("Today Convergence screen fixture matrix", () => {
     expect(screen.getByTestId("period-context")).toBeTruthy();
   });
 
-  it("keeps pending skeleton inside narrative and preserves deterministic hero", () => {
+  it("keeps pending skeleton inside narrative and preserves deterministic signals", () => {
     renderToday(contentPending);
-    expect(screen.getByTestId("convergence-hero")).toBeTruthy();
+    expect(screen.getByTestId("convergence-unified-list")).toBeTruthy();
     expect(screen.getByTestId("today-narrative").getAttribute("data-state")).toBe("pending");
     expect(screen.getByTestId("today-narrative").getAttribute("role")).toBeNull();
     expect(screen.getByRole("status").getAttribute("aria-label")).toBe("Готовим персональный разбор");
@@ -246,7 +247,7 @@ describe("Today Convergence screen fixture matrix", () => {
     renderToday(stateUnavailable, { onRetry });
     const root = screen.getByTestId("today-screen");
     expect(screen.getByTestId("today-unavailable").getAttribute("role")).toBe("alert");
-    expect(screen.queryByTestId("convergence-hero")).toBeNull();
+    expect(screen.queryByTestId("convergence-unified-list")).toBeNull();
     expect(screen.queryByTestId("impulses-list")).toBeNull();
     expect(screen.queryByTestId("today-narrative")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Обновить" }));
@@ -295,13 +296,14 @@ describe("Today Convergence transport, access, and accessibility contract", () =
     expect(content?.hasAttribute("hidden")).toBe(false);
   });
 
-  it("expands the calculation disclosure into three static product paragraphs", () => {
+  it("expands the calculation disclosure with stats and static product paragraphs", () => {
     renderToday(quietZeroImpulses);
     fireEvent.click(screen.getByRole("button", { name: "Как это рассчитано" }));
 
     const content = document.getElementById("today-calculation-details");
     const copy = content?.textContent ?? "";
-    expect(content?.querySelectorAll("p")).toHaveLength(3);
+    expect(content?.querySelectorAll("p")).toHaveLength(4);
+    expect(screen.getByTestId("how-calculated-stats").textContent).toContain("физических факта неба");
     expect(copy).toContain("День считается относительно твоей натальной карты");
     expect(copy).toContain("Пик — точный момент события");
     expect(copy).toContain("окно — период его заметного действия");
@@ -400,7 +402,9 @@ describe("Today Convergence public time and access projections", () => {
     expect(period).toBeTruthy();
     expect(period.getAttribute("data-technique")).toBe("annual_profection");
     expect(period.textContent).toContain(readySpherePayload.period[0].title);
-    expect(period.textContent).toContain(readySpherePayload.period[0].activeUntil);
+    expect(period.textContent).toContain("31 декабря 2026");
+    expect(screen.getByTestId("impulse-drilldown-period-synthesis").textContent).toContain("системное движение");
+    expect(screen.getByTestId("impulse-drilldown-period-note-period-work-1").textContent).toContain("устойчивый ритм");
     expect(screen.getByTestId("impulse-drilldown-period-technique-copy-period-work-1").textContent).toContain(
       periodCopy.label,
     );
@@ -413,10 +417,6 @@ describe("Today Convergence public time and access projections", () => {
     expect(screen.getByTestId("impulse-drilldown-period-what-you-may-notice-period-work-1").textContent).toBe(
       periodCopy.whatYouMayNotice,
     );
-    expect(screen.getByTestId("impulse-drilldown-full-link").getAttribute("href")).toBe(
-      "/day/spheres/work",
-    );
-
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByTestId("impulse-drilldown-sheet")).toBeNull();
   });
@@ -434,6 +434,17 @@ describe("Today Convergence public time and access projections", () => {
     expect(
       screen.getByTestId(`impulse-drilldown-fact-${quietSteady.impulses[0].eventId}`),
     ).toBeTruthy();
+  });
+
+  it("opens an empty sphere tile with an explicit empty-state block", () => {
+    mockFetchSpherePage.mockResolvedValueOnce(readySpherePayload);
+    renderToday(quietSteady);
+
+    fireEvent.click(screen.getByTestId("sphere-tile-friends_goals"));
+
+    expect(screen.getByTestId("impulse-drilldown-sheet").getAttribute("data-sphere")).toBe("friends_goals");
+    expect(screen.getByTestId("impulse-drilldown-empty").getAttribute("data-state")).toBe("empty");
+    expect(screen.getByTestId("impulse-drilldown-empty").textContent).toContain("Сегодня сигналов нет");
   });
 
   it("opens the sheet for a main-event-only sphere and lists the main event fact", () => {
@@ -523,15 +534,16 @@ describe("Today Convergence public time and access projections", () => {
     expect(impulse.textContent).not.toContain(quietSteady.impulses[0].summary?.text ?? "");
   });
 
-  it("renders the main-event summary with the static sphere route", () => {
+  it("renders the main-event summary as a sphere drilldown trigger", () => {
+    mockFetchSpherePage.mockReturnValueOnce(new Promise(() => undefined));
     renderToday(quietMainMax);
     const mainEvent = screen.getByTestId("main-event");
-    const link = mainEvent.querySelector("a");
+    const trigger = mainEvent.querySelector("button");
 
     expect(mainEvent.getAttribute("data-has-summary")).toBe("true");
-    expect(link?.getAttribute("href")).toBe(
-      "/day/spheres/decisions",
-    );
+    expect(trigger?.getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(trigger!);
+    expect(screen.getByTestId("impulse-drilldown-sheet").getAttribute("data-sphere")).toBe("work");
     expect(mainEvent.textContent).toContain(quietMainMax.mainEvent?.summary?.text ?? "");
   });
 
@@ -584,20 +596,16 @@ describe("Today Convergence public time and access projections", () => {
     expect(formatEventTime(time, "Bogus/Zone")).toBe(formatEventTime(time, null));
   });
 
-  it("links both spheres of a secondary convergence group", () => {
-    const group = heroThreeSpheres.convergences[1];
-    renderToday({
-      ...heroThreeSpheres,
-      convergences: [
-        heroThreeSpheres.convergences[0],
-        { ...group, secondarySphere: "work" },
-        ...heroThreeSpheres.convergences.slice(2),
-      ],
-    });
+  it("keeps two finance signals on one unified sphere card with facet labels", () => {
+    renderToday(spheresFacetsFinance as unknown as TodayConvergencePayload);
 
-    const secondary = screen.getAllByTestId("convergence-secondary")[0];
-    expect(secondary.textContent).toContain("·");
-    expect(secondary.querySelectorAll("a")).toHaveLength(2);
+    const financeGroup = screen.getByTestId("unified-group-finance");
+    expect(financeGroup.getAttribute("data-signal-count")).toBe("2");
+    expect(financeGroup.querySelectorAll("li[data-testid^='unified-signal-']")).toHaveLength(2);
+    expect(screen.getByTestId("unified-signal-cvg_v1_00000000000000000000000000000051").getAttribute("data-facet")).toBe("personal_money");
+    expect(screen.getByTestId("unified-signal-cvg_v1_00000000000000000000000000000052").getAttribute("data-facet")).toBe("financial_obligations");
+    expect(financeGroup.textContent).toContain("Личные деньги");
+    expect(financeGroup.textContent).toContain("Финансовые обязательства");
   });
 
   it("prefers absolute instants and formats dates in the payload timezone", () => {
@@ -644,14 +652,14 @@ describe("Today Convergence public time and access projections", () => {
     renderToday(accessPreview);
     expect(screen.getByTestId("today-preview-teaser")).toBeTruthy();
     expect(screen.getByTestId("paywall")).toBeTruthy();
-    expect(screen.queryByTestId("convergence-hero")).toBeNull();
+    expect(screen.queryByTestId("convergence-unified-list")).toBeNull();
     expect(screen.queryByTestId("impulses-list")).toBeNull();
 
     cleanup();
     renderToday(accessLocked);
     expect(screen.getByTestId("paywall")).toBeTruthy();
     expect(screen.queryByTestId("today-preview-teaser")).toBeNull();
-    expect(screen.queryByTestId("convergence-hero")).toBeNull();
+    expect(screen.queryByTestId("convergence-unified-list")).toBeNull();
     expect(screen.queryByTestId("impulses-list")).toBeNull();
     expect(screen.getByTestId("today-screen").hasAttribute("data-state")).toBe(false);
   });
@@ -671,11 +679,14 @@ describe("Today Convergence public time and access projections", () => {
       expect(icon.getAttribute("stroke")).toBe("currentColor");
       expect(icon.getAttribute("stroke-width")).toBe("1.5");
     }
+    expect(screen.getByTestId("sphere-icon-home_family").querySelectorAll("path")).toHaveLength(3);
+    expect(screen.getByTestId("sphere-icon-friends_goals").querySelectorAll("circle")).toHaveLength(3);
     expect(screen.getByTestId("sphere-tile-work").getAttribute("data-has-today")).toBe("true");
-    expect(screen.getByTestId("sphere-tile-shopping").getAttribute("data-has-today")).toBe("false");
+    expect(screen.getByTestId("sphere-tile-friends_goals").getAttribute("data-has-today")).toBe("false");
     expect(screen.getByTestId("sphere-tile-work").tagName).toBe("BUTTON");
     expect(screen.getByTestId("sphere-tile-work").getAttribute("aria-haspopup")).toBe("dialog");
-    expect(screen.getByTestId("sphere-tile-shopping").getAttribute("href")).toBe("/day/spheres/shopping");
+    expect(screen.getByTestId("sphere-tile-friends_goals").tagName).toBe("BUTTON");
+    expect(screen.getByTestId("sphere-tile-friends_goals").getAttribute("aria-haspopup")).toBe("dialog");
 
     fireEvent.click(screen.getByTestId("sphere-tile-work"));
     expect(screen.getByTestId("impulse-drilldown-sheet").getAttribute("data-sphere")).toBe("work");
@@ -684,18 +695,18 @@ describe("Today Convergence public time and access projections", () => {
   it("shows a visible active summary for Today facts and keeps empty tiles unlabelled", () => {
     renderToday(heroMixed);
 
-    const active = screen.getByTestId("sphere-tile-work");
+    const active = screen.getByTestId("sphere-tile-relationships");
     expect(active.getAttribute("data-has-today")).toBe("true");
-    expect(active.getAttribute("data-today-count")).toBe("1");
-    expect(active.getAttribute("data-today-summary")).toBe("1 сигнал · напряжение");
-    expect(screen.getByTestId("sphere-tile-summary-work").textContent).toBe("1 сигнал · напряжение");
-    expect(active.getAttribute("aria-label")).toContain("1 сигнал · напряжение");
+    expect(active.getAttribute("data-today-count")).toBe("2");
+    expect(active.getAttribute("data-today-summary")).toBe("2 сигнала · поддержка + напряжение");
+    expect(screen.getByTestId("sphere-tile-summary-relationships").textContent).toBe("2 сигнала · поддержка + напряжение");
+    expect(active.getAttribute("aria-label")).toContain("2 сигнала · поддержка + напряжение");
 
-    const empty = screen.getByTestId("sphere-tile-shopping");
+    const empty = screen.getByTestId("sphere-tile-friends_goals");
     expect(empty.getAttribute("data-has-today")).toBe("false");
     expect(empty.hasAttribute("data-today-summary")).toBe(false);
-    expect(screen.queryByTestId("sphere-tile-summary-shopping")).toBeNull();
-    expect(empty.getAttribute("aria-label")).toBe("Покупки");
+    expect(screen.queryByTestId("sphere-tile-summary-friends_goals")).toBeNull();
+    expect(empty.getAttribute("aria-label")).toBe("Друзья и планы");
   });
 
   it("pluralizes tile summaries for two signals", () => {
