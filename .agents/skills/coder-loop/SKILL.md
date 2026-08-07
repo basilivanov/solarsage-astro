@@ -1,11 +1,13 @@
 ---
 name: coder-loop
-description: Рабочий цикл архитектор-ревьюер → кодер (opencode/Gemini в tmux astro2) для SolarSage Astro; использовать для постановки, декомпозиции, мониторинга и ревью coder-задач
+description: Рабочий цикл архитектор-ревьюер → кодер (Codex gpt-5.6-luna max в tmux astro) для SolarSage Astro; использовать для постановки, декомпозиции, мониторинга и ревью coder-задач
 ---
 
-# Цикл «архитектор/ревьюер → кодер в tmux astro2»
+# Цикл «архитектор/ревьюер → кодер в tmux astro»
 
-Моя роль в этом режиме — архитектор и ревьюер. Код пишет кодер: **Gemini 3.6 Flash в opencode**, запущен в tmux-сессии **`astro2`** (окно `opencode`, cwd `/opt/solarsage-astro`). tmux-сервер работает от root, поэтому все команды tmux — через `sudo`.
+Моя роль в этом режиме — архитектор и ревьюер. Код пишет кодер: **OpenAI Codex CLI, модель gpt-5.6-luna max**, запущен в tmux-сессии **`astro`** (панель `astro:0.0`, cwd `/opt/solarsage-astro`, YOLO mode — подтверждения выключены). tmux-сервер работает от root, поэтому все команды tmux — через `sudo`.
+
+⚠️ Раскладка сессий (после segfault tmux-сервера 2026-08-07): **`astro` = кодер (Codex)**, **`astro2` = моя собственная kimi-сессия ревьюера**. Задачи кодеру отправлять ТОЛЬКО в `astro:0.0`; в `astro2` ничего не слать — это я сам.
 
 ## Декомпозиция задачи — обязательна
 
@@ -46,18 +48,19 @@ description: Рабочий цикл архитектор-ревьюер → к�
 2. **Прямое сообщение в tmux** — для мелких задач:
 
 ```bash
-sudo tmux send-keys -t astro2 "<текст задачи>"
-sudo tmux send-keys -t astro2 Enter
+sudo tmux send-keys -t astro:0.0 "<текст задачи>"
+sudo tmux send-keys -t astro:0.0 Enter
 ```
 
 В тексте задачи всегда указывать: что сделать, какие файлы трогать/не трогать, критерий готовности и «**ничего не коммить — коммит делает ревьюер**».
 
-После отправки проверить `sudo tmux capture-pane -t astro2 -p | tail -15`, что сообщение ушло и работа началась.
+После отправки проверить `sudo tmux capture-pane -t astro:0.0 -p | tail -15`, что сообщение ушло и работа началась (Codex показывает прогресс и статус-строку `Working`).
 
 ## Ожидание и мониторинг
 
-- Жду **180 секунд** (`sleep 180`), затем смотрю `sudo tmux capture-pane -t astro2 -p | tail -40`.
+- Жду **180 секунд** (`sleep 180`), затем смотрю `sudo tmux capture-pane -t astro:0.0 -p | tail -40`.
 - Если работа ещё идёт — жду повторными циклами, не дёргаю кодера.
+- Готовность видна по статус-строке Codex: `Ready` + финальный отчёт над prompt-строкой.
 - НЕ запускать `sleep 180` в foreground без необходимости на глазах у пользователя без предупреждения — предупредить одной строкой.
 
 ## Разбор зависаний
@@ -67,8 +70,8 @@ sudo tmux send-keys -t astro2 Enter
 1. Послать слово `продолжай` (send-keys + Enter).
 2. Если не помогло — дважды Escape:
    ```bash
-   sudo tmux send-keys -t astro2 Escape
-   sudo tmux send-keys -t astro2 Escape
+   sudo tmux send-keys -t astro:0.0 Escape
+   sudo tmux send-keys -t astro:0.0 Escape
    ```
    затем снова `продолжай`.
 
