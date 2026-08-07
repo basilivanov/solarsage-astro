@@ -380,7 +380,7 @@ async def test_yesterday_post_submit_recap_uses_immutable_lineage_and_preserves_
     await db_session.commit()
     edited = await async_client.post(
         "/api/checkin",
-        json={"targetDate": "2026-07-30", "mood": 5, "observedSpheres": ["money"]},
+        json={"targetDate": "2026-07-30", "mood": 5, "observedSpheres": ["finance"]},
     )
     assert edited.status_code == 200
     assert edited.json()["forecastSnapshotId"] == str(first.id)

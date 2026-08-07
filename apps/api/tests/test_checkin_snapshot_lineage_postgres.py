@@ -70,7 +70,7 @@ def _snapshot(user_id, snapshot_id, *, day_seen=None, lookahead_seen=None, targe
         birth_time_range={"start": "14:30", "end": "14:30"},
         deterministic_result_json={
             "state": "convergence_today",
-            "selected": {"spheres": ["work", "money"]},
+            "selected": {"spheres": ["work", "finance"]},
         },
         canonical_input_json={"target": target_date.isoformat()},
         first_day_seen_at=day_seen,
@@ -163,7 +163,7 @@ async def test_postgres_checkin_snapshot_lineage(postgres_session: AsyncSession)
     assert snapshot_row.user_id == owner.id
     assert snapshot_row.target_date == checkin_row.target_date
     assert snapshot_row.formula_version == "today-convergence-2"
-    assert snapshot_row.deterministic_result_json["selected"]["spheres"] == ["work", "money"]
+    assert snapshot_row.deterministic_result_json["selected"]["spheres"] == ["work", "finance"]
     assert checkin_row.observed_spheres == ["work"]
 
     second = await service.create_checkin(
@@ -174,11 +174,11 @@ async def test_postgres_checkin_snapshot_lineage(postgres_session: AsyncSession)
         4,
         [],
         "edited",
-        ["money"],
+        ["finance"],
     )
     assert second.forecast_snapshot_id == day.id
     assert second.prediction_seen_at == day.first_day_seen_at
-    assert second.observed_spheres == ["money"]
+    assert second.observed_spheres == ["finance"]
 
     no_impression_date = date(2026, 8, 1)
     no_impression = await service.create_checkin(

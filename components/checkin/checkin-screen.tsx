@@ -175,7 +175,7 @@ export function CheckinScreen({
           setAccuracy((value.accuracy ?? null) as CheckinAccuracy | null)
           setTags(value.tags)
           setNote(value.note ?? "")
-          setObservedSpheres((value.observedSpheres ?? []) as ProductSphereKey[])
+          setObservedSpheres(value.observedSpheres ?? [])
         } else {
           setMood(null)
           setEnergy(null)
@@ -213,9 +213,7 @@ export function CheckinScreen({
         note: note.trim() || null,
         ...(observedSpheres.length
           ? {
-              // Generated check-in contracts still declare the legacy sphere
-              // union; the backend check-in migration is TZ 2026-08-06 §8.4.
-              observedSpheres: observedSpheres as unknown as Parameters<typeof createCheckin>[0]["observedSpheres"],
+              observedSpheres,
             }
           : {}),
       })
