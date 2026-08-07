@@ -76,7 +76,7 @@ from app.services.natal_context_service import NatalContextService  # noqa: E402
 from app.services.normalization_service import NormalizationService  # noqa: E402
 from app.services.scoring_service import ScoringService  # noqa: E402
 from app.services.today_focus_builder import normalize_factors  # noqa: E402
-from convergence_canon import map_product_spheres  # noqa: E402
+from convergence_canon import resolve_factor_projection  # noqa: E402
 from solarsage.services.calculation_core import (  # noqa: E402
     NatalCalculationContext,
     TargetCalculationContext,
@@ -188,12 +188,30 @@ def signal_semantic_key(signal: Any) -> str | None:
     return None
 
 
-def strict_product_spheres(
+def strict_product_projection(
     technical_spheres: list[str] | tuple[str, ...] | None,
     source_key: str | None,
     target_key: str | None,
-) -> list[str]:
-    return list(map_product_spheres(technical_spheres, source_key, target_key))
+    *,
+    house: int | None = None,
+    theme_keys: list[str] | tuple[str, ...] | None = None,
+) -> tuple[str, str | None] | None:
+    # START_FUNCTION_CONTRACT: F-M-DIRECT-REPLAY-PIPELINE.strict_product_projection
+    # purpose: Resolve one replay factor through the product sphere/facet canon.
+    # inputs: factor technical spheres, source/target keys, optional house and
+    #   explicit theme keys.
+    # returns: one (sphere, facet) pair or None; never a sphere fan-out.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: unknown/unmapped factor remains unresolved.
+    # END_FUNCTION_CONTRACT: F-M-DIRECT-REPLAY-PIPELINE.strict_product_projection
+    return resolve_factor_projection(
+        house=house,
+        technical_spheres=technical_spheres,
+        theme_keys=theme_keys,
+        source_key=source_key,
+        target_key=target_key,
+    )
 # END_BLOCK: SEMANTIC_KEYS
 
 
@@ -401,6 +419,26 @@ class DirectReplayPipeline:
             if orb is None and semantic_key in signal_orbs:
                 orb = signal_orbs[semantic_key]
                 orb_source = "day_signal"
+            house = _get(factor, "house")
+            technical_spheres = tuple(
+                str(value).strip()
+                for value in (ledger_factor.technical_spheres if ledger_factor else ())
+                if str(value).strip()
+            )
+            theme_keys = tuple(str(value).strip() for value in (factor.theme_keys or ()) if str(value).strip())
+            projection = strict_product_projection(
+                technical_spheres,
+                factor.source_key,
+                factor.target_key,
+                house=house if isinstance(house, int) and not isinstance(house, bool) else None,
+                theme_keys=theme_keys,
+            )
+            # Match the production unit boundary: an unresolved product
+            # projection is excluded fail-closed before publication. The
+            # physical classifier already ignores such rows; keeping them out
+            # here prevents replay from reporting a published unmapped event.
+            if projection is None:
+                continue
             records.append(
                 {
                     "semantic_key": semantic_key,
@@ -417,12 +455,11 @@ class DirectReplayPipeline:
                     "polarity": factor.polarity,
                     "target_type": factor.target_type,
                     "target_key": factor.target_key,
-                    "theme_keys": list(factor.theme_keys or ()),
-                    "spheres": strict_product_spheres(
-                        ledger_factor.technical_spheres if ledger_factor else [],
-                        factor.source_key,
-                        factor.target_key,
-                    ),
+                    "theme_keys": list(theme_keys),
+                    "technical_spheres": list(technical_spheres),
+                    "house": house,
+                    "spheres": [projection[0]] if projection is not None else [],
+                    "facet": projection[1] if projection is not None else None,
                     "exact_at": factor.exact_at.isoformat() if factor.exact_at else None,
                 }
             )

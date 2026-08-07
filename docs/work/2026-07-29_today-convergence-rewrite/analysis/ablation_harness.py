@@ -39,6 +39,8 @@ from pathlib import Path
 
 import yaml
 
+from convergence_canon import resolve_product_sphere
+
 ANALYSIS = Path("/opt/solarsage-astro/docs/work/2026-07-29_today-convergence-rewrite/analysis")
 DUMP_PATH = ANALYSIS / "factor_dump.json"
 GRID_PATH = ANALYSIS / "ablation_grid.json"
@@ -652,7 +654,7 @@ FIXES: dict = {
     "F2_background_out": True,    # background cannot be group member/witness/independence
     "F3_direct_grouping": True,   # anchor-seeded star groups, no transitive closure
     "F4_delta_fixed": True,       # corrected DayDelta triggers matched by semantic identity
-    "F5_sphere_no_fanout": True,  # physical group -> primary (+<=1 secondary) sphere
+    "F5_sphere_no_fanout": True,  # physical group -> one sphere plus facet/null
     "F6_event_class": "whitelist_timelord",  # auto | whitelist_timelord | strength_0.5 | strength_0.7
     "F7_orb_fail_closed": True,   # sources outside canon orb profile excluded (no 6.0 fallback)
     "F8_rare_narrowed": True,     # lunar_return & monthly_profection out of rare_anchor_eligible
@@ -663,13 +665,6 @@ FIXES: dict = {
     "hero_confirmation_fast_allowed": False,
     "hero_target_types": ("natal_planet", "angle"),
 }
-
-CANONICAL_PRODUCT_KEYS_V2: tuple[str, ...] = (
-    *(
-        str(value)
-        for value in CONVERGENCE_CANON["sphere_projection"]["canonical_order"]
-    ),
-)
 
 EVENT_CLASS_WHITELIST_TECHNIQUES = {
     "firdar_major", "firdar_minor", "annual_profection", "monthly_profection",
@@ -836,30 +831,41 @@ def _star_groups(members: list[dict], anchors: list[dict]) -> list[list[dict]]:
     return list(clusters.values())
 
 
-def project_group_spheres(members: list[dict], anchor: dict) -> tuple[str | None, str | None]:
-    """F5: physical group -> primary sphere (member-majority, tie -> anchor's
-    sphere in canonical order, then canonical order) + at most ONE secondary
-    (needs >=2 member votes)."""
-    votes: Counter = Counter()
-    for m in members:
-        for s in m["spheres"]:
-            votes[s] += 1
-    if not votes:
-        return None, None
-    anchor_spheres = set(anchor["spheres"])
+def project_group_sphere(members: list[dict], anchor: dict) -> tuple[str | None, str | None]:
+    """F5: resolve one physical group through the production S2 resolver.
 
-    def rank(item: tuple[str, int]) -> tuple:
-        sphere, cnt = item
-        return (
-            cnt,
-            1 if sphere in anchor_spheres else 0,
-            -CANONICAL_PRODUCT_KEYS_V2.index(sphere),
+    The return shape remains ``(sphere, facet)`` for the replay classifier, but
+    the second value is now the nullable facet rather than a secondary sphere.
+    Physical grouping and hero selection happen before this product projection.
+    """
+    houses = {member.get("house") for member in members if member.get("house") is not None}
+    house = next(iter(houses)) if len(houses) == 1 else None
+    technical_spheres = tuple(
+        sorted(
+            {
+                str(value).strip().lower()
+                for member in members
+                for value in (member.get("technical_spheres") or ())
+                if str(value).strip()
+            }
         )
-
-    ordered = sorted(votes.items(), key=rank, reverse=True)
-    primary = ordered[0][0]
-    secondary = ordered[1][0] if len(ordered) > 1 and ordered[1][1] >= 2 else None
-    return primary, secondary
+    )
+    theme_keys = tuple(
+        sorted(
+            {
+                str(value).strip().lower()
+                for member in members
+                for value in (member.get("theme_keys") or ())
+                if str(value).strip()
+            }
+        )
+    )
+    resolved = resolve_product_sphere(
+        house=house if isinstance(house, int) and not isinstance(house, bool) else None,
+        technical_spheres=technical_spheres,
+        theme_keys=theme_keys,
+    )
+    return resolved if resolved is not None else (None, None)
 
 
 def _public_unit_sort_key(unit: dict) -> tuple:
@@ -975,35 +981,21 @@ def classify_day_v2(
         }
 
     groups: list[dict] = []
-    if fx.get("F5_sphere_no_fanout"):
-        anchors = [u for u in member_pool if u["temporal_role"] == "anchor_today"]
-        comps = (
-            _star_groups(member_pool, anchors)
-            if fx.get("F3_direct_grouping")
-            else _components(member_pool)
-        )
-        for comp in comps:
-            g = group_from(comp, None)
-            if g:
-                primary, secondary = project_group_spheres(g["members"], g["anchor"])
-                g["spheres"] = tuple(s for s in (primary, secondary) if s)
-                if len(g["spheres"]) > 2:
-                    raise AssertionError("one convergence group may expose at most two spheres")
-                groups.append(g)
-    else:
-        for sphere in sorted({s for u in member_pool for s in u["spheres"]}):
-            members = [u for u in member_pool if sphere in u["spheres"]]
-            anchors = [u for u in members if u["temporal_role"] == "anchor_today"]
-            comps = (
-                _star_groups(members, anchors)
-                if fx.get("F3_direct_grouping")
-                else _components(members)
-            )
-            for comp in comps:
-                g = group_from(comp, sphere)
-                if g:
-                    g["spheres"] = (sphere,)
-                    groups.append(g)
+    anchors = [u for u in member_pool if u["temporal_role"] == "anchor_today"]
+    comps = (
+        _star_groups(member_pool, anchors)
+        if fx.get("F3_direct_grouping")
+        else _components(member_pool)
+    )
+    for comp in comps:
+        g = group_from(comp, None)
+        if g:
+            sphere, facet = project_group_sphere(g["members"], g["anchor"])
+            g["spheres"] = (sphere,) if sphere else ()
+            g["facet"] = facet
+            if len(g["spheres"]) > 1:
+                raise AssertionError("one convergence group may expose at most one sphere")
+            groups.append(g)
 
     hero_groups = [g for g in groups if g["hero"]]
     selected_public_units = select_public_units_v2(sig_units, groups)

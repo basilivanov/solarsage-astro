@@ -13,7 +13,8 @@
 # dependencies: ablation_harness classify_day_v2.
 # side_effects: ablation_harness reads committed canon and local diagnostic dump at import.
 # emitted_logs: none.
-# invariants: one physical driver is one evidence unit and one group exposes at most two spheres.
+# invariants: one physical driver is one evidence unit and one group exposes one
+#   resolver-backed sphere plus an optional facet.
 # failure_policy: any classification drift fails the W1 freeze gate.
 # END_MODULE_CONTRACT: M-TEST-CONVERGENCE-MUTATION-FIXTURES
 
@@ -48,6 +49,8 @@ def _factor(
     family: str = "transit",
     themes: tuple[str, ...] = (),
     spheres: tuple[str, ...] = ("work",),
+    technical_spheres: tuple[str, ...] = ("work_status_achievement",),
+    house: int = 6,
     polarity: str = "supportive",
 ) -> dict[str, Any]:
     return {
@@ -65,6 +68,8 @@ def _factor(
         "target_type": target_type,
         "target_key": target,
         "theme_keys": list(themes),
+        "technical_spheres": list(technical_spheres),
+        "house": house,
         "spheres": list(spheres),
         "exact_at": "2026-07-30T12:00:00+03:00" if role == "anchor_today" else None,
     }
@@ -184,5 +189,6 @@ def test_group_projection_caps_each_group_not_the_whole_day() -> None:
         ]
     )
     assert result["groups"]
-    assert all(len(group["spheres"]) <= 2 for group in result["groups"])
+    assert all(len(group["spheres"]) == 1 for group in result["groups"])
+    assert all("facet" in group for group in result["groups"])
 # END_BLOCK: MUTATION_TESTS
