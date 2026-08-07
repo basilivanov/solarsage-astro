@@ -141,6 +141,7 @@ def test_hero_evidence_selection_excludes_non_evidence_group_members() -> None:
     )
     assert result.selected_unit_ids == expected_evidence_ids
     assert result.audit.selected_event_count == len(expected_evidence_ids) == 2
+    assert result.audit.unmapped_sphere_exclusion_count == 0
     assert unit_for(hero_extra).canonical_event_id not in result.selected_unit_ids
     assert result.selected_spheres == ("work",)
     assert result.main_event is None
@@ -279,6 +280,76 @@ def test_long_running_supporting_unit_is_not_a_today_impulse() -> None:
     assert result.state == "quiet_day"
     assert result.main_event is None
     assert result.impulses == ()
+
+
+def test_unmapped_top_impulse_is_skipped_and_next_resolvable_impulse_is_selected() -> None:
+    unmapped = fact(
+        source_key="Transit_MOON",
+        target_key="Natal_MOON",
+        technical_spheres=("unknown_factor",),
+        strength=0.95,
+    )
+    resolved = fact(
+        source_key="Transit_MERCURY",
+        target_key="Natal_MERCURY",
+        technical_spheres=("money_security_resources",),
+        strength=0.8,
+    )
+
+    result = select(unmapped, resolved)
+
+    assert result.state == "quiet_day"
+    assert result.main_event is None
+    assert tuple(event.unit.canonical_event_id for event in result.impulses) == (
+        unit_for(resolved).canonical_event_id,
+    )
+    assert result.audit.unmapped_sphere_exclusion_count == 1
+
+
+def test_unmapped_rare_main_is_skipped_before_ranking() -> None:
+    unmapped = fact(
+        source_key="Transit_URANUS",
+        target_key="Natal_URANUS",
+        aspect_type="SQUARE",
+        technical_spheres=("unknown_factor",),
+        strength=0.95,
+    )
+    resolved = fact(
+        source_key="Transit_JUPITER",
+        target_key="Natal_SATURN",
+        strength=0.8,
+    )
+    ledger, grouping, tone = pipeline(unmapped, resolved)
+    unmapped_id = unit_for(unmapped).canonical_event_id
+    ledger = replace(
+        ledger,
+        units=tuple(
+            replace(unit, impulse_eligible=False) if unit.canonical_event_id == unmapped_id else unit
+            for unit in ledger.units
+        ),
+    )
+
+    result = select_canonical_presentation(ledger, grouping, tone, TARGET_DATE, "UTC", CANON)
+
+    assert result.state == "quiet_day"
+    assert result.main_event is not None
+    assert result.main_event.unit.canonical_event_id == unit_for(resolved).canonical_event_id
+    assert result.audit.unmapped_sphere_exclusion_count == 1
+
+
+def test_all_unmapped_quiet_candidates_produce_empty_quiet_day() -> None:
+    result = select(
+        fact(
+            source_key="Transit_MOON",
+            target_key="Natal_MOON",
+            technical_spheres=("unknown_factor",),
+        )
+    )
+
+    assert result.state == "quiet_day"
+    assert result.main_event is None
+    assert result.impulses == ()
+    assert result.audit.unmapped_sphere_exclusion_count == 1
 
 
 # END_BLOCK: QUIET

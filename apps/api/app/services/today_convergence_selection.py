@@ -86,13 +86,14 @@ class CanonicalSelectedEvent:
 
 @dataclass(frozen=True)
 class CanonicalSelectionAudit:
-    """Immutable candidate, selected, steady, and physical-cap diagnostics."""
+    """Immutable candidate, selected, and deterministic exclusion diagnostics."""
 
     candidate_convergence_count: int
     selected_convergence_count: int
     candidate_event_count: int
     selected_event_count: int
     steady_exclusion_count: int
+    unmapped_sphere_exclusion_count: int
     selection_cap_exclusion_count: int
 
 
@@ -451,9 +452,26 @@ def _quiet_selection(
     inputs: _ValidatedInputs,
     canon: TodayConvergenceCanon,
     target_date: date,
-) -> tuple[CanonicalSelectedEvent | None, tuple[CanonicalSelectedEvent, ...], tuple[str, ...], int, int]:
+) -> tuple[
+    CanonicalSelectedEvent | None,
+    tuple[CanonicalSelectedEvent, ...],
+    tuple[str, ...],
+    int,
+    int,
+    int,
+]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION._quiet_selection
+    # purpose: Select one resolvable rare main event and fresh resolvable impulse events for a quiet day.
+    # inputs: canonical ledger/grouping, validated local-time inputs, strict canon, and target date.
+    # returns: main event, impulses, first-appearance spheres, and steady/unmapped-sphere/cap exclusion counts.
+    # side_effects: none; product-sphere resolution is pure and no presentation records are written.
+    # emitted_logs: none.
+    # error_behavior: malformed public polarity, semantic keys, or ranking inputs raise the typed selection error;
+    #   unmapped product spheres are excluded and counted.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION._quiet_selection
     candidates = _candidate_units(ledger, grouping)
     steady_exclusions = 0
+    unmapped_exclusions = 0
     rare_candidates: list[CanonicalUnit] = []
     for unit in candidates:
         if (
@@ -465,6 +483,19 @@ def _quiet_selection(
         polarity = _public_polarity(unit, canon)
         if polarity is None:
             steady_exclusions += 1
+            continue
+        if (
+            resolve_product_sphere(
+                canon,
+                house=unit.house,
+                technical_spheres=unit.technical_spheres,
+                theme_keys=unit.theme_keys,
+                source_key=unit.source_key,
+                target_key=unit.target_key,
+            )
+            is None
+        ):
+            unmapped_exclusions += 1
             continue
         rare_candidates.append(unit)
     main = _selected_event(min(rare_candidates, key=lambda unit: _unit_rank(unit, inputs.local_zone)), canon) if rare_candidates else None
@@ -483,6 +514,19 @@ def _quiet_selection(
             continue
         if not isinstance(unit.semantic_key, str) or not unit.semantic_key:
             _fail("invalid_semantic_key")
+        if (
+            resolve_product_sphere(
+                canon,
+                house=unit.house,
+                technical_spheres=unit.technical_spheres,
+                theme_keys=unit.theme_keys,
+                source_key=unit.source_key,
+                target_key=unit.target_key,
+            )
+            is None
+        ):
+            unmapped_exclusions += 1
+            continue
         previous = impulse_by_semantic.get(unit.semantic_key)
         if previous is None or _unit_rank(unit, inputs.local_zone) < _unit_rank(previous, inputs.local_zone):
             impulse_by_semantic[unit.semantic_key] = unit
@@ -505,7 +549,7 @@ def _quiet_selection(
             selected_spheres.append(event.sphere)
     impulse_start = 1 if main is not None else 0
     impulses = tuple(selected_events[impulse_start:])
-    return main, impulses, tuple(selected_spheres), steady_exclusions, selection_cap_exclusions
+    return main, impulses, tuple(selected_spheres), steady_exclusions, unmapped_exclusions, selection_cap_exclusions
 
 
 # END_BLOCK: QUIET_SELECTION
@@ -526,7 +570,9 @@ def select_canonical_presentation(
     # returns: frozen CanonicalSelectionResult; selector never creates unavailable state or wire payload.
     # side_effects: reads frozen canon when omitted; no writes, network, database, or logs.
     # emitted_logs: none.
-    # error_behavior: malformed references, invalid local time, unmapped public polarity/sphere, and invariant misuse raise TodayConvergenceSelectionError.
+    # error_behavior: malformed references, invalid local time, unmapped public polarity, and invariant misuse raise
+    #   TodayConvergenceSelectionError; quiet candidates with no product-sphere mapping are excluded and counted,
+    #   while selected-event projection remains fail-closed.
     # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION.select_canonical_presentation
     resolved_canon = load_today_convergence_canon() if canon is None else canon
     inputs = _validate_inputs(ledger, grouping, tone, target_date, timezone_name, resolved_canon)
@@ -567,13 +613,19 @@ def select_canonical_presentation(
                 ),
                 selected_event_count=len(selected_ids),
                 steady_exclusion_count=group_steady_exclusions,
+                unmapped_sphere_exclusion_count=0,
                 selection_cap_exclusion_count=group_sphere_exclusions,
             ),
         )
 
-    main, impulses, selected_spheres, event_steady_exclusions, event_sphere_exclusions = _quiet_selection(
-        ledger, grouping, inputs, resolved_canon, target_date
-    )
+    (
+        main,
+        impulses,
+        selected_spheres,
+        event_steady_exclusions,
+        event_unmapped_exclusions,
+        event_sphere_exclusions,
+    ) = _quiet_selection(ledger, grouping, inputs, resolved_canon, target_date)
     selected_id_values = {event.unit.canonical_event_id for event in impulses}
     if main is not None:
         selected_id_values.add(main.unit.canonical_event_id)
@@ -591,6 +643,7 @@ def select_canonical_presentation(
             candidate_event_count=len(_candidate_units(ledger, grouping)),
             selected_event_count=len(selected_ids),
             steady_exclusion_count=group_steady_exclusions + event_steady_exclusions,
+            unmapped_sphere_exclusion_count=event_unmapped_exclusions,
             selection_cap_exclusion_count=group_sphere_exclusions + event_sphere_exclusions,
         ),
     )
