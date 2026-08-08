@@ -432,3 +432,26 @@ def test_result_and_audit_are_immutable_and_reason_order_is_lexical() -> None:
     assert isinstance(result.audit, BirthTimeFactsAudit)
     with pytest.raises(FrozenInstanceError):
         result.audit.input_sample_count = 4  # type: ignore[misc]
+
+
+def test_s15_house_is_published_only_when_control_grid_is_unanimous() -> None:
+    # Exact mode: the single sample's house is published as-is.
+    exact = resolution("exact", None)
+    result = build_birth_time_facts(exact, samples_for(exact, [[activation(house=7)]]))
+    assert result.facts[0].house == 7
+
+    # Non-exact grid with unanimous houses: published.
+    grid = resolution("bucket", "morning")
+    unanimous = [[activation(house=7)] for _ in grid.control_times]
+    result = build_birth_time_facts(grid, samples_for(grid, unanimous))
+    assert len(result.facts) == 1
+    assert result.facts[0].house == 7
+
+    # Non-exact grid with disagreeing houses: house withheld, fact still published.
+    disagreeing = [[activation(house=7)]] + [[activation(house=8)] for _ in grid.control_times[1:]]
+    result = build_birth_time_facts(grid, samples_for(grid, disagreeing))
+    assert len(result.facts) == 1
+    assert result.facts[0].house is None
+
+    # House never splits cross-sample identity: one merged fact, no missing_control.
+    assert result.audit.excluded_by_reason == ()

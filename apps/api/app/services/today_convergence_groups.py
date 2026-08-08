@@ -238,7 +238,22 @@ def _group_house(members: Sequence[CanonicalUnit]) -> int | None:
 def _project_sphere_facet(
     members: Sequence[CanonicalUnit],
     canon: TodayConvergenceCanon,
+    anchor: CanonicalUnit | None = None,
 ) -> tuple[str, str | None] | None:
+    # S15/G1: the anchor is the group's physical convergence locus — its house,
+    # technical spheres, and themes decide first. The all-members union remains
+    # only as a rescue fallback when the anchor itself is unresolved.
+    if anchor is not None:
+        anchored = resolve_product_sphere(
+            canon,
+            house=anchor.house if anchor.house is not None else _group_house(members),
+            technical_spheres=anchor.technical_spheres,
+            theme_keys=anchor.theme_keys,
+            source_key=anchor.source_key,
+            target_key=anchor.target_key,
+        )
+        if anchored is not None:
+            return anchored
     technical_spheres = tuple(sorted({
         technical_sphere
         for member in members
@@ -298,7 +313,7 @@ def build_canonical_groups(
             continue
         hero_anchor, hero_confirmation = _hero_pair(members, resolved_canon)
         anchor = hero_anchor or _select_anchor(members)
-        sphere_facet = _project_sphere_facet(members, resolved_canon)
+        sphere_facet = _project_sphere_facet(members, resolved_canon, anchor)
         if sphere_facet is None:
             group_without_sphere_count += 1
             continue

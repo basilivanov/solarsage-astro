@@ -393,3 +393,17 @@ def test_fast_rare_and_hero_policies_follow_frozen_truth_table() -> None:
     assert hero_confirmation_policy(canon, "JUPITER", technique_family="transit") is True
     assert hero_confirmation_policy(canon, None, technique_family="firdar") is True
     assert hero_confirmation_policy(canon, "MARS", technique_family="transit") is True
+
+
+def test_s15_planet_modifier_never_overrides_house_selected_sphere() -> None:
+    # S15/F3: house=4 with a MOON modifier previously jumped to
+    # documents/property_documents via the cross-sphere planet branch.
+    # Planets are a tie-break only inside the house/context-selected candidates.
+    canon = load_today_convergence_canon()
+    resolved = resolve_product_sphere(canon, house=4, source_key="MOON", target_key="VENUS")
+    assert resolved == ("home_family", "family_roots")
+
+    # Same guard on the former house=5 + SUN case: stays inside house-5
+    # candidates (romance is the empty-context default there), never sport.
+    resolved = resolve_product_sphere(canon, house=5, source_key="SUN", target_key="MERCURY")
+    assert resolved == ("relationships", "romance")

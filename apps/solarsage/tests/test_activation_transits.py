@@ -422,3 +422,59 @@ def test_all_evidence_strings_include_frames():
             elif tech == "eclipse_window":
                 assert "eclipse" in ev, \
                     f"Evidence missing eclipse: {a['evidence']}"
+
+
+def test_s15_transit_targets_carry_natal_house():
+    """S15/F1: transit_to_natal/angle/lot activations expose the natal target house.
+
+    The API sphere resolver is house-first; without per-activation house the
+    house path was dead and quiet days rendered empty.
+    """
+    layer = _basil_layer()
+    activations = layer["activations"]
+
+    t2n = [a for a in activations if a["technique"] == "transit_to_natal"]
+    assert t2n, "fixture must produce transit_to_natal activations"
+    houses = layer.get("houses") or []
+    assert all(isinstance(a.get("house"), int) and 1 <= a["house"] <= 12 for a in t2n)
+
+    # Cross-check a sample against the layer's own house cusps via lot debug.
+    t2l = [a for a in activations if a["technique"] == "transit_to_lot"]
+    assert t2l, "fixture must produce transit_to_lot activations"
+    for a in t2l:
+        lot_debug = a.get("debug", {}).get("lot")
+        assert lot_debug is not None
+        assert a.get("house") == lot_debug["house"], "lot activation house must equal lot natal house"
+
+    t2a = [a for a in activations if a["technique"] == "transit_to_angle"]
+    expected_angle_house = {"ASC": 1, "MC": 10, "DSC": 7}
+    for a in t2a:
+        assert a.get("house") == expected_angle_house.get(a.get("angle")), (
+            f"angle {a.get('angle')} must map to its cusp house"
+        )
+
+
+def test_s15_transit_house_matches_natal_longitude():
+    """S15/F1: annotated house equals the house of the target's natal longitude."""
+    from solarsage.services import activation_builder as ab
+
+    ctx = ab.prepare_natal_context(
+        birth_date=BASIL_AUDIT_REQUEST["birth"]["date"],
+        birth_time=BASIL_AUDIT_REQUEST["birth"]["time"],
+        birth_lat=BASIL_AUDIT_REQUEST["birth"]["lat"],
+        birth_lon=BASIL_AUDIT_REQUEST["birth"]["lon"],
+        birth_tz=BASIL_AUDIT_REQUEST["birth"]["tz"],
+        house_system=BASIL_AUDIT_REQUEST["house_system"],
+    )
+    houses = list(ctx.natal_houses_raw)
+    assert len(houses) == 12
+
+    layer = _basil_layer()
+    for a in layer["activations"]:
+        if a["technique"] != "transit_to_natal":
+            continue
+        target_lon = a.get("debug", {}).get("target_longitude")
+        assert target_lon is not None
+        assert a["house"] == ab._find_house(target_lon, houses), (
+            f"{a['id']}: house {a['house']} != natal house of target longitude"
+        )

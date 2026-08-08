@@ -980,13 +980,26 @@ def build_activation_layer(
                         }
 
                     extra_kw: dict[str, Any] = {}
+                    if ttype == "planet":
+                        # S15: natal house of the target planet — resolver
+                        # priority #1 (house) needs it on every transit unit.
+                        if natal_houses_raw:
+                            extra_kw["house"] = _find_house(tlon_target, list(natal_houses_raw))
                     if ttype == "angle":
                         extra_kw["angle"] = tkey
+                        # S15: angles are house cusps 1/10/7 by construction.
+                        angle_house = {"ASC": 1, "MC": 10, "DSC": 7}.get(tkey)
+                        if angle_house is not None:
+                            extra_kw["house"] = angle_house
                     if ttype == "lot":
                         extra_kw["lot"] = tkey
                         # Include lot debug info
                         matching_lots = [lot_item for lot_item in lots if lot_item["name"] == tkey]
                         if matching_lots:
+                            # S15: lot's natal house (computed at lot build).
+                            lot_house = matching_lots[0].get("house")
+                            if isinstance(lot_house, int) and 1 <= lot_house <= 12:
+                                extra_kw["house"] = lot_house
                             debug_info["lot"] = {
                                 "name": matching_lots[0]["name"],
                                 "longitude": round(matching_lots[0]["longitude"], 4),

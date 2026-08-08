@@ -21,10 +21,10 @@ allowed_context_keys:
    direction_growth_meaning, documents, education, education_documents, family, finance, finance_money,
    financial, foreign, friendship_social, friends, goals, group, health,
    healing, higher_education, hidden_matters, home, home_family, housing,
-   inheritance, legal, legal_affairs, local_travel, movement, negotiation,
+   inheritance, inner_clarity_recovery, legal, legal_affairs, local_travel, movement, negotiation,
    obligation, partnership, partnerships_contracts, philosophy,
    private_creativity, project, property, public_image, public_speech,
-   recovery, relocation, relationships, resources_security, service_routine,
+   recovery, relationships_values_closeness, relocation, relationships, resources_security, service_routine,
    sport, study, symptoms, training, transaction, travel, travel_adventure,
    travel_long_distance, work]
 
@@ -155,7 +155,7 @@ spheres:
         label: "Партнёрство"
         houses: [7]
         technical_spheres: [relationships_partnership]
-        required_context: [partnership, relationships]
+        required_context: [partnership, relationships, relationships_values_closeness]
         modifiers:
           planets: [VENUS, SATURN]
 
@@ -195,7 +195,7 @@ spheres:
         label: "Повседневные контакты"
         houses: [3]
         technical_spheres: [thinking_speech_learning]
-        required_context: [communication]
+        required_context: [communication, communication_learning_documents]
         modifiers:
           planets: [MERCURY, MOON]
       - key: negotiations
@@ -243,7 +243,7 @@ spheres:
         label: "Восстановление и снижение активности"
         houses: [12]
         technical_spheres: [inner_background_unconscious]
-        required_context: [recovery, hidden_matters]
+        required_context: [recovery, hidden_matters, inner_clarity_recovery]
         modifiers:
           planets: [NEPTUNE, SATURN]
 
@@ -330,7 +330,7 @@ spheres:
         label: "Навыки и курсы"
         houses: [3]
         technical_spheres: [thinking_speech_learning]
-        required_context: [study, education, communication_learning]
+        required_context: [study, education, communication_learning, communication_learning_documents]
         modifiers:
           planets: [MERCURY]
       - key: higher_education_worldview

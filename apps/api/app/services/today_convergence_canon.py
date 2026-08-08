@@ -1128,20 +1128,8 @@ def resolve_product_sphere(
         return base[0][0], None
 
     contextual = [item for item in eligible if set(item[1].required_context) & context_values]
-    if not contextual and planets:
-        eligible_spheres = {item[0] for item in eligible}
-        planet_sphere_matches = [
-            item for item in base
-            if item[0] not in eligible_spheres
-            and set(item[1].modifiers["planets"]) & planets
-            and (
-                house_value is None
-                or len(item[1].houses) == 1
-                or item[1].houses[0] == house_value
-            )
-        ]
-        if planet_sphere_matches:
-            return planet_sphere_matches[0][0], None
+    # S15/F3: no cross-sphere planet override here — master §5 makes planets a
+    # tie-break only inside the candidates already chosen by house/context.
     selected = contextual or eligible
     if len(selected) > 1 and planets:
         planet_matches = [

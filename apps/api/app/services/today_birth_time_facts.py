@@ -184,6 +184,9 @@ def _window_tuple(
 
 
 def _identity(activation: ActivationEvidence) -> tuple[str, ...]:
+    # S15/F2: house is intentionally NOT part of the cross-sample identity —
+    # it is a grid-varying annotation whose robustness is decided by the
+    # unanimity rule in _representative_fact, not by splitting identities.
     return tuple(
         _normalized(getattr(activation, field, None))
         for field in (
@@ -194,7 +197,6 @@ def _identity(activation: ActivationEvidence) -> tuple[str, ...]:
             "target_type",
             "target_key",
             "aspect",
-            "house",
             "lot",
             "angle",
         )
@@ -388,6 +390,10 @@ def _representative_fact(
     orb = max((float(item.activation.orb) for item in observations if item.activation.orb is not None), default=None)
     strength = max(float(item.activation.strength) for item in observations)
     provenance_ids = tuple(sorted({item.activation.id.strip() for item in observations}))
+    # S15/F2: a house is published only when every merged control-grid
+    # observation agrees on it (canon gate: sparse may lose, never unstable).
+    observed_houses = {item.activation.house for item in observations}
+    house = observed_houses.pop() if len(observed_houses) == 1 else None
     exact_at = representative.windows[1]
     roles = []
     for observation in observations:
@@ -423,7 +429,7 @@ def _representative_fact(
         aspect_type=representative.aspect,
         orb=orb,
         event_class=representative.event_class,
-        house=activation.house,
+        house=house,
         exact_at=exact_at,
         phase=representative.phase,
         active_from=representative.windows[0],

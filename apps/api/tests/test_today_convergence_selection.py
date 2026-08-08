@@ -284,8 +284,8 @@ def test_long_running_supporting_unit_is_not_a_today_impulse() -> None:
 
 def test_unmapped_top_impulse_is_skipped_and_next_resolvable_impulse_is_selected() -> None:
     unmapped = fact(
-        source_key="Transit_MOON",
-        target_key="Natal_MOON",
+        source_key="Transit_URANUS",
+        target_key="Natal_URANUS",
         technical_spheres=("unknown_factor",),
         strength=0.95,
     )
@@ -303,7 +303,8 @@ def test_unmapped_top_impulse_is_skipped_and_next_resolvable_impulse_is_selected
     assert tuple(event.unit.canonical_event_id for event in result.impulses) == (
         unit_for(resolved).canonical_event_id,
     )
-    assert result.audit.unmapped_sphere_exclusion_count == 1
+    # Slow-source unmapped unit is counted in both rare-main and impulse loops.
+    assert result.audit.unmapped_sphere_exclusion_count == 2
 
 
 def test_unmapped_rare_main_is_skipped_before_ranking() -> None:
@@ -340,8 +341,8 @@ def test_unmapped_rare_main_is_skipped_before_ranking() -> None:
 def test_all_unmapped_quiet_candidates_produce_empty_quiet_day() -> None:
     result = select(
         fact(
-            source_key="Transit_MOON",
-            target_key="Natal_MOON",
+            source_key="Transit_URANUS",
+            target_key="Natal_URANUS",
             technical_spheres=("unknown_factor",),
         )
     )
@@ -349,7 +350,8 @@ def test_all_unmapped_quiet_candidates_produce_empty_quiet_day() -> None:
     assert result.state == "quiet_day"
     assert result.main_event is None
     assert result.impulses == ()
-    assert result.audit.unmapped_sphere_exclusion_count == 1
+    # Counted once in the rare-main loop and once in the impulse loop.
+    assert result.audit.unmapped_sphere_exclusion_count == 2
 
 
 # END_BLOCK: QUIET

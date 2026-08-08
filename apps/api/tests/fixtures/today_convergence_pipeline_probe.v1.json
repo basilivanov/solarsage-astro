@@ -1,6 +1,6 @@
 {
   "schema_version": "today_convergence_pipeline_probe.v1",
-  "probe_sha256": "317f99f8a64ef740682009c6a65ecd48fb77d5036d0d34bf4b818d95316f7040",
+  "probe_sha256": "47011cbce6a6f4125084f5a9d8f488848daa4f882be663a9c625df4525fd2ef0",
   "formula_version": "today-convergence-2",
   "target_date": "2026-07-31",
   "raw_defaults": {
@@ -196,7 +196,7 @@
           ],
           "selected_spheres": [
             "home_family",
-            "sport"
+            "work"
           ],
           "main_event_id": "evt_v1_669a3b07572f47fc305f8bfbd07ee659",
           "impulse_ids": [
@@ -212,7 +212,7 @@
           }
         }
       },
-      "expected_sha256": "ffef843f88352e4c21b2ccd9e3bdc176cf4d224de6d49acf654690b373c6e1a2"
+      "expected_sha256": "812a95cef726ae162340efd32c3bf2f8934a60987a7105ee2ed4fc73cf97b3cd"
     },
     {
       "name": "rare_main_three_sphere_cap",
@@ -318,8 +318,8 @@
             "hero_anchor_id": null,
             "hero_confirmation_id": null,
             "evidence_level": "medium",
-            "sphere": "sport",
-            "facet": "physical_energy"
+            "sphere": "health",
+            "facet": "recovery_isolation"
           }
         ],
         "tone": {
@@ -339,8 +339,9 @@
             "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd"
           ],
           "selected_spheres": [
-            "sport",
-            "health"
+            "work",
+            "health",
+            "sport"
           ],
           "main_event_id": "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd",
           "impulse_ids": [
@@ -357,7 +358,7 @@
           }
         }
       },
-      "expected_sha256": "5d20de6d70702eab2e26a144a415405f1c25113e28c49459fbbb48454b075806"
+      "expected_sha256": "e8e1ee7b07174ba0cac6d5b6281723b12e0f3fc21673f8c339c188ccfe2f61fc"
     },
     {
       "name": "birth_time_robustness",
@@ -441,8 +442,9 @@
             "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd"
           ],
           "selected_spheres": [
-            "sport",
-            "health"
+            "work",
+            "health",
+            "sport"
           ],
           "main_event_id": "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd",
           "impulse_ids": [
@@ -459,7 +461,7 @@
           }
         }
       },
-      "expected_sha256": "f89a417fd461fe0bb23495fe28d3f9b5b8ec6369c8318c26427fad2f372114c6"
+      "expected_sha256": "12fb2f5b37f741dee4299f953c0db33ec23a0dff2ec29d43753295f368a8daa9"
     },
     {
       "name": "edge_orb_and_duplicate",
@@ -525,7 +527,7 @@
             "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd"
           ],
           "selected_spheres": [
-            "sport"
+            "work"
           ],
           "main_event_id": "evt_v1_e6ae27bc7baf3eb81cc034740fd2fdcd",
           "impulse_ids": [],
@@ -539,7 +541,7 @@
           }
         }
       },
-      "expected_sha256": "8a66800df58ca15a8bd70e98814b2061378a9adacba4990aeda66159450b3cb7"
+      "expected_sha256": "62675d5d26793e5ae896b713308602ec5c5a4f071d85bd7b35497ce7216f4e7f"
     }
   ]
 }

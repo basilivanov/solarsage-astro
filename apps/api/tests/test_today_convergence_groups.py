@@ -472,3 +472,32 @@ def test_duplicate_ledger_id_and_malformed_api_are_typed_errors() -> None:
 
 
 # END_BLOCK: DETERMINISM
+
+
+def test_s15_anchor_house_wins_over_member_theme_union() -> None:
+    # S15/G1: the anchor's natal house is the group's convergence locus.
+    rows = [
+        fact(
+            source_key="Transit_JUPITER",
+            target_key="Natal_SATURN",
+            house=10,
+            strength=0.9,
+            temporal_role="anchor_today",
+        ),
+        fact(
+            source_key="Transit_SATURN",
+            target_key="Natal_SATURN",
+            house=4,
+            aspect_type="TRINE",
+            strength=0.5,
+            temporal_role="supporting",
+        ),
+    ]
+    result = groups_for(ledger_for(*rows))
+
+    assert len(result.groups) == 1
+    group = result.groups[0]
+    anchor = next(unit for unit in group.member_units if unit.canonical_event_id == group.anchor_unit_id)
+    assert anchor.house == 10
+    assert group.sphere == "work"
+    assert group.facet == "career_status"
