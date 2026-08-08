@@ -18,4 +18,16 @@
 | S11 | Replays | smoke + full corpus | gates из мастер-ТЗ §10.5, evidence report |
 | S12 | Deploy dev | build .next-prod, restart units, smoke на dev | /api/health git_sha = HEAD |
 
+Hotfixes и доработки после первой выкатки (каждый — свой NN-файл ТЗ):
+
+| # | Срез | Scope (основное) | Приёмка |
+|---|------|------------------|---------|
+| S13 | Quiet selection hotfix | selection quiet-path | quiet-дни наполняются, tests |
+| S14 | Day past-date boundary | day.py | прошедшие даты корректны, tests |
+| S15 | Target house resolver | sidecar natal target house, resolver priority, anchor-centric projection | quiet-дни с событиями, tests, live на dev |
+| S16 | Narrative personal v4 | today_narrative_service.py, day.py, pregen person-проброс, prompt v4, cap 2000 | person/period в промпте, 3-claim шаблон, tests, live регенерация |
+| S17 | Sanitizer false positives | narrative_sanitizer.py: маска имён жребиев, окно отрицания для polarity-антонимов | live-кейсы «жребий Брака»/«снизить напряжение» не null; «разговоры в romance» остаётся null; tests |
+| S18 | Selection dedup | today_convergence_selection.py: дедуп по (sphere, facet) и evidence-паре до cap-3, audit+1 поле | нет дублей карточек как 08-30, tests |
+| S19 | Narrative grammar v5 | текст промпта: роды планет, падежи; prompt version → v5 | tests зелёные, live-eyeball грамматики |
+
 Правило: промежуточные состояния не выкатываются; на dev — только после S11.

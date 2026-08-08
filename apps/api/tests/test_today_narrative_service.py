@@ -1062,3 +1062,15 @@ async def test_s16_generate_threads_person_into_provider_prompt() -> None:
     assert block["meaning"]["text"].startswith("День помогает")
     assert block["action"]["text"].startswith("Отложи")
 # END_BLOCK: S16_PERSON_PERIOD
+
+
+# START_BLOCK: S19_GRAMMAR
+def test_s19_prompt_carries_planet_gender_grammar_rule() -> None:
+    prompt = build_today_narrative_prompt(
+        _quiet_impulses_only_snapshot(),
+        prompt_version="today-narrative-v5",
+    )
+
+    assert "сошлось" in prompt
+    assert "Род планет" in prompt
+# END_BLOCK: S19_GRAMMAR

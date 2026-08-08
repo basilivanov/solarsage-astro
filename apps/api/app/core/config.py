@@ -172,7 +172,7 @@ class Settings(BaseSettings):
         45, alias="TODAY_NARRATIVE_TIMEOUT_SECONDS"
     )
     today_narrative_prompt_version: str = Field(
-        "today-narrative-v4", alias="TODAY_NARRATIVE_PROMPT_VERSION"
+        "today-narrative-v5", alias="TODAY_NARRATIVE_PROMPT_VERSION"
     )
     today_sphere_natal_prompt_version: str = Field(
         "sphere-natal-v1", alias="TODAY_SPHERE_NATAL_PROMPT_VERSION"
