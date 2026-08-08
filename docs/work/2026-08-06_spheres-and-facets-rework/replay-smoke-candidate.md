@@ -39,3 +39,57 @@ group is resolver-backed (`work`), so `group_without_sphere` stays zero here.
 
 Parity replay against `/var/tmp/s1-verify` (same 2 charts × 5 days × 6 modes):
 `days compared: 60`, `physical mismatches: 0`, `PASS: physical parity baseline==candidate`.
+
+## Full-corpus run (2026-08-07/08, завершено)
+
+Полный прогон: 120 карт × 730 дней (2025-01-01..2026-12-31) × 5 residues × 6 режимов.
+Baseline worktree `05c8664a` (+canon-path patch), candidate worktree `f4b168e8`
+(+canon-path patch), fingerprints `d0b032ca…` / `84694feb…`.
+
+| gate | baseline | candidate |
+|---|---:|---:|
+| charts ok | 120/120 | 120/120 |
+| chart errors | 0 | 0 |
+| signature rows | 525600 | 525600 |
+| group_without_sphere_count | 0 | 0 |
+| invalid_facet_count / selected_invalid | 0 / 0 | 0 / 0 |
+| old_key_occurrences | 105048 (старая модель, норма) | **0** |
+| legacy_key_occurrences | 0 | 0 |
+
+Мерж чекпоинтов — стриминговым `merge_signatures.py` (штатный мерж
+corpus_replay OOM'ится на 8 ГБ хосте).
+
+### Compare verdict: PASS с задокументированным исключением
+
+`compare_signatures.py` (переписан на стриминговые sha256-фингерпринты после
+двух OOM-kill наивной версии, см. docstring):
+
+```text
+days compared: 525600
+physical mismatches (groups/tone/state/hero): 0
+canonical_event_ids diff days: 27279
+exemption applied: 27279 days, additions only, all in candidate unmapped_event_ids
+  +act:firdar_major__PERIOD_LORD__SOUTH_NODE: 15420 days
+  +act:firdar_major__PERIOD_LORD__NORTH_NODE_TRUE: 11859 days
+PASS: physical parity baseline==candidate (with documented unmapped-ledger exemption)
+```
+
+Первый прогон компаратора дал FAIL (27279 дней по `canonical_event_ids`).
+Root cause: единственный паттерн дельты — кандидат ДОБАВЛЯЕТ node-lord
+firdar_major события (0 удалений, 0 изменений групп/тонов/стейтов/hero).
+Это намеренное поведение кандидатного `classify_day_v2`: «Keep unresolved
+units in significance and direct grouping so their event/group IDs and members
+remain in the replay ledger. Only the published group/selection views are
+fail-closed on sphere». Baseline отбрасывал unmapped-юниты на границе
+значимости. Код фирдар (`firdar.py`, `activation_builder.py`) идентичен в
+обоих checkout — node-лорды пришли из июльского фикса 568cbdf3 (есть в обоих),
+различие чисто в ledger-политике replay. Все 27279 добавленных id входят в
+`unmapped_event_ids` самого кандидата (проверено exhaustive pass, 0 нарушений).
+
+Компаратор расширен правилом-исключением: `canonical_event_ids` может только
+ПОПОЛНЯТЬСЯ, и каждый добавленный id обязан быть в `unmapped_event_ids`
+кандидата; любое удаление или добавление mapped-события — FAIL. Негативные
+тесты (tampered physical field, mapped addition) дают FAIL, exit 1.
+
+Allowed-delta диагностика: sphere/projection changes=409463 дней (ожидаемо —
+новая 12-сферная модель), selection changes=5091 день (S13 quiet-selection).
