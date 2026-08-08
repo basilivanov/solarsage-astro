@@ -1041,12 +1041,12 @@ def test_amendment_8_1_ineligible_title_skipped_takes_next():
     """8.1.6 Ineligible machine-key title is skipped, selector takes next candidate."""
     target_date = date(2026, 7, 28)
     tf_ineligible = TodayFactor(
-        factor_id="act:t2n__MOON__SQUARE__NECESSITY",
+        factor_id="act:t2n__MOON__SQUARE__LOT_UNKNOWN_XYZ",
         activation_ids=("act-1",),
         technique="transit_to_natal",
         technique_family="transit",
         source_key="MOON",
-        target_key="NECESSITY",
+        target_key="LOT_UNKNOWN_XYZ",
         theme_keys=("t1",),
         product_spheres=("work",),
         polarity="tense",
@@ -1081,7 +1081,7 @@ def test_amendment_8_1_ineligible_title_skipped_takes_next():
 
     focus = build_today_focus([tf_ineligible, tf_eligible], tz_name="UTC", target_date=target_date)
     ev_ids = [e.id for e in focus.events]
-    assert "ev:act:t2n__MOON__SQUARE__NECESSITY" not in ev_ids
+    assert "ev:act:t2n__MOON__SQUARE__LOT_UNKNOWN_XYZ" not in ev_ids
     assert "ev:act:t2n__MOON__SQUARE__PLUTO" in ev_ids
 
 

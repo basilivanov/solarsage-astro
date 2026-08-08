@@ -106,6 +106,9 @@ LOT_LABELS_RU: dict[str, str] = {
     "EROS": "Эроса",
     "SCIENCE": "Знания",
     "MARRIAGE": "Брака",
+    "NECESSITY": "Необходимости",
+    "VICTORY": "Победы",
+    "NEMESIS": "Немезиды",
 }
 
 LOT_NOMINATIVE_RU: dict[str, str] = {

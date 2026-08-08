@@ -19,13 +19,13 @@
   "factors": [
     {
       "activationIds": [
-        "t2n__MOON__SQUARE__NECESSITY"
+        "t2n__MOON__SQUARE__LOT_UNKNOWN_XYZ"
       ],
       "activeFrom": "2026-07-28T08:00:00Z",
       "activeUntil": "2026-07-28T12:00:00Z",
       "aspectType": null,
       "exactAt": "2026-07-28T10:00:00Z",
-      "factorId": "act:t2n__MOON__SQUARE__NECESSITY",
+      "factorId": "act:t2n__MOON__SQUARE__LOT_UNKNOWN_XYZ",
       "phase": "exact",
       "polarity": "tense",
       "productSpheres": [
@@ -34,7 +34,7 @@
       "salience": 0.99,
       "sourceKey": "MOON",
       "strength": 0.99,
-      "targetKey": "NECESSITY",
+      "targetKey": "LOT_UNKNOWN_XYZ",
       "targetType": "natal_planet",
       "technique": "transit_to_natal",
       "techniqueFamily": "transit",

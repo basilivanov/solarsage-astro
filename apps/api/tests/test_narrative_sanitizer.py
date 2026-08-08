@@ -161,3 +161,29 @@ def test_unknown_sphere_or_facet_fails_closed(
         allowed_facets=facets,
         polarity="mixed",
     ) is True
+
+
+def test_s15_price_pattern_does_not_swallow_assessment_wording() -> None:
+    # S15: «оценка/оценить» is not a purchases facet mention; «цена» still is.
+    assert has_narrative_grounding_violation(
+        "В финансовой сфере возможна активность, связанная с оценкой приоритетов.",
+        allowed_spheres={"finance"},
+        allowed_facets={"personal_money"},
+        polarity="mixed",
+    ) is False
+    assert has_narrative_grounding_violation(
+        "Цена покупки сегодня удачная.",
+        allowed_spheres={"finance"},
+        allowed_facets={"personal_money"},
+        polarity="mixed",
+    ) is True
+
+
+def test_s15_romance_adjective_counts_as_facet_wording() -> None:
+    # S15: «романтические отношения» is romance-facet wording, not sphere-broad.
+    assert has_narrative_grounding_violation(
+        "Романтические отношения могут испытывать напряжение из-за конфликтов.",
+        allowed_spheres={"relationships"},
+        allowed_facets={"romance"},
+        polarity="tense",
+    ) is False

@@ -47,6 +47,7 @@ import {
   heroSupportive,
   heroTense,
   heroThreeSpheres,
+  quietFacetsNewSpheres,
   quietGeneralBackground,
   quietMainMax,
   quietSteady,
@@ -363,6 +364,15 @@ describe("Today Convergence public time and access projections", () => {
     expect(screen.getByTestId("impulse-group-work").querySelectorAll("li[data-testid^='impulse-']")).toHaveLength(2);
     expect(screen.getByTestId("impulse-group-work").getAttribute("data-sphere")).toBe("work");
     expect(screen.getByTestId("impulse-group-health").getAttribute("data-sphere")).toBe("health");
+  });
+
+  it("renders facet labels on quiet-day impulse cards", () => {
+    renderToday(quietFacetsNewSpheres);
+
+    expect(screen.getByTestId("impulse-facet-evt_v1_00000000000000000000000000000082").textContent).toBe("Текущие задачи");
+    expect(screen.getByTestId("impulse-facet-evt_v1_00000000000000000000000000000083").textContent).toBe("Личные деньги");
+    expect(screen.getByTestId("impulse-facet-evt_v1_00000000000000000000000000000084").textContent).toBe("Навыки и курсы");
+    expect(screen.getByTestId("impulse-evt_v1_00000000000000000000000000000082").getAttribute("data-facet")).toBe("daily_work");
   });
 
   it("opens a dialog lazily, shows Today facts first, and closes on Escape", async () => {

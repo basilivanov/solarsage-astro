@@ -8,7 +8,7 @@
 // owns:
 //   - components/today-convergence/impulses-list.tsx
 // inputs: generated TodayConvergenceImpulse array, TodayConvergenceEvent ledger, timezone, and parent-owned drilldown callback.
-// outputs: grouped sphere cards with exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, impulse-event-meta-{eventId} and impulse-event-time-{eventId} selectors, and drilldown triggers.
+// outputs: grouped sphere cards with facet label, exact event titles, data-testid=impulses-list, data-testid=impulse-{eventId} facts, impulse-facet-{eventId}, impulse-event-meta-{eventId} and impulse-event-time-{eventId} selectors, and drilldown triggers.
 // dependencies: today-formatters, packages/contracts/today-convergence.ts.
 // side_effects: delegates the selected sphere to the parent sheet host.
 // emitted_logs: none.
@@ -30,6 +30,7 @@ import type {
   TodayConvergenceEvent,
   TodayConvergenceImpulse,
 } from "@/packages/contracts/today-convergence";
+import { getFacetLabel, readSignalFacet } from "@/lib/display/facet-labels";
 import {
   formatEventTime,
   getEventTimeDateTime,
@@ -109,12 +110,25 @@ export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown 
             <ul className="mt-4 space-y-2">
               {group.impulses.map((impulse) => {
                 const eventTitle = eventById.get(impulse.eventId)?.title;
+                const facet = readSignalFacet(impulse);
+                const facetLabel = getFacetLabel(facet);
                 const cardClassName = "relative block w-full rounded-[20px] border border-border/40 bg-card p-4 pr-10 text-left shadow-(--shadow-card) transition-[border-color,box-shadow] duration-150 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none";
                 const cardContent = (
                   <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        data-testid={`impulse-facet-${impulse.eventId}`}
+                        className="text-[13px] font-medium leading-[18px] text-foreground"
+                      >
+                        {facetLabel ?? getTodaySphereLabel(impulse.sphere)}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[12px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
+                        {getPolarityLabel(impulse.polarity)}
+                      </span>
+                    </div>
                     <div
                       data-testid={`impulse-event-meta-${impulse.eventId}`}
-                      className="flex min-w-0 flex-col gap-1 text-[15px] leading-[22px] xl:flex-row xl:items-baseline xl:justify-between xl:gap-x-4"
+                      className="mt-1.5 flex min-w-0 flex-col gap-1 text-[15px] leading-[22px] xl:flex-row xl:items-baseline xl:justify-between xl:gap-x-4"
                     >
                       {eventTitle ? (
                         <h4
@@ -132,9 +146,6 @@ export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown 
                         >
                           {formatEventTime(impulse.time, timezone)}
                         </time>
-                        <span className={`rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
-                          {getPolarityLabel(impulse.polarity)}
-                        </span>
                       </div>
                     </div>
                     {impulse.summary ? (
@@ -153,6 +164,7 @@ export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown 
                     key={impulse.eventId}
                     data-testid={`impulse-${impulse.eventId}`}
                     data-polarity={impulse.polarity}
+                    data-facet={facet ?? undefined}
                     data-time-mode={impulse.time.mode}
                     data-has-summary={impulse.summary ? "true" : "false"}
                     data-has-event-title={eventTitle ? "true" : "false"}
