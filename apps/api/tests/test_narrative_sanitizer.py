@@ -18,6 +18,17 @@
 # failure_policy: pytest failure on an accepted machine token.
 # END_MODULE_CONTRACT: M-TEST-NARRATIVE-SANITIZER
 
+# START_MODULE_MAP: M-TEST-NARRATIVE-SANITIZER
+# public_entrypoints:
+#   - pytest test functions
+# semantic_blocks:
+#   - FORBIDDEN_TOKENS: machine-token and sanitizer boundary assertions.
+#   - GROUNDING: sphere/facet ownership, lot-name masking, polarity negation windows,
+#     and the romantic-conversations null regression.
+# owned_tests:
+#   - self
+# END_MODULE_MAP: M-TEST-NARRATIVE-SANITIZER
+
 from __future__ import annotations
 
 import pytest
@@ -187,3 +198,65 @@ def test_s15_romance_adjective_counts_as_facet_wording() -> None:
         allowed_facets={"romance"},
         polarity="tense",
     ) is False
+
+
+def test_s17_named_marriage_lot_is_not_partnership_facet_language() -> None:
+    assert has_narrative_grounding_violation(
+        "Меркурий в гармонии с твоим жребием Брака: сегодня ощущается поддержка и легкость в симпатии и свиданиях.",
+        allowed_spheres={"relationships"},
+        allowed_facets={"romance"},
+        polarity="supportive",
+    ) is False
+
+
+def test_s17_lot_name_mask_does_not_hide_a_second_bare_marriage_word() -> None:
+    assert has_narrative_grounding_violation(
+        "Жребий Брака активен: брак сегодня выгоден.",
+        allowed_spheres={"relationships"},
+        allowed_facets={"romance"},
+        polarity="supportive",
+    ) is True
+
+
+def test_s17_mitigated_supportive_antonym_is_accepted() -> None:
+    assert has_narrative_grounding_violation(
+        "День помогает снизить напряжение в тренировках.",
+        allowed_spheres={"sport"},
+        allowed_facets={"training_routine"},
+        polarity="supportive",
+    ) is False
+
+
+def test_s17_bare_supportive_antonym_is_still_rejected() -> None:
+    assert has_narrative_grounding_violation(
+        "Сегодня напряжение в тренировках.",
+        allowed_spheres={"sport"},
+        allowed_facets={"training_routine"},
+        polarity="supportive",
+    ) is True
+
+
+def test_s17_negated_tense_antonym_is_accepted_but_bare_one_is_rejected() -> None:
+    assert has_narrative_grounding_violation(
+        "Утром будет не легко, к вечеру отпустит.",
+        allowed_spheres={"health"},
+        allowed_facets={"general_condition"},
+        polarity="tense",
+    ) is False
+    assert has_narrative_grounding_violation(
+        "День лёгкий и спокойный.",
+        allowed_spheres={"health"},
+        allowed_facets={"general_condition"},
+        polarity="tense",
+    ) is True
+
+
+def test_s17_romantic_conversations_remain_a_null_regression() -> None:
+    # The romance claim must remain rejected because «разговорах» belongs to
+    # the foreign everyday_contacts facet.
+    assert has_narrative_grounding_violation(
+        "Сегодня ощущается напряжение в романтических разговорах.",
+        allowed_spheres={"relationships"},
+        allowed_facets={"romance"},
+        polarity="tense",
+    ) is True

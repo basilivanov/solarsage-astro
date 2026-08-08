@@ -30,7 +30,7 @@
 # semantic_blocks:
 #   - FORBIDDEN_TOKENS: machine prefixes, generic Planet labels, and list artifacts.
 #   - GROUNDING: canonical sphere/facet vocabulary, scope checks, health safety,
-#     and explicit polarity-antonym checks.
+#     lot-name masking, polarity-antonym checks, and negation windows.
 #   - SANITIZE: deterministic trim-and-reject boundary.
 # owned_tests:
 #   - apps/api/tests/test_narrative_sanitizer.py
@@ -183,6 +183,54 @@ _POLARITY_CONFLICT_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     ),
 }
 
+# Source: app.services.focus_title_builder.LOT_LABELS_RU. Keep this small
+# stdlib-only copy local to the sanitizer so a lot's proper name is not
+# mistaken for ordinary facet language.
+_LOT_NAME_PATTERN = re.compile(
+    r"жреби\w*\s+(?:фортун\w*|дух\w*|эрос\w*|знани\w*|брак\w*|необходимост\w*|побед\w*|немезид\w*)",
+    re.IGNORECASE,
+)
+_POLARITY_NEGATION_MARKER_PATTERN = re.compile(
+    r"(?<!\w)(?:не|нет|без|снизи\w*|снижени\w*|сним\w*|снят\w*|избеж\w*|избег\w*|ослаб\w*|уменьш\w*|отпусти\w*|минимиз\w*|против)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+# START_BLOCK: GROUNDING_HELPERS
+def _mask_lot_names(text: str) -> str:
+    # START_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER._mask_lot_names
+    # purpose: Replace named lots with neutral text before grounding vocabulary detection.
+    # inputs: text — candidate narrative text.
+    # returns: text with proper lot names replaced; original text remains untouched by the caller.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: caller validates text type; this pure helper expects a string.
+    # END_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER._mask_lot_names
+    return _LOT_NAME_PATTERN.sub("жребий", text)
+
+
+def _has_polarity_conflict(text: str, polarity: str) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER._has_polarity_conflict
+    # purpose: Detect an unmitigated polarity antonym within the selected claim polarity.
+    # inputs: text — masked narrative text; polarity — canonical claim polarity.
+    # returns: True when a conflict match has no negation or mitigation marker in its sentence window.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: unknown polarity has no configured patterns and returns False; caller validates polarity.
+    # END_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER._has_polarity_conflict
+    sentence_boundaries = ".!?;\n"
+    for pattern in _POLARITY_CONFLICT_PATTERNS.get(polarity, ()):
+        for match in pattern.finditer(text):
+            prefix = text[max(0, match.start() - 40) : match.start()]
+            boundary = max((prefix.rfind(marker) for marker in sentence_boundaries), default=-1)
+            window = prefix[boundary + 1 :]
+            if _POLARITY_NEGATION_MARKER_PATTERN.search(window) is None:
+                return True
+    return False
+
+
+# END_BLOCK: GROUNDING_HELPERS
+
 
 # START_BLOCK: FORBIDDEN_TOKENS
 def has_forbidden_narrative_tokens(text: str) -> bool:
@@ -230,7 +278,8 @@ def has_narrative_grounding_violation(
     # START_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER.has_narrative_grounding_violation
     # purpose: Reject a narrative claim that names an unrelated product
     #   sphere/facet, generalizes a facet polarity to its whole sphere, uses a
-    #   health diagnosis, or uses an explicit polarity antonym.
+    #   health diagnosis, or uses an explicit polarity antonym outside a
+    #   same-sentence negation/mitigation window.
     # inputs: text — sanitized candidate; allowed_spheres — selected product
     #   sphere(s); allowed_facets — selected facet(s), empty for facet=null;
     #   polarity — canonical claim polarity.
@@ -258,6 +307,8 @@ def has_narrative_grounding_violation(
     if polarity not in {"supportive", "tense", "mixed"}:
         return True
 
+    masked_text = _mask_lot_names(text)
+
     normalized_facets = {
         facet for facet in raw_facets if isinstance(facet, str) and facet.strip()
     }
@@ -272,7 +323,7 @@ def has_narrative_grounding_violation(
     detected_facets = {
         facet
         for facet, patterns in _FACET_PATTERNS.items()
-        if any(pattern.search(text) is not None for pattern in patterns)
+        if any(pattern.search(masked_text) is not None for pattern in patterns)
     }
     # A nullable facet authorizes only general sphere wording. A selected
     # facet authorizes exactly that facet; all other narrow terms fail closed.
@@ -282,7 +333,7 @@ def has_narrative_grounding_violation(
     detected_spheres = {
         sphere
         for sphere, patterns in _SPHERE_PATTERNS.items()
-        if any(pattern.search(text) is not None for pattern in patterns)
+        if any(pattern.search(masked_text) is not None for pattern in patterns)
     }
     allowed_facet_owners = {
         _FACET_TO_SPHERE[facet]
@@ -308,18 +359,15 @@ def has_narrative_grounding_violation(
         # A facet-specific claim must not silently become a claim about the
         # whole sphere: both explicit broad quantifiers and direct sphere
         # polarity wording are rejected.
-        if _BROAD_SCOPE_RE.search(text) is not None:
+        if _BROAD_SCOPE_RE.search(masked_text) is not None:
             return True
         if any(
-            pattern.search(text) is not None
+            pattern.search(masked_text) is not None
             for pattern in _POLARITY_SCOPE_PATTERNS.get(polarity, ())
         ) and not detected_facets.intersection(normalized_facets):
             return True
 
-    return any(
-        pattern.search(text) is not None
-        for pattern in _POLARITY_CONFLICT_PATTERNS.get(polarity, ())
-    )
+    return _has_polarity_conflict(masked_text, polarity)
 # END_BLOCK: GROUNDING
 
 
