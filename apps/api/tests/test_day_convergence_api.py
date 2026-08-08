@@ -225,6 +225,15 @@ def _install_access(monkeypatch, state: str) -> AsyncMock:
 
 def _install_profile_hash(monkeypatch) -> None:
     monkeypatch.setattr("app.api.day.compute_today_profile_hash", lambda profile, resolution: PROFILE_HASH)
+    # Stored-test snapshots carry canon_hash "c"*64 / formula "today-convergence-2";
+    # pin the serve-path canon identity to the same values so they count as fresh.
+    monkeypatch.setattr(
+        "app.api.day.compute_today_convergence_canon_hash", lambda *args, **kwargs: "c" * 64
+    )
+    monkeypatch.setattr(
+        "app.api.day.load_today_convergence_canon",
+        lambda *args, **kwargs: SimpleNamespace(formula_version="today-convergence-2"),
+    )
 
 
 def _install_local_today(monkeypatch, local_today: date = TARGET_DATE) -> None:
@@ -496,6 +505,75 @@ async def test_past_date_without_snapshot_is_unavailable_for_get_and_retry(
     publish.assert_not_awaited()
     assert events == ["day.viewed"]
 # END_BLOCK: FULL_PATH
+
+
+# START_BLOCK: STALE_CANON_REGRESSION
+@pytest.mark.asyncio
+async def test_past_date_with_stale_canon_snapshot_is_unavailable_not_500(
+    async_client, db_session, make_initdata, monkeypatch
+) -> None:
+    # Regression (2026-08-08): pre-rework snapshots (legacy sphere keys like
+    # "money") were served to the fail-closed projector because staleness only
+    # compared profile_hash -> TodayConvergenceProjectionError -> HTTP 500.
+    await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60113)
+    stale = _snapshot(uuid4())
+    stale.canon_hash = "0" * 64  # pre-upgrade canon bytes
+    _install_access(monkeypatch, "full")
+    _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch, TARGET_DATE + timedelta(days=1))
+    _install_current_snapshot(monkeypatch, stale)
+    calculate = AsyncMock(side_effect=AssertionError("past stale snapshot recalculated"))
+    supersede = AsyncMock(side_effect=AssertionError("past stale snapshot superseded"))
+    monkeypatch.setattr("app.api.day.calculate_today_convergence", calculate)
+    monkeypatch.setattr("app.api.day.TodaySnapshotService.publish_superseding", supersede)
+
+    response = await async_client.get(f"/api/day/{TARGET_DATE.isoformat()}")
+    payload = response.json()
+
+    assert response.status_code == 200, response.text
+    assert payload["state"] == "unavailable"
+    assert payload["contentState"] == "unavailable"
+    calculate.assert_not_awaited()
+    supersede.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stale_canon_snapshot_is_superseded_on_today(
+    async_client, db_session, make_initdata, monkeypatch
+) -> None:
+    user = await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60114)
+    stale = _snapshot(user.id)
+    stale.canon_hash = "0" * 64
+    fresh = _snapshot(user.id)
+    _install_access(monkeypatch, "full")
+    _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch)
+    _install_current_snapshot(monkeypatch, stale)
+    _install_lease(monkeypatch, fresh)
+    supersede = AsyncMock(
+        return_value=TodaySnapshotPublication(snapshot=fresh, outcome="published")
+    )
+    monkeypatch.setattr("app.api.day.TodaySnapshotService.publish_superseding", supersede)
+    built = object.__new__(TodayConvergenceCalculationBuilt)
+    calculate = AsyncMock(return_value=built)
+    monkeypatch.setattr("app.api.day.calculate_today_convergence", calculate)
+    monkeypatch.setattr(
+        "app.api.day.build_today_convergence_snapshot_document",
+        lambda profile, result: object(),
+    )
+    generate = AsyncMock(
+        return_value=TodayNarrativeSuccess(content_json={}, output_tokens=1, latency_ms=1)
+    )
+    monkeypatch.setattr("app.api.day.generate_today_narrative", generate)
+
+    response = await async_client.get(f"/api/day/{TARGET_DATE.isoformat()}")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["snapshotId"] == str(fresh.id)
+    calculate.assert_awaited_once()
+    supersede.assert_awaited_once()
+    assert supersede.await_args.args[2] == stale.id
+# END_BLOCK: STALE_CANON_REGRESSION
 
 
 # START_BLOCK: RETRY_SINGLE_FLIGHT

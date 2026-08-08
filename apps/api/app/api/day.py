@@ -95,6 +95,10 @@ from app.services.today_birth_time import (
     TodayBirthTimeError,
     resolve_profile_birth_time,
 )
+from app.services.today_convergence_canon import (
+    compute_today_convergence_canon_hash,
+    load_today_convergence_canon,
+)
 from app.services.today_convergence_projection import (
     project_empty_payload,
     project_snapshot_payload,
@@ -376,7 +380,8 @@ async def _serve_day(
     retry_requested: bool,
 ) -> tuple[TodayConvergencePayload, datetime | None]:
     # START_FUNCTION_CONTRACT: F-M-API-DAY._serve_day
-    # purpose: Orchestrate access, snapshot lookup, past-date boundary, calculation, publication, and projection.
+    # purpose: Orchestrate access, snapshot lookup with profile/canon/formula staleness, past-date boundary,
+    #   calculation, publication, and projection.
     # inputs: date_str, request, authenticated user, DB session, background task collector, and retry flag.
     # returns: TodayConvergencePayload plus an optional retry timestamp for narrative cooldown responses.
     # side_effects: access read; optional calculation, snapshot publication, narrative lease, background generation,
@@ -403,9 +408,20 @@ async def _serve_day(
         return payload, None
 
     profile_hash = compute_today_profile_hash(user.profile, resolution)
+    canon_hash = compute_today_convergence_canon_hash()
+    formula_version = load_today_convergence_canon().formula_version
     snapshot_service = TodaySnapshotService(db)
     snapshot = await snapshot_service.load_current(user.id, target_date)
-    snapshot_needs_publication = snapshot is None or snapshot.profile_hash != profile_hash
+    # A stored snapshot is servable only under the identity it was computed
+    # with: profile, canon bytes, and formula version. A canon/formula upgrade
+    # (e.g. spheres rework) makes pre-upgrade snapshots stale — recompute and
+    # supersede instead of projecting legacy payload keys into a 500.
+    snapshot_needs_publication = (
+        snapshot is None
+        or snapshot.profile_hash != profile_hash
+        or snapshot.canon_hash != canon_hash
+        or snapshot.formula_version != formula_version
+    )
     if snapshot_needs_publication:
         try:
             local_today = resolve_user_local_date(user, datetime.now(UTC))

@@ -166,14 +166,18 @@ async def test_day_explicit_date_is_not_resolved_or_shifted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # START_FUNCTION_CONTRACT: F-M-TESTS-USER-LOCAL-DATE-CONSUMERS.day_explicit
-    # purpose: Prove explicit ISO dates bypass the local-date resolver.
+    # purpose: Prove explicit ISO dates reach calculation unshifted; the local-date
+    #   resolver may run only for the S14 past-date boundary, never to shift dates.
     # inputs: Explicit ISO date and a conflicting profile timezone.
     # returns: None; asserts the exact downstream date.
     # side_effects: none beyond mocked downstream calls.
     # emitted_logs: none
-    # error_behavior: resolver invocation fails the test.
+    # error_behavior: a shifted downstream date fails the test.
     # END_FUNCTION_CONTRACT: F-M-TESTS-USER-LOCAL-DATE-CONSUMERS.day_explicit
-    resolver = Mock(side_effect=AssertionError("explicit date must not resolve"))
+    # S14: the resolver IS consulted for the past-date boundary when no
+    # snapshot exists, but it must never shift the explicit date. Returning
+    # the same day keeps the date current so the calculation path runs.
+    resolver = Mock(return_value=date(2026, 7, 28))
     monkeypatch.setattr(day_api, "resolve_user_local_date", resolver)
     _, calculate = _patch_day_downstream(monkeypatch)
 
@@ -181,7 +185,6 @@ async def test_day_explicit_date_is_not_resolved_or_shifted(
         "2026-07-28", _request(), _user(current_tz="Asia/Tokyo"), object()
     )
 
-    resolver.assert_not_called()
     assert calculate.await_args.args[1] == date(2026, 7, 28)
 
 
