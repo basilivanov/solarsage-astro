@@ -13,7 +13,8 @@
 # side_effects: reads frozen canon when omitted; no writes, network, database, or runtime logs.
 # emitted_logs: none.
 # invariants: only upstream-accepted units are selected; public polarity and
-# physical content caps fail closed; output is permutation-deterministic.
+# physical content caps fail closed; convergence selections are unique by
+# presentation sphere/facet and unordered evidence pair; output is permutation-deterministic.
 # failure_policy: malformed records, invalid timezone/date, naive datetimes, foreign references, and invalid public mappings raise TodayConvergenceSelectionError.
 # END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SELECTION
 
@@ -94,6 +95,7 @@ class CanonicalSelectionAudit:
     selected_event_count: int
     steady_exclusion_count: int
     unmapped_sphere_exclusion_count: int
+    duplicate_presentation_exclusion_count: int
     selection_cap_exclusion_count: int
 
 
@@ -374,7 +376,15 @@ def _selected_convergences(
     grouping: CanonicalGroupingResult,
     inputs: _ValidatedInputs,
     canon: TodayConvergenceCanon,
-) -> tuple[tuple[CanonicalSelectedConvergence, ...], int, int, int]:
+) -> tuple[tuple[CanonicalSelectedConvergence, ...], int, int, int, int]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION._selected_convergences
+    # purpose: Rank public convergence groups, preserve hero-first evidence pairs, and remove duplicate presentation groups before the cap.
+    # inputs: validated grouping/tone/ledger references and strict canon used for public polarity and deterministic ranking.
+    # returns: selected groups, steady exclusions, cap exclusions, first-appearance sphere count, and duplicate-presentation exclusions.
+    # side_effects: none; selection is pure and does not mutate canonical records.
+    # emitted_logs: none.
+    # error_behavior: invalid references or a hero without a public evidence pair raises the typed selection error.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION._selected_convergences
     public_groups: list[tuple[CanonicalConvergenceGroup, PublicPolarity, tuple[str, str]]] = []
     steady_exclusions = 0
     for group in grouping.groups:
@@ -401,8 +411,16 @@ def _selected_convergences(
     selected: list[CanonicalSelectedConvergence] = []
     selected_spheres: list[str] = []
     selected_sphere_set: set[str] = set()
+    selected_facet_keys: set[tuple[str, str | None]] = set()
+    selected_evidence_pairs: set[frozenset[str]] = set()
+    duplicate_presentation_exclusions = 0
     selection_cap_exclusions = 0
     for group, polarity, pair in ordered:
+        facet_key = (group.sphere, group.facet)
+        evidence_key = frozenset(pair)
+        if facet_key in selected_facet_keys or evidence_key in selected_evidence_pairs:
+            duplicate_presentation_exclusions += 1
+            continue
         if len(selected) >= 3:
             selection_cap_exclusions += 1
             continue
@@ -412,7 +430,15 @@ def _selected_convergences(
         if group.sphere not in selected_sphere_set:
             selected_spheres.append(group.sphere)
             selected_sphere_set.add(group.sphere)
-    return tuple(selected), steady_exclusions, selection_cap_exclusions, len(selected_spheres)
+        selected_facet_keys.add(facet_key)
+        selected_evidence_pairs.add(evidence_key)
+    return (
+        tuple(selected),
+        steady_exclusions,
+        selection_cap_exclusions,
+        len(selected_spheres),
+        duplicate_presentation_exclusions,
+    )
 
 
 # END_BLOCK: GROUP_SELECTION
@@ -576,7 +602,13 @@ def select_canonical_presentation(
     # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SELECTION.select_canonical_presentation
     resolved_canon = load_today_convergence_canon() if canon is None else canon
     inputs = _validate_inputs(ledger, grouping, tone, target_date, timezone_name, resolved_canon)
-    selected_convergences, group_steady_exclusions, group_sphere_exclusions, _ = _selected_convergences(
+    (
+        selected_convergences,
+        group_steady_exclusions,
+        group_sphere_exclusions,
+        _,
+        group_duplicate_exclusions,
+    ) = _selected_convergences(
         grouping, inputs, resolved_canon
     )
     if selected_convergences and any(group.group.hero_eligible for group in selected_convergences):
@@ -614,6 +646,7 @@ def select_canonical_presentation(
                 selected_event_count=len(selected_ids),
                 steady_exclusion_count=group_steady_exclusions,
                 unmapped_sphere_exclusion_count=0,
+                duplicate_presentation_exclusion_count=group_duplicate_exclusions,
                 selection_cap_exclusion_count=group_sphere_exclusions,
             ),
         )
@@ -644,6 +677,7 @@ def select_canonical_presentation(
             selected_event_count=len(selected_ids),
             steady_exclusion_count=group_steady_exclusions + event_steady_exclusions,
             unmapped_sphere_exclusion_count=event_unmapped_exclusions,
+            duplicate_presentation_exclusion_count=0,
             selection_cap_exclusion_count=group_sphere_exclusions + event_sphere_exclusions,
         ),
     )

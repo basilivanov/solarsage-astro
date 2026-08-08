@@ -106,6 +106,48 @@ def unit_for(raw: RawPhysicalFact):
     return result.unit
 
 
+def _dedup_fixture():
+    rows = [
+        fact(source_key="Transit_JUPITER", target_key="Natal_SATURN", technical_spheres=("work_status_achievement",)),
+        fact(
+            source_key="Transit_SATURN",
+            target_key="Natal_SATURN",
+            aspect_type="TRINE",
+            temporal_role="supporting",
+            technical_spheres=("work_status_achievement",),
+        ),
+        fact(source_key="Transit_MOON", target_key="Natal_MOON", technical_spheres=("money_security_resources",)),
+        fact(
+            source_key="Transit_MERCURY",
+            target_key="Natal_MOON",
+            aspect_type="TRINE",
+            temporal_role="supporting",
+            technical_spheres=("money_security_resources",),
+        ),
+        fact(source_key="Transit_VENUS", target_key="Natal_VENUS", technical_spheres=("relationships_partnership",)),
+        fact(
+            source_key="Transit_MARS",
+            target_key="Natal_VENUS",
+            aspect_type="TRINE",
+            temporal_role="supporting",
+            technical_spheres=("relationships_partnership",),
+        ),
+        fact(source_key="Transit_URANUS", target_key="Natal_URANUS", technical_spheres=("thinking_speech_learning",)),
+        fact(
+            source_key="Transit_NEPTUNE",
+            target_key="Natal_URANUS",
+            aspect_type="TRINE",
+            temporal_role="supporting",
+            technical_spheres=("thinking_speech_learning",),
+        ),
+    ]
+    ledger, grouping, tone = pipeline(*rows)
+    work_groups = tuple(group for group in grouping.groups if group.sphere == "work")
+    communication = next(group for group in grouping.groups if group.sphere == "communication")
+    best, duplicate = sorted(work_groups, key=lambda group: (-len(group.independent_driver_keys), group.group_id))
+    return ledger, grouping, tone, communication, best, duplicate
+
+
 # START_BLOCK: CONVERGENCE
 def test_hero_evidence_selection_excludes_non_evidence_group_members() -> None:
     hero_anchor = fact(source_key="Transit_JUPITER", target_key="Natal_SATURN")
@@ -175,9 +217,76 @@ def test_convergence_caps_groups_without_diversity_gate() -> None:
         dict.fromkeys(selected.group.sphere for selected in result.convergences)
     )
     assert len({item.group.group_id for item in result.convergences}) == len(result.convergences)
-    assert sum(item.group.sphere == "work" for item in result.convergences) == 2
+    assert sum(item.group.sphere == "work" for item in result.convergences) == 1
     assert candidate_occurrences > len(candidate_event_ids)
     assert result.audit.candidate_event_count == len(candidate_event_ids)
+    assert result.audit.duplicate_presentation_exclusion_count == 1
+    assert result.audit.selection_cap_exclusion_count == 0
+
+
+def test_duplicate_presentation_groups_are_removed_before_the_cap() -> None:
+    ledger, grouping, tone, communication, best, duplicate = _dedup_fixture()
+    mars_id = next(unit.canonical_event_id for unit in best.member_units if unit.driver_key == "MARS")
+    moon_id = next(unit.canonical_event_id for unit in best.member_units if unit.driver_key == "MOON")
+    diverse = replace(
+        best,
+        group_id="cvg_s18_finance",
+        sphere="finance",
+        facet="personal_money",
+        hero_anchor_id=mars_id,
+        hero_confirmation_id=moon_id,
+    )
+    crafted_grouping = replace(grouping, groups=grouping.groups + (diverse,))
+    crafted_tone = replace(
+        tone,
+        group_tones=tone.group_tones + (replace(tone.group_tones[0], group_id=diverse.group_id),),
+    )
+
+    result = select_canonical_presentation(ledger, crafted_grouping, crafted_tone, TARGET_DATE, "UTC", CANON)
+    selected_group_ids = tuple(item.group.group_id for item in result.convergences)
+
+    assert selected_group_ids[0] == best.group_id
+    assert duplicate.group_id not in selected_group_ids
+    assert diverse.group_id in selected_group_ids
+    assert communication.group_id in selected_group_ids
+    assert len(selected_group_ids) == 3
+    assert result.audit.duplicate_presentation_exclusion_count == 1
+    assert result.audit.selection_cap_exclusion_count == 0
+
+
+def test_duplicate_evidence_pair_is_removed_even_with_a_different_facet() -> None:
+    ledger, grouping, tone, communication, best, duplicate = _dedup_fixture()
+    same_pair = replace(
+        best,
+        facet="career_status",
+        hero_anchor_id=duplicate.hero_anchor_id,
+        hero_confirmation_id=duplicate.hero_confirmation_id,
+    )
+    crafted_grouping = replace(grouping, groups=(communication, same_pair, duplicate))
+
+    result = select_canonical_presentation(ledger, crafted_grouping, tone, TARGET_DATE, "UTC", CANON)
+    selected_group_ids = tuple(item.group.group_id for item in result.convergences)
+
+    assert same_pair.group_id in selected_group_ids
+    assert duplicate.group_id not in selected_group_ids
+    assert same_pair.facet != duplicate.facet
+    assert result.audit.duplicate_presentation_exclusion_count == 1
+    assert result.audit.selection_cap_exclusion_count == 0
+
+
+def test_distinct_presentation_and_evidence_pairs_are_all_selected() -> None:
+    ledger, grouping, tone, communication, best, duplicate = _dedup_fixture()
+    distinct_duplicate = replace(duplicate, facet="career_status")
+    crafted_grouping = replace(grouping, groups=(communication, best, distinct_duplicate))
+
+    result = select_canonical_presentation(ledger, crafted_grouping, tone, TARGET_DATE, "UTC", CANON)
+    selected_keys = {(item.group.sphere, item.group.facet) for item in result.convergences}
+    selected_pairs = {frozenset(item.evidence_event_ids) for item in result.convergences}
+
+    assert len(result.convergences) == 3
+    assert len(selected_keys) == 3
+    assert len(selected_pairs) == 3
+    assert result.audit.duplicate_presentation_exclusion_count == 0
     assert result.audit.selection_cap_exclusion_count == 0
 
 
@@ -206,6 +315,7 @@ def test_single_rare_anchor_is_quiet_main_event_not_convergence() -> None:
     assert result.main_event.evidence_level == "medium"
     assert result.main_event.polarity == "supportive"
     assert result.impulses == ()
+    assert result.audit.duplicate_presentation_exclusion_count == 0
 
 
 def test_main_event_and_three_impulses_are_unique_without_sphere_cap() -> None:
