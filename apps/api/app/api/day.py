@@ -118,6 +118,7 @@ from app.services.today_narrative_lease_service import (
 )
 from app.services.today_narrative_service import (
     TodayNarrativeFailure,
+    TodayNarrativePerson,
     TodayNarrativeSuccess,
     generate_today_narrative,
 )
@@ -276,11 +277,31 @@ def _snapshot_has_selected_blocks(snapshot: object) -> bool:
     return bool(selected.get("convergences") or selected.get("main_event") or selected.get("impulses"))
 
 
+def _narrative_person(user: User, target_date: Date) -> TodayNarrativePerson | None:
+    # S16: person prompt context; never logged, first name + full years only.
+    profile = user.profile
+    if profile is None:
+        return None
+    first_name = profile.first_name
+    if not isinstance(first_name, str) or not first_name.strip():
+        first_name = None
+    age = None
+    birthday = profile.birthday
+    if birthday is not None:
+        age = target_date.year - birthday.year - (
+            (target_date.month, target_date.day) < (birthday.month, birthday.day)
+        )
+    if first_name is None and age is None:
+        return None
+    return TodayNarrativePerson(first_name=first_name, age=age)
+
+
 async def _run_narrative_background(
     db: AsyncSession,
     snapshot: object,
     claim: NarrativeLeaseClaim,
     correlation_id: str | None,
+    person: TodayNarrativePerson | None = None,
 ) -> None:
     # START_BLOCK: DAY_NARRATIVE_BACKGROUND
     try:
@@ -289,6 +310,7 @@ async def _run_narrative_background(
                 snapshot,
                 prompt_version=claim.prompt_version,
                 correlation_id=correlation_id,
+                person=person,
             )
         lease_service = TodayNarrativeLeaseService(db)
         if isinstance(result, TodayNarrativeSuccess):
@@ -334,6 +356,7 @@ async def _project_full_day(
     correlation_id: str | None,
     *,
     retry_requested: bool,
+    person: TodayNarrativePerson | None = None,
 ) -> tuple[TodayConvergencePayload, datetime | None]:
     lease_service = TodayNarrativeLeaseService(db)
     narrative = await lease_service.load(snapshot.id, settings.today_narrative_prompt_version)
@@ -358,6 +381,7 @@ async def _project_full_day(
                 snapshot,
                 claim_or_skip,
                 correlation_id,
+                person,
             )
     retry_at = None
     if (
@@ -484,6 +508,7 @@ async def _serve_day(
         background_tasks,
         _request_correlation_id(request),
         retry_requested=retry_requested,
+        person=_narrative_person(user, target_date),
     )
     _viewed_payload(payload, request)
     return payload, retry_at

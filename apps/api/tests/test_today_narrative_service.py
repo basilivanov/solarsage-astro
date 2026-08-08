@@ -43,6 +43,7 @@ from uuid import UUID
 
 import pytest
 
+from app.core.config import settings
 from app.db.models import TodaySnapshot
 from app.services.today_narrative_service import (
     TodayNarrativeFailure,
@@ -329,10 +330,11 @@ def _empty_block() -> dict[str, object]:
 
 
 def _filled_template_block(event_ids: list[str]) -> dict[str, object]:
+    # S16: v4 template asks the provider for all three claims per block.
     return {
         "summary": {"text": "", "sourceEventIds": list(event_ids)},
-        "meaning": None,
-        "action": None,
+        "meaning": {"text": "", "sourceEventIds": list(event_ids)},
+        "action": {"text": "", "sourceEventIds": list(event_ids)},
     }
 
 
@@ -465,7 +467,7 @@ async def test_convergence_today_three_groups_accepts_bound_claims() -> None:
     assert isinstance(result, TodayNarrativeSuccess)
     assert set(result.content_json["convergences"]) == {"cvg-1", "cvg-2", "cvg-3"}
     assert result.content_json["main_event"] is None
-    assert fake.calls[0]["max_output_tokens"] == 700
+    assert fake.calls[0]["max_output_tokens"] == settings.today_narrative_max_output_tokens
     expected_template = json.dumps(
         {
             "convergences": {
@@ -567,14 +569,13 @@ async def test_quiet_day_main_event_and_three_impulses_accepts_bound_claims() ->
     assert prompt.index("\nВход:\n") < prompt.index("\nТочный JSON-шаблон ответа для этого snapshot:\n")
     assert (
         "- Текст claim никогда не должен содержать часы, даты, окна или длительности:\n"
-        "  EventTime — только display-only данные для интерфейса. Формулируй текст claim\n"
-        "  только общими словами по kind, sphere, facet и polarity. Поля grounding с\n"
+        "  EventTime — только display-only данные для интерфейса. Поля grounding с\n"
         "  house и planets — внутренние детерминированные источники: называй house\n"
         "  только при capabilities.houses=true; не раскрывай planets как машинные\n"
         "  идентификаторы. Не упоминай angle или lot, если соответствующая capability\n"
         "  не равна true."
     ) in prompt
-    assert "Замени только пустые значения summary.text на текст и верни этот JSON." in prompt
+    assert "Замени только пустые значения text на текст и верни этот JSON." in prompt
 
 
 @pytest.mark.asyncio
@@ -597,7 +598,7 @@ async def test_quiet_day_three_impulses_without_main_event_accepts_null_main_tem
     }
     prompt = fake.calls[0]["prompt"]
     assert '"main_event":null' in prompt
-    assert prompt.count('"sourceEventIds"') == 3
+    assert prompt.count('"sourceEventIds"') == 9  # S16: 3 claims x 3 impulse blocks
 
 
 # END_BLOCK: HAPPY_PATH
@@ -864,7 +865,7 @@ async def test_timeout_and_provider_error_return_typed_failures_with_latency() -
 
 
 @pytest.mark.asyncio
-async def test_prompt_is_bounded_to_selected_units_and_forwards_700_tokens() -> None:
+async def test_prompt_is_bounded_to_selected_units_and_forwards_configured_token_cap() -> None:
     snapshot = _convergence_snapshot(extra_factors=20)
     fake = FakeLLM(json.dumps(_convergence_content(snapshot), ensure_ascii=False), error=None)
     result = await generate_today_narrative(snapshot, prompt_version="today-narrative-v1", llm=fake)
@@ -873,12 +874,13 @@ async def test_prompt_is_bounded_to_selected_units_and_forwards_700_tokens() -> 
 
     assert isinstance(result, TodayNarrativeSuccess)
     # Each selected ID appears in bounded source evidence and the exact template;
-    # convergence groups repeat the source list at block and event level.
-    assert prompt.count("evt_v1_") <= selected_count * 3
+    # convergence groups repeat the source list at block and event level, and the
+    # S16 template repeats every block id inside its three claim objects.
+    assert prompt.count("evt_v1_") <= selected_count * 5
     assert "factor_units" not in prompt
     assert '"audit"' not in prompt
     assert '"profile"' not in prompt
-    assert fake.calls[0]["max_output_tokens"] == 700
+    assert fake.calls[0]["max_output_tokens"] == settings.today_narrative_max_output_tokens
 
     direct_prompt = build_today_narrative_prompt(snapshot, prompt_version="today-narrative-v1")
     assert direct_prompt == prompt
@@ -953,3 +955,110 @@ async def test_three_generation_events_have_safe_fields_and_logger_failure_is_sw
 
 
 # END_BLOCK: OPERATIONS
+
+
+# START_BLOCK: S16_PERSON_PERIOD
+def _period_factor(
+    event_id: str,
+    technique: str,
+    lord: str,
+    active_from: str,
+    active_until: str,
+) -> dict[str, object]:
+    return {
+        "canonical_event_id": event_id,
+        "event_class": "timelord_period_change" if "firdar" in technique else "monthly_profection",
+        "technique_horizon": "firdar" if "firdar" in technique else "profection",
+        "semantic_key": json.dumps({"technique": technique, "target_key": lord}),
+        "target_key": lord,
+        "temporal_role": "background",
+        "active_from": active_from,
+        "active_until": active_until,
+        "polarity": "neutral",
+        "technical_spheres": [],
+    }
+
+
+def _quiet_with_period() -> TodaySnapshot:
+    snapshot = _quiet_impulses_only_snapshot()
+    factors = list(snapshot.canonical_input_json["factor_units"])  # type: ignore[index]
+    factors.extend([
+        _period_factor("evt_v1_period_firdar_major", "firdar_major", "SUN", "2019-10-30", "2029-10-29"),
+        _period_factor("evt_v1_period_firdar_minor", "firdar_minor", "SATURN", "2025-07-18", "2026-12-21"),
+    ])
+    canonical_input = dict(snapshot.canonical_input_json)  # type: ignore[arg-type]
+    canonical_input["factor_units"] = factors
+    snapshot.canonical_input_json = canonical_input  # type: ignore[assignment]
+    return snapshot
+
+
+def test_s16_prompt_carries_person_and_period_background() -> None:
+    from app.services.today_narrative_service import TodayNarrativePerson
+
+    prompt = build_today_narrative_prompt(
+        _quiet_with_period(),
+        prompt_version="today-narrative-v4",
+        person=TodayNarrativePerson(first_name="Василий", age=45),
+    )
+
+    assert '"firstName":"Василий"' in prompt
+    assert '"age":45' in prompt
+    assert '"kind":"Большой фирдар"' in prompt
+    assert '"lord":"Солнце"' in prompt
+    assert '"activeUntil":"2029-10-29"' in prompt
+    assert '"kind":"Малый фирдар"' in prompt
+
+
+def test_s16_person_and_period_are_omitted_when_absent() -> None:
+    prompt = build_today_narrative_prompt(
+        _quiet_impulses_only_snapshot(),
+        prompt_version="today-narrative-v4",
+    )
+
+    assert '"person":{}' in prompt
+    assert '"periodBackground":[]' in prompt
+
+
+def test_s16_response_template_requests_all_three_claims() -> None:
+    prompt = build_today_narrative_prompt(
+        _quiet_impulses_only_snapshot(),
+        prompt_version="today-narrative-v4",
+    )
+
+    assert '"meaning":{"sourceEventIds"' in prompt
+    assert '"action":{"sourceEventIds"' in prompt
+    assert "summary.text, meaning.text и action.text" in prompt
+
+
+async def test_s16_generate_threads_person_into_provider_prompt() -> None:
+    from app.services.today_narrative_service import TodayNarrativePerson
+
+    snapshot = _quiet_impulses_only_snapshot()
+    selected = snapshot.deterministic_result_json["selected"]  # type: ignore[index]
+    content = {
+        "convergences": {},
+        "main_event": None,
+        "impulses": {
+            impulse["event_id"]: {  # type: ignore[index]
+                "summary": _claim("Личные деньги сегодня послушны: проверь поступления.", [impulse["event_id"]]),  # type: ignore[index]
+                "meaning": _claim("День помогает навести порядок именно в личных средствах.", [impulse["event_id"]]),  # type: ignore[index]
+                "action": _claim("Отложи часть суммы сразу после поступления.", [impulse["event_id"]]),  # type: ignore[index]
+            }
+            for impulse in selected["impulses"]
+        },
+    }
+    llm = FakeLLM(json.dumps(content, ensure_ascii=False))
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v4",
+        llm=llm,
+        person=TodayNarrativePerson(first_name="Василий", age=45),
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    prompt = str(llm.calls[0]["prompt"])
+    assert '"firstName":"Василий"' in prompt
+    block = result.content_json["impulses"]["evt_v1_impulse_only_1"]
+    assert block["meaning"]["text"].startswith("День помогает")
+    assert block["action"]["text"].startswith("Отложи")
+# END_BLOCK: S16_PERSON_PERIOD

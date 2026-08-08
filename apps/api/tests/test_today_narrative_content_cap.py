@@ -46,6 +46,7 @@ from uuid import UUID
 
 import pytest
 
+from app.core.config import settings
 from app.db.models import TodaySnapshot
 from app.services.today_narrative_service import (
     TodayNarrativeFailure,
@@ -383,15 +384,25 @@ async def test_max_shapes_are_bounded_and_measured(
     assert isinstance(result, TodayNarrativeSuccess)
     _assert_claims_bound(snapshot, result.content_json)
     assert json.loads(json.dumps(result.content_json, ensure_ascii=False)) == result.content_json
-    assert fake.calls[0]["max_output_tokens"] == 700
+    assert fake.calls[0]["max_output_tokens"] == settings.today_narrative_max_output_tokens
     assert result.output_tokens == OUTPUT_TOKENS
     assert 0 <= result.output_tokens <= fake.calls[0]["max_output_tokens"]  # type: ignore[operator]
 
     prompt = fake.calls[0]["prompt"]
-    # Each selected ID is intentionally present in bounded source evidence and
-    # the exact response template; keep a small allowance for structural text.
+    # Structural bound: each selected ID may appear only in the bounded source
+    # evidence (group-level + per-event sourceFactIds), the exact response
+    # template (summary/meaning/action claims), and impulse block keys.
     # The hard anti-ledger guards are the not-in-prompt assertions below.
-    assert prompt.count("evt_") <= selected_event_count * 3 + 5
+    selected = snapshot.deterministic_result_json["selected"]  # type: ignore[index]
+    expected_id_mentions = 0
+    for group in selected["convergences"]:  # type: ignore[index]
+        # group sourceFactIds + evidence sourceFactIds + 3 template claims
+        expected_id_mentions += 5 * len(group["evidence_event_ids"])  # type: ignore[index]
+    if selected["main_event"] is not None:  # type: ignore[index]
+        expected_id_mentions += 4  # input sourceFactIds + 3 template claims
+    # input sourceFactIds + 3 template claims + impulse block key
+    expected_id_mentions += 5 * len(selected["impulses"])  # type: ignore[index]
+    assert prompt.count("evt_") <= expected_id_mentions
     assert "factor_units" not in prompt
     assert '"audit"' not in prompt
     assert "evt_v1_unused_" not in prompt

@@ -166,13 +166,13 @@ class Settings(BaseSettings):
 
     # --- Today bounded narrative (P6) ---
     today_narrative_max_output_tokens: int = Field(
-        700, alias="TODAY_NARRATIVE_MAX_OUTPUT_TOKENS"
+        2000, alias="TODAY_NARRATIVE_MAX_OUTPUT_TOKENS"
     )
     today_narrative_timeout_seconds: int = Field(
         45, alias="TODAY_NARRATIVE_TIMEOUT_SECONDS"
     )
     today_narrative_prompt_version: str = Field(
-        "today-narrative-v3", alias="TODAY_NARRATIVE_PROMPT_VERSION"
+        "today-narrative-v4", alias="TODAY_NARRATIVE_PROMPT_VERSION"
     )
     today_sphere_natal_prompt_version: str = Field(
         "sphere-natal-v1", alias="TODAY_SPHERE_NATAL_PROMPT_VERSION"

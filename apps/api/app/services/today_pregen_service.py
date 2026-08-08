@@ -85,6 +85,7 @@ from app.services.today_narrative_lease_service import (
 from app.services.today_narrative_service import (
     TodayNarrativeFailure,
     TodayNarrativeSuccess,
+    TodayNarrativePerson,
     generate_today_narrative,
 )
 from app.services.today_snapshot_service import TodaySnapshotService
@@ -260,6 +261,23 @@ async def _select_active_users(
         statement = statement.limit(max_candidates)
     result = await db.execute(statement)
     return [(row[0], row[1], row[2]) for row in result.all()]
+
+
+def _member_person(member: _CohortMember) -> TodayNarrativePerson | None:
+    # S16: person prompt context; first name + full years only, never logged.
+    # Personalization is best-effort: a profile object without the optional
+    # first_name attribute must degrade to age-only, never to a batch failure.
+    first_name = getattr(member.profile, "first_name", None)
+    if not isinstance(first_name, str) or not first_name.strip():
+        first_name = None
+    age = None
+    birthday = member.profile.birthday
+    if birthday is not None:
+        target = member.target_date
+        age = target.year - birthday.year - ((target.month, target.day) < (birthday.month, birthday.day))
+    if first_name is None and age is None:
+        return None
+    return TodayNarrativePerson(first_name=first_name, age=age)
 
 
 def _normalise_now(value: datetime) -> datetime:
@@ -708,7 +726,11 @@ class TodayPregenService:
                 return _NarrativeResult(mapping.get(reason, PregenUserOutcome.LLM_SKIPPED_IN_FLIGHT))
 
             try:
-                generation = await self._generate_with_deadline(snapshot, prompt_version)
+                generation = await self._generate_with_deadline(
+                    snapshot,
+                    prompt_version,
+                    person=_member_person(member),
+                )
             except asyncio.TimeoutError:
                 generation = TodayNarrativeFailure(error_code="timeout", latency_ms=0)
                 last_error_type = "TimeoutError"
@@ -753,7 +775,12 @@ class TodayPregenService:
         # unreachable; retaining a typed fallback keeps the batch fail-closed.
         return _NarrativeResult(PregenUserOutcome.LLM_UNAVAILABLE)
 
-    async def _generate_with_deadline(self, snapshot: object, prompt_version: str) -> object:
+    async def _generate_with_deadline(
+        self,
+        snapshot: object,
+        prompt_version: str,
+        person: TodayNarrativePerson | None = None,
+    ) -> object:
         # START_FUNCTION_CONTRACT: F-M-TODAY-PREGEN-SERVICE._generate_with_deadline
         # purpose: Bound one narrative provider call by the P5 per-user deadline.
         # inputs: published snapshot and prompt version.
@@ -769,6 +796,8 @@ class TodayPregenService:
         }
         if self.llm is not None:
             kwargs["llm"] = self.llm
+        if person is not None:
+            kwargs["person"] = person
         return await asyncio.wait_for(
             self.generate_fn(snapshot, **kwargs),
             timeout=self.settings.day_pregen_llm_deadline_seconds,

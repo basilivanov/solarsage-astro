@@ -77,6 +77,7 @@ from app.core.logging import (
 )
 from app.services.llm_service import LLMService
 from app.services.astro_utils import strip_prefix
+from app.services.focus_title_builder import PLANET_NOMINATIVE_RU
 from app.services.horizon_content_canon_service import load_horizon_content_canons
 from app.services.narrative_sanitizer import (
     has_narrative_grounding_violation,
@@ -114,6 +115,48 @@ _GROUNDING_RETRY_SUFFIX = """
 не заменяй его общей фразой и не показывай неподтверждённую сферу.
 """
 
+# S16: per-facet safe lexicon handed to the provider. Narrow words of OTHER
+# facets trip the grounding sanitizer even when the sentence is fine, so the
+# prompt tells the model exactly which concrete words each block owns.
+_FACET_LEXICON: Mapping[str, tuple[str, ...]] = {
+    "daily_work": ("текущие задачи", "рутина", "служба", "довести дело до конца"),
+    "career_status": ("карьера", "статус", "продвижение", "публичная роль"),
+    "personal_money": ("личные деньги", "доход", "расход", "накопления"),
+    "shared_money": ("общий бюджет", "страховка", "наследство"),
+    "purchases_transactions": ("покупка", "продажа", "цена", "сделка"),
+    "financial_obligations": ("кредит", "долг", "налог", "возврат долга"),
+    "admin_documents": ("заявление", "справка", "переписка", "оформление"),
+    "legal_foreign_education_documents": ("юридические документы", "виза", "заграничные документы"),
+    "contracts": ("договор", "контракт"),
+    "financial_documents": ("счета", "финансовые документы"),
+    "property_documents": ("документы на жильё", "недвижимость"),
+    "romance": ("симпатия", "свидание", "романтика", "флирт"),
+    "partnership": ("пара", "партнёрство", "брак", "отношения один на один"),
+    "physical_energy": ("тонус", "энергия тела", "физическая активность"),
+    "training_routine": ("тренировка", "режим занятий"),
+    "competition_performance": ("соревнование", "выступление"),
+    "everyday_contacts": ("разговоры", "переписка", "повседневные контакты"),
+    "negotiations": ("переговоры", "договорённости"),
+    "groups_audience": ("группа", "аудитория", "сообщество"),
+    "public_speech_teaching": ("выступление", "преподавание"),
+    "general_condition": ("самочувствие", "тонус", "общее состояние"),
+    "symptoms_routine_treatment": ("симптомы", "лечение", "режим дня"),
+    "recovery_isolation": ("отдых", "восстановление", "тишина и пауза"),
+    "family_roots": ("семья", "родители", "домашняя база"),
+    "housing_property": ("жильё", "бытовое пространство"),
+    "relocation": ("переезд",),
+    "local_travel": ("короткая поездка", "локальный маршрут"),
+    "long_distance_foreign_travel": ("дальняя поездка", "заграница"),
+    "self_expression": ("самовыражение", "творчество"),
+    "creative_work": ("творческий проект", "творческая работа"),
+    "private_inner_creativity": ("творчество в уединении",),
+    "skills_courses": ("навык", "курс", "обучение"),
+    "higher_education_worldview": ("высшее образование", "мировоззрение", "философия"),
+    "friends_community": ("друзья", "сообщество", "единомышленники"),
+    "collective_projects": ("совместный проект",),
+    "long_term_goals": ("долгосрочные планы",),
+}
+
 
 class TodayNarrativeErrorCode(StrEnum):
     """Stable failure values handed to the narrative lease consumer."""
@@ -139,6 +182,24 @@ class TodayNarrativeSuccess:
     content_json: dict[str, Any]
     output_tokens: int | None
     latency_ms: int
+
+
+@dataclass(frozen=True)
+class TodayNarrativePerson:
+    """Optional person context for prompt personalization (S16); never logged."""
+
+    first_name: str | None = None
+    age: int | None = None
+
+
+@dataclass(frozen=True)
+class _PeriodAnchor:
+    """One ongoing deterministic period (firdar/profection) as prompt background."""
+
+    kind: str
+    lord: str
+    active_from: str | None
+    active_until: str | None
 
 
 @dataclass(frozen=True)
@@ -218,6 +279,8 @@ class _SnapshotContext:
     convergences: tuple[_NarrativeBlock, ...]
     main_event: _NarrativeBlock | None
     impulses: tuple[_NarrativeBlock, ...]
+    person: TodayNarrativePerson | None = None
+    period: tuple[_PeriodAnchor, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -478,6 +541,67 @@ def _factor_units(snapshot: object) -> tuple[dict[str, Mapping[str, Any]], ZoneI
     return units, timezone
 
 
+# START_BLOCK: PERIOD_BACKGROUND
+_PERIOD_KIND_LABELS: Mapping[str, str] = {
+    "firdar_major": "Большой фирдар",
+    "firdar_minor": "Малый фирдар",
+    "annual_profection": "Годовая профекция",
+    "monthly_profection": "Месячная профекция",
+}
+
+
+def _unit_technique(unit: Mapping[str, Any]) -> str:
+    semantic = unit.get("semantic_key", unit.get("semanticKey"))
+    if isinstance(semantic, str) and semantic.strip():
+        try:
+            parsed = json.loads(semantic)
+        except (TypeError, ValueError):
+            parsed = None
+        if isinstance(parsed, dict) and isinstance(parsed.get("technique"), str):
+            return parsed["technique"]
+    raw = unit.get("technique", unit.get("technique_horizon", unit.get("techniqueHorizon")))
+    return raw if isinstance(raw, str) else ""
+
+
+def _window_date(value: object) -> str | None:
+    if not isinstance(value, str) or len(value) < 10:
+        return None
+    token = value[:10]
+    try:
+        date.fromisoformat(token)
+    except ValueError:
+        return None
+    return token
+
+
+def _period_anchors(units: Mapping[str, Mapping[str, Any]]) -> tuple[_PeriodAnchor, ...]:
+    """Collect ongoing firdar/profection periods as immutable prompt background."""
+    anchors: list[_PeriodAnchor] = []
+    seen: set[str] = set()
+    for unit in units.values():
+        technique = _unit_technique(unit)
+        kind = _PERIOD_KIND_LABELS.get(technique)
+        if kind is None or kind in seen:
+            continue
+        lord_key = strip_prefix(str(unit.get("target_key", unit.get("targetKey", ""))).strip()).upper()
+        lord = PLANET_NOMINATIVE_RU.get(lord_key)
+        if lord is None:
+            continue
+        seen.add(kind)
+        anchors.append(
+            _PeriodAnchor(
+                kind=kind,
+                lord=lord,
+                active_from=_window_date(unit.get("active_from", unit.get("activeFrom"))),
+                active_until=_window_date(unit.get("active_until", unit.get("activeUntil"))),
+            )
+        )
+    return tuple(anchors)
+
+
+# END_BLOCK: PERIOD_BACKGROUND
+
+
 # START_BLOCK: DRIVER_GROUNDING
 @lru_cache(maxsize=1)
 def _driver_theme_labels() -> Mapping[str, tuple[str, ...]]:
@@ -723,7 +847,18 @@ def _birth_context(snapshot: object, canonical_input: Mapping[str, Any]) -> tupl
     return mode, capabilities
 
 
-def _snapshot_context(snapshot: object) -> _SnapshotContext:
+def _snapshot_context(snapshot: object, person: TodayNarrativePerson | None = None) -> _SnapshotContext:
+    if person is not None:
+        if not isinstance(person, TodayNarrativePerson):
+            raise _NarrativeInputError("person")
+        if person.first_name is not None and (
+            not isinstance(person.first_name, str) or not person.first_name.strip() or len(person.first_name) > 120
+        ):
+            raise _NarrativeInputError("person")
+        if person.age is not None and (
+            isinstance(person.age, bool) or not isinstance(person.age, int) or not 0 <= person.age <= 120
+        ):
+            raise _NarrativeInputError("person")
     deterministic_result = _mapping(getattr(snapshot, "deterministic_result_json", None), "deterministic_result")
     state = _enum_text(_value(deterministic_result, "state"), _DAY_STATES, "state")
     day_tone = _enum_text(
@@ -784,6 +919,8 @@ def _snapshot_context(snapshot: object) -> _SnapshotContext:
         convergences=groups,
         main_event=main_event,
         impulses=impulses,
+        person=person,
+        period=_period_anchors(units),
     )
 # END_BLOCK: DRIVER_GROUNDING
 
@@ -812,16 +949,35 @@ def _prompt_event(event: _PromptEvent) -> dict[str, Any]:
             "planets": list(event.planets),
         },
     }
+    if event.facet is not None:
+        result["lexicon"] = list(_FACET_LEXICON.get(event.facet, ()))
     if event.title is not None:
         result["title"] = event.title
     return result
 
 
 def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
+    person_block: dict[str, Any] = {}
+    if context.person is not None:
+        if context.person.first_name:
+            person_block["firstName"] = context.person.first_name.strip()
+        if context.person.age is not None:
+            person_block["age"] = context.person.age
+    period_block = [
+        {
+            "kind": anchor.kind,
+            "lord": anchor.lord,
+            "activeFrom": anchor.active_from,
+            "activeUntil": anchor.active_until,
+        }
+        for anchor in context.period
+    ]
     prompt_input: dict[str, Any] = {
         "promptVersion": prompt_version,
         "state": context.state,
         "dayTone": context.day_tone,
+        "person": person_block,
+        "periodBackground": period_block,
         "convergences": [
             {
                 "groupId": group.block_id,
@@ -856,8 +1012,8 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
     def _template_block(event_ids: Sequence[str]) -> dict[str, Any]:
         return {
             "summary": {"text": "", "sourceEventIds": list(event_ids)},
-            "meaning": None,
-            "action": None,
+            "meaning": {"text": "", "sourceEventIds": list(event_ids)},
+            "action": {"text": "", "sourceEventIds": list(event_ids)},
         }
 
     response_template = {
@@ -879,7 +1035,32 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
-    return f"""Ты пишешь короткий персональный текст для экрана Today на русском языке.
+    return f"""Ты пишешь короткие персональные тексты для экрана «Сегодня» астрологического приложения, на русском языке. Ты пишешь одному конкретному человеку, на «ты», тепло и по делу — как внимательный друг-астролог, а не как справочник.
+
+О человеке (поле person, если передано):
+- firstName — имя человека; используй его не чаще одного раза во всём ответе и только там, где это звучит естественно.
+- age — полных лет на дату прогноза; учитывай жизненный контекст молча, цифру возраста в тексте не называй.
+
+Фон периода (periodBackground) — это НЕ факт дня, а долгий контекст жизни человека. Упоминай его только в meaning, когда это честно объясняет, почему тема блока сейчас значима; не пересказывай фон как событие дня и не называй его даты.
+
+Как писать каждый блок:
+- summary — 1–2 предложения, не более 220 символов: ЧТО сегодня конкретно (из title события и driverThemes) и КАК это может проявиться в быту строго в рамках facet блока.
+- meaning — одно предложение, не более 260 символов: почему это важно человеку сейчас; здесь уместна аккуратная связь с фоном периода.
+- action — одно конкретное действие на сегодня, не более 180 символов: начинай с глагола («проверь», «отложи», «напиши»), только в рамках facet блока.
+- Конкретика обязательна: используй бытовые детали разрешённого facet (например personal_money → поступления, траты, отложить сумму; romance → симпатия, свидание, разговор по душам; daily_work → текущие задачи, рутина, довести дело до конца).
+- Поле lexicon — безопасные слова блока. Опирайся на них для конкретики. Узкие слова ДРУГИХ facet'ов запрещены: для romance не пиши «партнёрский», «брак», «договорённости»; для personal_money не пиши «кредит», «покупка», «бюджет»; для daily_work не пиши «карьера», «статус» — каждое узкое слово принадлежит своему facet.
+- Один claim — одна тема блока. Не упоминай другие сферы жизни вообще: ни друзей в блоке отношений, ни документы в блоке денег, ни разговоры/переписку в блоке романтики. Любое слово о другой сфере — брак.
+- Тема блока — это facet, а не планета-драйвер. Планета задаёт только характер влияния. Если блок romance, а драйвер Меркурий — пиши о романтике (свидание, симпатия), а не о переговорах и документах: темы планеты не переноси в текст.
+- В каждом claim называй тему блока прямо хотя бы одним словом из lexicon; общие обороты «отношения», «финансы», «сфера» без узкого слова facet — брак.
+- Не используй слова-антонимы polarity блока даже с отрицанием: для supportive не пиши «напряжение», «конфликт», «тревога»; для tense не пиши «гармония», «поддержка», «легко».
+- Если title содержит «жребий Брака», а facet блока — romance, слово «брак» в тексте не используй: заменяй на слова из lexicon («романтика», «свидание», «симпатия»).
+- Запрещённые штампы: «в сфере …», «может усилиться», «наблюдается», «играет важную роль», «указывает на важность», «возможна активность», «междуличностные связи», «жизненные выборы», «позитивные перемены», «гармония сферы» и подобная канцелярская вода. Если фраза подошла бы любому человеку в любой день — она запрещена.
+
+Примеры (плохо → хорошо):
+- Плохо: «В сфере отношений может усилиться напряжение между мыслями и чувствами.»
+  Хорошо: «Солнце спорит с твоим Меркурием: в романтике легко зацепиться за слова. Скажи, что чувствуешь, вместо спора о формулировках.»
+- Плохо: «В финансовой сфере возможна активность, связанная с оценкой приоритетов.»
+  Хорошо: «Личные деньги сегодня послушны: проверь поступления и сразу отложи часть суммы — день этому помогает.»
 
 Правила источников:
 - Используй только факты из входа ниже; ничего не вычисляй и не добавляй.
@@ -889,44 +1070,47 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 - Для каждого блока соблюдай ровно переданные sphere, facet (или null),
   polarity и sourceFactIds. Не переноси claim в соседнюю сферу или facet и не
   распространяй polarity узкого facet на всю сферу.
-- Каждый summary обязан опираться на title события, если title передан, и на
-  driverThemes. Коротко объясни, что это за детерминированный фактор и почему
-  он относится к разрешённой sphere/facet блока; не подменяй эту связь общей
-  фразой. При facet=null используй только общий язык sphere.
+- Каждый claim обязан опираться на title события, если title передан, и на
+  driverThemes; не подменяй эту связь общей фразой. При facet=null используй
+  только общий язык sphere.
 - Текст claim никогда не должен содержать часы, даты, окна или длительности:
-  EventTime — только display-only данные для интерфейса. Формулируй текст claim
-  только общими словами по kind, sphere, facet и polarity. Поля grounding с
+  EventTime — только display-only данные для интерфейса. Поля grounding с
   house и planets — внутренние детерминированные источники: называй house
   только при capabilities.houses=true; не раскрывай planets как машинные
   идентификаторы. Не упоминай angle или lot, если соответствующая capability
   не равна true.
-- Эти правила относятся к summary.text: только русский язык, не более 220
-  символов, практичный короткий текст без категоричных предсказаний. Не
+- Только русский язык; практичный текст без категоричных предсказаний. Не
   выдумывай реальные события, чувства, исходы или неподтверждённые детали.
 - Учитывай mode и capabilities: не упоминай недоступные детали расчёта.
 - Никогда не пиши служебные имена или шаблоны: Transit_, Natal_, Planet,
   «M, Mars» и любые перечисления вида «M, <Planet>». Если факт нельзя
-  назвать обычными русскими словами, не используй этот факт; summary всё
+  назвать обычными русскими словами, не используй этот факт; claim всё
   равно должен опираться на остальные разрешённые evidence.
 
 Верни строго один JSON-объект без markdown и без дополнительных ключей.
-Для каждого присутствующего блока summary — JSON-объект с ключами text и
-sourceEventIds; не возвращай строку вместо объекта. Не меняй ключи блоков,
-sourceEventIds, meaning или action. Если mainEvent во входе равен null, оставь
-main_event равным null.
+Для каждого присутствующего блока summary, meaning и action — JSON-объекты с
+ключами text и sourceEventIds; не возвращай строку вместо объекта. Не меняй
+ключи блоков, sourceEventIds и не добавляй полей. Если mainEvent во входе
+равен null, оставь main_event равным null.
 
 Вход:
 {serialized_input}
 
 Точный JSON-шаблон ответа для этого snapshot:
 {serialized_template}
-Замени только пустые значения summary.text на текст и верни этот JSON. Сохрани
+Замени только пустые значения text на текст и верни этот JSON. Сохрани
 все ключи, идентификаторы и массивы sourceEventIds; не добавляй и не удаляй
-поля. В каждом присутствующем блоке summary.text обязателен.
+поля. В каждом присутствующем блоке summary.text, meaning.text и action.text
+обязательны.
 """
 
 
-def build_today_narrative_prompt(snapshot: object, *, prompt_version: str) -> str:
+def build_today_narrative_prompt(
+    snapshot: object,
+    *,
+    prompt_version: str,
+    person: TodayNarrativePerson | None = None,
+) -> str:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.build_today_narrative_prompt
     # purpose: Build the bounded prompt from selected public snapshot units.
     # inputs: snapshot — published TodaySnapshot-like row; prompt_version — lease identity.
@@ -938,7 +1122,7 @@ def build_today_narrative_prompt(snapshot: object, *, prompt_version: str) -> st
     if not isinstance(prompt_version, str) or not prompt_version.strip() or len(prompt_version) > 64:
         raise ValueError("today_narrative:prompt_version")
     try:
-        context = _snapshot_context(snapshot)
+        context = _snapshot_context(snapshot, person)
     except _NarrativeInputError as exc:
         raise ValueError(f"today_narrative:{exc}") from exc
     return _build_prompt(context, prompt_version)
@@ -1385,6 +1569,7 @@ async def generate_today_narrative(
     correlation_id: str | None = None,
     timeout_seconds: float | None = None,
     clock: Callable[[], float] | None = None,
+    person: TodayNarrativePerson | None = None,
 ) -> TodayNarrativeSuccess | TodayNarrativeFailure:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.generate_today_narrative
     # purpose: Generate and atomically validate one bounded Today narrative;
@@ -1408,7 +1593,7 @@ async def generate_today_narrative(
     context: _SnapshotContext | None = None
     context_error: _NarrativeInputError | None = None
     try:
-        context = _snapshot_context(snapshot)
+        context = _snapshot_context(snapshot, person)
     except _NarrativeInputError as exc:
         context_error = exc
 
@@ -1514,6 +1699,7 @@ __all__ = [
     "TodayNarrativeErrorCode",
     "TodayNarrativeFailure",
     "TodayNarrativeLLM",
+    "TodayNarrativePerson",
     "TodayNarrativeSuccess",
     "build_today_narrative_prompt",
     "generate_today_narrative",

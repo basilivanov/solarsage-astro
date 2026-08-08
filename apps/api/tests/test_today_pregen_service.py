@@ -75,6 +75,7 @@ def _user(number: int, *, active_days_ago: int = 1):
         updated_at=NOW - timedelta(days=active_days_ago),
     )
     profile = SimpleNamespace(
+        first_name=f"User{number}",
         birthday=date(1990, 1, 1),
         birth_time=None,
         birth_time_mode="unknown",
