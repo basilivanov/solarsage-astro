@@ -32,8 +32,7 @@ import type {
 } from "@/packages/contracts/today-convergence";
 import { getFacetLabel, readSignalFacet } from "@/lib/display/facet-labels";
 import {
-  formatEventTime,
-  getEventTimeDateTime,
+  formatEventTimeParts,
   getPolarityLabel,
   getPolarityToneClasses,
   getTodaySphereLabel,
@@ -112,6 +111,7 @@ export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown 
                 const eventTitle = eventById.get(impulse.eventId)?.title;
                 const facet = readSignalFacet(impulse);
                 const facetLabel = getFacetLabel(facet);
+                const timeParts = formatEventTimeParts(impulse.time, timezone);
                 const cardClassName = "relative block w-full rounded-[20px] border border-border/40 bg-card p-4 pr-10 text-left shadow-(--shadow-card) transition-[border-color,box-shadow] duration-150 hover:border-primary/30 hover:shadow-(--shadow-lift) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none";
                 const cardContent = (
                   <>
@@ -138,14 +138,32 @@ export function ImpulsesList({ impulses, events = [], timezone, onOpenDrilldown 
                           {eventTitle}
                         </h4>
                       ) : null}
-                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 xl:flex-none xl:flex-nowrap xl:whitespace-nowrap">
-                        <time
-                          data-testid={`impulse-event-time-${impulse.eventId}`}
-                          className="min-w-0 break-words text-[13px] tabular-nums text-muted-foreground xl:whitespace-nowrap"
-                          dateTime={getEventTimeDateTime(impulse.time)}
-                        >
-                          {formatEventTime(impulse.time, timezone)}
-                        </time>
+                      <div className="flex min-w-0 flex-col gap-0.5 xl:flex-none xl:items-end xl:text-right">
+                        {timeParts.peak ? (
+                          <time
+                            data-testid={`impulse-event-time-${impulse.eventId}`}
+                            className="text-[13px] font-medium leading-[18px] tabular-nums text-foreground/80"
+                            dateTime={timeParts.peakDateTime}
+                          >
+                            {timeParts.peak}
+                          </time>
+                        ) : null}
+                        {timeParts.window ? (
+                          <span
+                            data-testid={`impulse-event-window-${impulse.eventId}`}
+                            className="text-[12px] leading-[16px] tabular-nums text-muted-foreground/80"
+                          >
+                            {timeParts.window}
+                          </span>
+                        ) : null}
+                        {timeParts.fallback ? (
+                          <span
+                            data-testid={`impulse-event-time-${impulse.eventId}`}
+                            className="text-[13px] leading-[18px] text-muted-foreground"
+                          >
+                            {timeParts.fallback}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     {impulse.summary ? (

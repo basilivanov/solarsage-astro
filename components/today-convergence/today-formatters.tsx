@@ -251,6 +251,114 @@ export function getEventTimeDateTime(time: TodayConvergenceEventTime): string | 
   return value.peakAt ?? undefined;
 }
 
+export type EventTimeParts = {
+  /** Primary line, e.g. «Пик: 8 августа, 11:50» or clock-only «Пик: 09:30». */
+  peak: string | null;
+  /** Secondary line, e.g. «Окно: 31 июля — 16 августа» or «Окно: 08:00–11:00». */
+  window: string | null;
+  /** Soft-mode or empty-data line («утром», «в течение дня», …). */
+  fallback: string | null;
+  peakDateTime: string | undefined;
+};
+
+function localDayKey(value: string, timezone?: string | null): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  if (!timezone) return value.slice(0, 10);
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: timezone,
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (!values.year || !values.month || !values.day) return null;
+    return `${values.year}-${values.month}-${values.day}`;
+  } catch {
+    return value.slice(0, 10);
+  }
+}
+
+function absoluteTimeOfDay(value: string, timezone?: string | null): string | null {
+  const moment = formatAbsoluteMoment(value, timezone);
+  if (!moment) return null;
+  const match = /(\d{2}:\d{2})$/u.exec(moment);
+  return match ? match[1] : null;
+}
+
+function formatWindowDates(
+  startAt: string,
+  endAt: string,
+  timezone?: string | null,
+): string | null {
+  const startKey = localDayKey(startAt, timezone);
+  const endKey = localDayKey(endAt, timezone);
+  if (!startKey || !endKey) return null;
+  if (startKey === endKey) {
+    const start = absoluteTimeOfDay(startAt, timezone);
+    const end = absoluteTimeOfDay(endAt, timezone);
+    if (start && end) return `Окно: ${start}–${end}`;
+    return null;
+  }
+  const startMoment = formatAbsoluteMoment(startAt, timezone);
+  const endMoment = formatAbsoluteMoment(endAt, timezone);
+  if (!startMoment || !endMoment) return null;
+  // Moments render as «31 июля, 20:23» — keep only the day/month part.
+  const startDay = startMoment.split(",")[0];
+  const endDay = endMoment.split(",")[0];
+  const [startDayNum, startMonth] = startDay.split(" ");
+  const [endDayNum, endMonth] = endDay.split(" ");
+  if (!startDayNum || !startMonth || !endDayNum || !endMonth) return null;
+  const range = startMonth === endMonth ? `${startDayNum} — ${endDay}` : `${startDay} — ${endDay}`;
+  return `Окно: ${range}`;
+}
+
+export function formatEventTimeParts(time: TodayConvergenceEventTime, timezone?: string | null): EventTimeParts {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTimeParts
+  // purpose: Split one EventTime into readable primary/secondary lines for card layouts.
+  // inputs: time — generated EventTime object; timezone — payload timezone for absolute instants.
+  // returns: EventTimeParts; multi-day windows collapse to dates, same-day windows keep clocks.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: incomplete exact windows degrade to whichever line is available.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTimeParts
+  const value = absoluteTime(time);
+  const peakDateTime = getEventTimeDateTime(time);
+  if (time.mode === "exact") {
+    const absolutePeak = formatAbsoluteMoment(value.peakAt, timezone);
+    const peak = absolutePeak ? `Пик: ${absolutePeak}` : time.peak ? `Пик: ${time.peak}` : null;
+
+    let window: string | null = null;
+    if (value.startAt && value.endAt) {
+      window = formatWindowDates(value.startAt, value.endAt, timezone);
+    }
+    if (!window && (value.startAt || value.endAt)) {
+      const single = formatAbsoluteMoment(value.startAt ?? value.endAt, timezone);
+      if (single) window = value.startAt ? `Окно: с ${single}` : `Окно: до ${single}`;
+    }
+    if (!window && time.start && time.end) {
+      window = `Окно: ${time.start}${time.start > time.end ? " → " : "–"}${time.end}`;
+    }
+    if (!window && (time.start || time.end)) {
+      window = time.start ? `Окно: с ${time.start}` : `Окно: до ${time.end}`;
+    }
+    const fallback = !peak && !window ? "точное время события" : null;
+    return { peak, window, fallback, peakDateTime };
+  }
+
+  if (time.mode === "partofday") {
+    return {
+      peak: null,
+      window: null,
+      fallback: time.partOfDay ? PART_OF_DAY_LABELS[time.partOfDay] : "в течение дня",
+      peakDateTime,
+    };
+  }
+
+  return { peak: null, window: null, fallback: "в течение даты", peakDateTime };
+}
+
 export function formatEventTime(time: HumanFirstEventTime, timezone?: string | null): string {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-FORMATTERS.formatEventTime
   // purpose: Render EventTime according to exact, bucket, or unknown-time rules, preferring date-aware instants.

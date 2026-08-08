@@ -38,8 +38,7 @@ import type { TodaySpherePagePayload } from "@/packages/contracts/today-sphere-p
 import { fetchSpherePage } from "@/lib/api/spheres";
 import { getFacetLabel } from "@/lib/display/facet-labels";
 import {
-  formatEventTime,
-  getEventTimeDateTime,
+  formatEventTimeParts,
   getPolarityLabel,
   getPolarityToneClasses,
   getTodaySphereLabel,
@@ -418,7 +417,9 @@ export function ImpulseDrilldownSheet({
               </div>
             ) : null}
             <ul className="space-y-3">
-              {group.impulses.map((impulse) => (
+              {group.impulses.map((impulse) => {
+                const timeParts = formatEventTimeParts(impulse.time, timezone);
+                return (
                 <li
                   key={impulse.eventId}
                   data-testid={`impulse-drilldown-fact-${impulse.eventId}`}
@@ -440,12 +441,26 @@ export function ImpulseDrilldownSheet({
                     {getFacetLabel(impulse.facet) ?? getTodaySphereLabel(impulse.sphere)}
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-[22px]">
-                    <time
-                      className="tabular-nums"
-                      dateTime={getEventTimeDateTime(impulse.time)}
-                    >
-                      {formatEventTime(impulse.time, timezone)}
-                    </time>
+                    <span className="flex flex-col gap-0.5">
+                      {timeParts.peak ? (
+                        <time
+                          className="text-[13px] font-medium tabular-nums text-foreground/80"
+                          dateTime={timeParts.peakDateTime}
+                        >
+                          {timeParts.peak}
+                        </time>
+                      ) : null}
+                      {timeParts.window ? (
+                        <span className="text-[12px] tabular-nums text-muted-foreground/80">
+                          {timeParts.window}
+                        </span>
+                      ) : null}
+                      {timeParts.fallback ? (
+                        <span className="text-[13px] text-muted-foreground">
+                          {timeParts.fallback}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className={`rounded-full px-2 py-0.5 text-[13px] leading-[18px] ${getPolarityToneClasses(impulse.polarity)}`}>
                       {getPolarityLabel(impulse.polarity)}
                     </span>
@@ -483,7 +498,8 @@ export function ImpulseDrilldownSheet({
                     </p>
                   ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
 

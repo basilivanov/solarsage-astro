@@ -34,9 +34,8 @@ import type {
 } from "@/packages/contracts/today-convergence";
 import { getFacetLabel, readSignalFacet } from "@/lib/display/facet-labels";
 import {
-  formatEventTime,
+  formatEventTimeParts,
   formatTargetDateRu,
-  getEventTimeDateTime,
   getPolarityLabel,
   getPolarityToneClasses,
   getTodaySphereLabel,
@@ -135,6 +134,7 @@ export function ConvergenceUnifiedList({
                 const facet = readSignalFacet(group);
                 const facetLabel = getFacetLabel(facet);
                 const event = group.eventIds.map((id) => eventById.get(id)).find((e) => e != null);
+                const timeParts = event ? formatEventTimeParts(event.time, timezone) : null;
                 return (
                   <li
                     key={group.id}
@@ -159,17 +159,31 @@ export function ConvergenceUnifiedList({
                           {getPolarityLabel(group.polarity)}
                         </span>
                       </div>
-                      {event ? (
+                      {event && timeParts ? (
                         <div className="mt-1.5 flex min-w-0 flex-col gap-1 xl:flex-row xl:items-baseline xl:justify-between xl:gap-x-4">
                           <h4 className="min-w-0 break-words font-serif text-[17px] leading-[22px] text-foreground xl:flex-none">
                             {event.title}
                           </h4>
-                          <time
-                            className="min-w-0 break-words text-[13px] tabular-nums text-muted-foreground xl:flex-none xl:whitespace-nowrap"
-                            dateTime={getEventTimeDateTime(event.time)}
-                          >
-                            {formatEventTime(event.time, timezone)}
-                          </time>
+                          <div className="flex min-w-0 flex-col gap-0.5 xl:flex-none xl:items-end xl:text-right">
+                            {timeParts.peak ? (
+                              <time
+                                className="text-[13px] font-medium leading-[18px] tabular-nums text-foreground/80"
+                                dateTime={timeParts.peakDateTime}
+                              >
+                                {timeParts.peak}
+                              </time>
+                            ) : null}
+                            {timeParts.window ? (
+                              <span className="text-[12px] leading-[16px] tabular-nums text-muted-foreground/80">
+                                {timeParts.window}
+                              </span>
+                            ) : null}
+                            {timeParts.fallback ? (
+                              <span className="text-[13px] leading-[18px] text-muted-foreground">
+                                {timeParts.fallback}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       ) : null}
                       {group.summary ? (

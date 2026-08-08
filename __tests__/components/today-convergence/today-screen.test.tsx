@@ -336,7 +336,8 @@ describe("Today Convergence public time and access projections", () => {
   it("formats exact event time with peak and window", () => {
     renderToday(quietSteady);
     const event = screen.getByTestId(`impulse-${quietSteady.impulses[0].eventId}`);
-    expect(event.textContent).toContain("пик 09:30, окно 08:00–11:00");
+    expect(event.textContent).toContain("Пик: 09:30");
+    expect(event.textContent).toContain("Окно: 08:00–11:00");
     expect(event.getAttribute("data-time-mode")).toBe("exact");
   });
 
@@ -572,9 +573,9 @@ describe("Today Convergence public time and access projections", () => {
     };
 
     renderToday(payload);
-    expect(screen.getByTestId("main-event").querySelector("time")?.textContent).toBe(
-      "пик 1 августа, 11:34, окно: с 31 июля, 20:23 до 2 августа, 02:34",
-    );
+    const mainEvent = screen.getByTestId("main-event");
+    expect(mainEvent.querySelector("time")?.textContent).toBe("Пик: 1 августа, 11:34");
+    expect(mainEvent.textContent).toContain("Окно: 31 июля — 2 августа");
   });
 
   it("formats overnight windows with an arrow and keeps midnight same-day", () => {

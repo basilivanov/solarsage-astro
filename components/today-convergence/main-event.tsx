@@ -27,8 +27,7 @@
 
 import type { TodayConvergenceMainEvent } from "@/packages/contracts/today-convergence";
 import {
-  formatEventTime,
-  getEventTimeDateTime,
+  formatEventTimeParts,
   getPolarityLabel,
   getPolarityToneClasses,
   getTodaySphereLabel,
@@ -50,6 +49,7 @@ export function MainEvent({ event, timezone, onOpenDrilldown }: Props) {
   // emitted_logs: none.
   // error_behavior: generated event fields are rendered as received.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-MAIN-EVENT.MainEvent
+  const timeParts = formatEventTimeParts(event.time, timezone);
   const content = (
     <>
       <p className="text-[11px] font-medium uppercase leading-[18px] tracking-[0.18em] text-muted-foreground/80">
@@ -61,9 +61,23 @@ export function MainEvent({ event, timezone, onOpenDrilldown }: Props) {
       >
         {getPolarityLabel(event.polarity)}
       </p>
-      <time className="mt-3 block text-[13px] leading-[18px] tabular-nums text-muted-foreground" dateTime={getEventTimeDateTime(event.time)}>
-        {formatEventTime(event.time, timezone)}
-      </time>
+      <div className="mt-3 flex flex-col gap-0.5">
+        {timeParts.peak ? (
+          <time className="text-[13px] font-medium leading-[18px] tabular-nums text-foreground/80" dateTime={timeParts.peakDateTime}>
+            {timeParts.peak}
+          </time>
+        ) : null}
+        {timeParts.window ? (
+          <span className="text-[12px] leading-[16px] tabular-nums text-muted-foreground/80">
+            {timeParts.window}
+          </span>
+        ) : null}
+        {timeParts.fallback ? (
+          <span className="text-[13px] leading-[18px] text-muted-foreground">
+            {timeParts.fallback}
+          </span>
+        ) : null}
+      </div>
       {event.summary ? (
         <p className="mt-2 text-[15px] leading-[23px] text-pretty text-foreground/90">{event.summary.text}</p>
       ) : null}
