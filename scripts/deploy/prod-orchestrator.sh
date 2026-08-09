@@ -404,10 +404,15 @@ write_record() {
   chmod 0600 "$RECORD_FILE"
 }
 up_wait() {
-  # $1..$3 = api/sidecar/frontend digest references. rc of compose up.
+  # $1 = release sha exported as the container env identity, $2..$4 =
+  # api/sidecar/frontend digest references. rc of compose up. The sha MUST
+  # match the images being activated: containers take release_sha from the
+  # compose env, so a rollback with the target sha still exported would
+  # report the wrong identity and its health proof could never pass
+  # (recovery_required on run 31339482621).
   local rc=0
   set +e
-  API_IMAGE="$1" SIDECAR_IMAGE="$2" FRONTEND_IMAGE="$3" \
+  RELEASE_SHA="$1" API_IMAGE="$2" SIDECAR_IMAGE="$3" FRONTEND_IMAGE="$4" \
     compose up -d --wait api sidecar frontend >/dev/null
   rc=$?
   set -e
@@ -435,7 +440,7 @@ activate_with_digests() {
   local sha="$1" a_api="$2" a_sidecar="$3" a_frontend="$4"
   local fb_sha="$5" fb_api="$6" fb_sidecar="$7" fb_frontend="$8"
   validate_activation_config "$a_api" "$a_sidecar" "$a_frontend"
-  if up_wait "$a_api" "$a_sidecar" "$a_frontend"; then
+  if up_wait "$sha" "$a_api" "$a_sidecar" "$a_frontend"; then
     if prove_health "$sha" && run_smoke; then
       return 0
     fi
@@ -445,7 +450,10 @@ activate_with_digests() {
     return 1
   fi
   # Exact rollback with recorded digest references; never re-pulls an old tag.
-  if up_wait "$fb_api" "$fb_sidecar" "$fb_frontend"; then
+  # RELEASE_SHA here is the FALLBACK sha: the containers derive their health
+  # identity from the compose env, so exporting the target sha would make the
+  # rollback proof structurally unprovable.
+  if up_wait "$fb_sha" "$fb_api" "$fb_sidecar" "$fb_frontend"; then
     if prove_health "$fb_sha" && run_smoke; then
       return 2
     fi
