@@ -1,0 +1,14 @@
+[Unit]
+Description=SolarSage Day Pre-Generation (nightly tomorrow payload precompute)
+# Production variant: app runs in the Compose solarsage-app stack, so the job
+# executes inside the running api container (env from /etc/solarsage/app.env).
+# Dev variant (local checkout + venv): solarsage-day-pregen.service.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec solarsage-api python -m app.jobs.day_pregen
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=3600
