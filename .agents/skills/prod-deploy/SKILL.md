@@ -58,6 +58,7 @@ E2E_BASE_URL=http://127.0.0.1:3003 CI=true pnpm exec playwright test e2e/mock-vi
 kill $(cat /tmp/v2p.pid)
 ```
 PASS: `N passed` без `failed`. FAIL → раздел «Visual-gate» ниже. Если UI не менялся — пропустить.
+Если менялся публичный DOM-контракт (testid/data-*/access-state) — дополнительно см. «Контракт-дрейф release e2e»: release-спеки в CI не гоняются, дрейф всплывёт только на деплое.
 
 **P6. Прод жив и стартует не с колен:**
 ```bash
@@ -107,10 +108,22 @@ gh run view ${RUN%% *} --log-failed | grep -E "Error|failed" | head -30
 |---|---|
 | `source-quality` | CI на SHA не зелёный/нет run. Вернуться к P2. |
 | `visual-baselines` | См. «Visual-gate» ниже. |
-| `real-e2e` | Смотреть упавший spec в логе. Отсутствие E2E_* секретов = fail-closed по дизайну — эскалировать владельцу, НЕ обходить. |
+| `real-e2e` | Смотреть упавший spec в логе. Частая причина после UI-переделок: спеки ждут СТАРЫЙ DOM-контракт (см. «Контракт-дрейф release e2e» ниже). Отсутствие E2E_* секретов = fail-closed по дизайну — эскалировать владельцу, НЕ обходить. |
 | `build` | Обычно инфра (registry/ephemeris bundle). Лог вверху job'а. Не ретраить вслепую — сначала причина. |
-| `artifact-acceptance` | Audit freeze/golden сломаны — изменения задели детерминизм расчёта. Эскалировать, это не «флаки». |
+| `artifact-acceptance` | После 2026-08-10 job содержит только: clean-migration на эфемерной БД, sidecar-from-image + ephemeris identity, offline golden. Падение migration = миграции не применяются на чистой БД (реальная проблема релиза); sidecar/ephemeris = образ или bundle не тот; golden = детерминизм расчёта задет (не «флаки», эскалировать). Pre-convergence freeze/V2/UI шаги ОТКЛЮЧЕНЫ — не возвращать без реалигнмент-пакета (TODO(convergence-acceptance)). |
 | `deploy` | `ssh ... prod-orchestrator status`; orchestrator уже сделал авто-rollback на предыдущий SHA. Разбор по его выводу в логе job'а. |
+
+⚠️ Любая правка `.github/workflows/deploy-production.yml` должна сопровождаться прогоном `apps/api/tests/test_deploy_workflow_contracts.py` — CI содержит статические контракт-тесты на структуру workflow, они упадут на несогласованности (укушено 2026-08-10, run на ac941173).
+
+## Контракт-дрейф release e2e (вторая ловушка)
+
+Release-suite (`TODAY_CONVERGENCE_RELEASE_SPECS` в Makefile: onboarding-real, today-convergence, cross-feature-navigation, readings-horary, natal-report, referral-deeplink, payment-sandbox + 2 mock-visual) **не гоняется в CI на push** — только в deploy workflow. Поэтому ломающие DOM-контракт UI-изменения всплывают только на деплое, неделями позже коммита.
+
+Правила:
+- Меняешь публичный DOM-контракт (testid, data-*, access-state enum) — в том же релизе обновляй e2e-спеки и `e2e/fixtures.ts` (`waitForTodayState`), не только unit/mock-visual.
+- Свежий юзер без доступа с convergence — это `data-access-state="preview"` (для past/today), НЕ `locked` (W-ACCESS.3). `locked` — только future-даты вне окна доступа.
+- Тестиды старого Today (`day-summary-card`, `concrete-day-advice*`) мертвы; proof разблокированного дня — `data-access-state="full"` + `sphere-navigator` visible.
+- Перед деплоем после UI-переделки имеет смысл прогнать release-suite локально заранее, а не узнавать о дрейфе из deploy-run'а.
 
 Ретрай всего workflow (`gh run rerun`) допустим ТОЛЬКО при явной инфра-ошибке (сеть, registry timeout). При тестовых/визуальных падениях ретрай запрещён — чинить причину.
 
