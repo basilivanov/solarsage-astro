@@ -29,5 +29,6 @@ Hotfixes и доработки после первой выкатки (кажд�
 | S17 | Sanitizer false positives | narrative_sanitizer.py: маска имён жребиев, окно отрицания для polarity-антонимов | live-кейсы «жребий Брака»/«снизить напряжение» не null; «разговоры в romance» остаётся null; tests |
 | S18 | Selection dedup | today_convergence_selection.py: дедуп по (sphere, facet) и evidence-паре до cap-3, audit+1 поле | нет дублей карточек как 08-30, tests |
 | S19 | Narrative grammar v5 | текст промпта: роды планет, падежи; prompt version → v5 | tests зелёные, live-eyeball грамматики |
+| S20 | CosmicLoader restore | today-screen.tsx: ветка loading → CosmicLoader вместо серого скелетона | loading показывает фирменный лоадер, vitest зелёные, e2e контракт цел |
 
 Правило: промежуточные состояния не выкатываются; на dev — только после S11.
