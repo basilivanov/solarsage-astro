@@ -82,7 +82,8 @@ const PRODUCT_SPHERE_KEYS = [
 ] as const
 const LONG_IMPULSE_EVENT_ID = "evt_v1_long_title_time"
 const LONG_IMPULSE_TITLE = "Луна в гармонии с твоим жребием Брака"
-const LONG_IMPULSE_TIME_TEXT = "пик 2 августа, 18:48, окно: с 2 августа, 03:58 до 3 августа, 09:28"
+const LONG_IMPULSE_TIME_TEXT = "Пик: 2 августа, 18:48"
+const LONG_IMPULSE_WINDOW_TEXT = "Окно: 2 — 3 августа"
 
 const longImpulseTime: TodayConvergencePayload["events"][number]["time"] = {
   mode: "exact",
@@ -391,12 +392,15 @@ test.describe("Mock Visual — Today Convergence", () => {
     const meta = page.getByTestId(`impulse-event-meta-${LONG_IMPULSE_EVENT_ID}`)
     const title = page.getByTestId(`impulse-event-title-${LONG_IMPULSE_EVENT_ID}`)
     const time = page.getByTestId(`impulse-event-time-${LONG_IMPULSE_EVENT_ID}`)
+    const windowLine = page.getByTestId(`impulse-event-window-${LONG_IMPULSE_EVENT_ID}`)
 
     await expect(meta).toBeVisible()
     await expect(title).toHaveText(LONG_IMPULSE_TITLE)
     await expect(title).toBeVisible()
     await expect(time).toHaveText(LONG_IMPULSE_TIME_TEXT)
     await expect(time).toBeVisible()
+    await expect(windowLine).toHaveText(LONG_IMPULSE_WINDOW_TEXT)
+    await expect(windowLine).toBeVisible()
 
     const geometry = await page.evaluate((eventId) => {
       const read = (testId: string) => {
@@ -415,10 +419,12 @@ test.describe("Mock Visual — Today Convergence", () => {
       const metaBox = read(`impulse-event-meta-${eventId}`)
       const titleBox = read(`impulse-event-title-${eventId}`)
       const timeBox = read(`impulse-event-time-${eventId}`)
+      const windowBox = read(`impulse-event-window-${eventId}`)
       return {
         meta: metaBox,
         title: titleBox,
         time: timeBox,
+        window: windowBox,
         documentScrollWidth: document.documentElement.scrollWidth,
         viewportWidth: window.innerWidth,
       }
@@ -426,13 +432,24 @@ test.describe("Mock Visual — Today Convergence", () => {
 
     expect(geometry.documentScrollWidth).toBeLessThanOrEqual(geometry.viewportWidth)
     if (testInfo.project.name === "chromium") {
-      for (const box of [geometry.meta, geometry.title, geometry.time]) {
-        expect(box.height).toBeGreaterThanOrEqual(21)
-        expect(box.height).toBeLessThanOrEqual(23)
+      // measured line boxes: title 17px/22, peak 13px/18, window span 22 (font line box)
+      const heightRange: Record<string, [number, number]> = {
+        title: [21, 23],
+        time: [17, 19],
+        window: [21, 23],
+      }
+      for (const key of ["title", "time", "window"] as const) {
+        const box = geometry[key]
+        const [minHeight, maxHeight] = heightRange[key]
+        expect(box.height).toBeGreaterThanOrEqual(minHeight)
+        expect(box.height).toBeLessThanOrEqual(maxHeight)
+      }
+      for (const box of [geometry.meta, geometry.title, geometry.time, geometry.window]) {
         expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth)
         expect(box.scrollHeight).toBeLessThanOrEqual(box.clientHeight)
       }
-      expect(Math.abs(geometry.title.y - geometry.time.y)).toBeLessThanOrEqual(2)
+      // baseline alignment across mixed font sizes: title 22px vs peak 18px line boxes
+      expect(Math.abs(geometry.title.y - geometry.time.y)).toBeLessThanOrEqual(4)
     }
     await expectNoMissingApiFixtures(page, tracker)
   })
