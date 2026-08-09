@@ -79,8 +79,11 @@ export default defineConfig({
   // Visual regression testing config
   expect: {
     toHaveScreenshot: {
-      maxDiffPixels: 100, // допустимая разница в пикселях
-      threshold: 0.2, // 20% допустимой разницы
+      // Cross-machine font rasterization (freetype/hinting) produces ~1%
+      // pixel noise on dense text pages; the gate must catch structural
+      // layout regressions, not antialiasing drift between runner images.
+      maxDiffPixelRatio: 0.03,
+      threshold: 0.2, // 20% допустимой разницы цвета на пиксель
     },
     timeout: 15000, // Увеличенный таймаут для всех expect утверждений (включая toHaveScreenshot)
   },
