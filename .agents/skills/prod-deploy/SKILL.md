@@ -40,6 +40,15 @@ ssh -i ~/.ssh/solarsage_prod_server_ed25519 root@2.26.20.80 'grep -oE "^[A-Z_0-9
 PASS: каждый новый alias из `config.py` присутствует в выводе. FAIL → добавить по процедуре «Изменения prod app.env» ДО диспатча. Значения ключей не печатать никуда.
 Если релиз env не трогает — проверка пропускается.
 
+**P3b. Версионные пины совпадают с кодом (если релиз трогает расчётный движок/эфемериды):**
+```bash
+# канон в репо:
+grep "CALCULATION_VERSION = " packages/py-contracts/solarsage_contracts/versions.py
+# пин на проде:
+ssh -i ~/.ssh/solarsage_prod_server_ed25519 root@2.26.20.80 'grep -E "^(EXPECTED_CALCULATION_VERSION|EPHEMERIS_EXPECTED)" /etc/solarsage/app.env'
+```
+PASS: значения совпадают. FAIL → обновить пин в app.env до диспатча. Именно это убило deploy run 31339482621: sidecar репортил `ss-calc-1.3.0`, пин был `ss-calc-1.2.0` — health-proof fail-closed отработал правильно, но узнали об этом только на деплое.
+
 **P4. Миграции БД (информационно, гейт их применит сам):**
 ```bash
 git log --oneline $(git tag -l 'prod-*' | sort | tail -1)..HEAD -- apps/api/alembic/versions/ | head
