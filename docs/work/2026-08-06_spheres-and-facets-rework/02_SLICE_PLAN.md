@@ -30,5 +30,6 @@ Hotfixes и доработки после первой выкатки (кажд�
 | S18 | Selection dedup | today_convergence_selection.py: дедуп по (sphere, facet) и evidence-паре до cap-3, audit+1 поле | нет дублей карточек как 08-30, tests |
 | S19 | Narrative grammar v5 | текст промпта: роды планет, падежи; prompt version → v5 | tests зелёные, live-eyeball грамматики |
 | S20 | CosmicLoader restore | today-screen.tsx: ветка loading → CosmicLoader вместо серого скелетона | loading показывает фирменный лоадер, vitest зелёные, e2e контракт цел |
+| S21 | Sanitizer facet-exclusivity rebalance | narrative_sanitizer.py, today_narrative_service.py, logging registry | hard/soft facet rules по offline audit, claim-null instrumentation, golden/bad cases, sanitizer_pass flash/gemma strict ≥0.85 |
 
 Правило: промежуточные состояния не выкатываются; на dev — только после S11.

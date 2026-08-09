@@ -357,6 +357,12 @@
       <payload-field name="error_code" type="string" required="true" />
       <payload-field name="latency_ms" type="number" required="true" />
     </event>
+    <event name="day.narrative_claim_nulled" owner="W-TODAY-CONVERGENCE-W6" desc="A grounded narrative claim was withheld after the bounded retry.">
+      <payload-field name="reason_class" type="string" enum="facet_conflict,sphere_conflict,polarity_antonym,forbidden_token" required="true" />
+      <payload-field name="facet" type="string" required="false" />
+      <payload-field name="polarity" type="string" enum="supportive,tense,mixed" required="true" />
+      <payload-field name="pattern_id" type="string" required="true" />
+    </event>
     <event name="sphere.natal_generation_completed" owner="W-TODAY-CONVERGENCE-P4" desc="Bounded static sphere natal generation produced validated claim-bound content.">
       <payload-field name="sphere" type="string" required="true" />
       <payload-field name="prompt_version" type="string" required="true" />

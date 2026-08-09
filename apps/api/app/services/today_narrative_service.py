@@ -21,7 +21,8 @@
 #   grounding rejection, and three guarded generation-boundary log events; no
 #   database writes, lease transitions, or template fallback.
 # emitted_logs: day.narrative_generation_started,
-#   day.narrative_generation_completed, day.narrative_generation_failed.
+#   day.narrative_generation_completed, day.narrative_generation_failed,
+#   day.narrative_claim_nulled.
 # invariants: only selected public units enter the prompt; v6 provider calls use
 #   the strict array schema and normalize accepted arrays into the existing
 #   keyed content shape before the unchanged validators/storage boundary;
@@ -85,6 +86,7 @@ from app.services.astro_utils import strip_prefix
 from app.services.focus_title_builder import PLANET_NOMINATIVE_RU
 from app.services.horizon_content_canon_service import load_horizon_content_canons
 from app.services.narrative_sanitizer import (
+    explain_narrative_grounding_violation,
     has_narrative_grounding_violation,
     sanitize_narrative_text,
 )
@@ -1466,6 +1468,21 @@ def _claim(
         polarity=polarity,
     ):
         if allow_grounding_nulls:
+            reason = explain_narrative_grounding_violation(
+                clean_text,
+                allowed_spheres=allowed_spheres,
+                allowed_facets=allowed_facets,
+                polarity=polarity,
+            ) or {
+                "reason_class": "sphere_conflict",
+                "pattern_id": "grounding_violation",
+            }
+            _safe_log_claim_nulled(
+                reason_class=reason["reason_class"],
+                facet=next(iter(allowed_facets), None),
+                polarity=polarity,
+                pattern_id=reason["pattern_id"],
+            )
             return None
         raise _NarrativeValidationError(TodayNarrativeErrorCode.GROUNDING_VIOLATION)
     return {"text": clean_text, "sourceEventIds": list(source_ids)}
@@ -1702,12 +1719,37 @@ def _correlation_scope(correlation_id: str | None):
             pass
 
 
-def _safe_log(event: str, *, payload: dict[str, Any], duration_ms: int | None = None) -> None:
+def _safe_log(
+    event: str,
+    *,
+    payload: dict[str, Any],
+    duration_ms: int | None = None,
+    block: str = "GENERATION",
+) -> None:
     try:
-        with log_block(slice="W-TODAY-CONVERGENCE-REWRITE", module="M-TODAY-NARRATIVE", block="GENERATION"):
+        with log_block(slice="W-TODAY-CONVERGENCE-REWRITE", module="M-TODAY-NARRATIVE", block=block):
             log_event(event, payload=payload, duration_ms=duration_ms)
     except Exception:
         pass
+
+
+def _safe_log_claim_nulled(
+    *,
+    reason_class: str,
+    facet: str | None,
+    polarity: str,
+    pattern_id: str,
+) -> None:
+    _safe_log(
+        "day.narrative_claim_nulled",
+        block="CLAIM",
+        payload={
+            "reason_class": reason_class,
+            "facet": facet,
+            "polarity": polarity,
+            "pattern_id": pattern_id,
+        },
+    )
 
 
 def _log_started(context: _SnapshotContext | None, snapshot_identifier: str, prompt_version: str) -> None:
@@ -1809,7 +1851,8 @@ async def generate_today_narrative(
     # side_effects: at most two bounded provider calls (only for grounding retry)
     #   and guarded lifecycle logs.
     # emitted_logs: day.narrative_generation_started,
-    #   day.narrative_generation_completed, day.narrative_generation_failed.
+    #   day.narrative_generation_completed, day.narrative_generation_failed,
+    #   day.narrative_claim_nulled.
     # error_behavior: returns typed failure for all expected generation errors;
     #   propagates asyncio cancellation and never emits template fallback text.
     # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.generate_today_narrative

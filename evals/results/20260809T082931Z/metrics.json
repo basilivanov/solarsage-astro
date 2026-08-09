@@ -36,13 +36,13 @@
         "truncated_rate": 0.0,
         "fill_rate": 0.8929,
         "claim_binding": 0.8929,
-        "sanitizer_pass": 0.504,
+        "sanitizer_pass": 0.7262,
         "length_ok": 0.8929,
         "stamp_clean": 0.8393,
         "datetime_clean": 0.8929,
         "name_rule": 0.8929,
         "lexicon_cover": 0.0417,
-        "auto_score": 68.5715
+        "auto_score": 75.2381
       },
       "stamp_hits": 13,
       "datetime_leak": 0
@@ -83,13 +83,13 @@
         "truncated_rate": 0.0,
         "fill_rate": 0.9286,
         "claim_binding": 0.9286,
-        "sanitizer_pass": 0.6171,
+        "sanitizer_pass": 0.8671,
         "length_ok": 0.9286,
         "stamp_clean": 0.9127,
         "datetime_clean": 0.9286,
         "name_rule": 0.9286,
         "lexicon_cover": 0.0595,
-        "auto_score": 74.6626
+        "auto_score": 82.1628
       },
       "stamp_hits": 4,
       "datetime_leak": 0
@@ -130,13 +130,13 @@
         "truncated_rate": 0.0357,
         "fill_rate": 0.8929,
         "claim_binding": 0.8929,
-        "sanitizer_pass": 0.5377,
+        "sanitizer_pass": 0.8194,
         "length_ok": 0.8929,
         "stamp_clean": 0.8889,
         "datetime_clean": 0.8929,
         "name_rule": 0.8929,
         "lexicon_cover": 0.0595,
-        "auto_score": 70.258
+        "auto_score": 78.7104
       },
       "stamp_hits": 1,
       "datetime_leak": 0
@@ -177,13 +177,13 @@
         "truncated_rate": 0.0,
         "fill_rate": 1.0,
         "claim_binding": 1.0,
-        "sanitizer_pass": 0.5794,
+        "sanitizer_pass": 0.8988,
         "length_ok": 1.0,
         "stamp_clean": 1.0,
         "datetime_clean": 1.0,
         "name_rule": 1.0,
         "lexicon_cover": 0.0833,
-        "auto_score": 78.2142
+        "auto_score": 87.7977
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -224,13 +224,13 @@
         "truncated_rate": 0.1429,
         "fill_rate": 0.8571,
         "claim_binding": 0.8571,
-        "sanitizer_pass": 0.5595,
+        "sanitizer_pass": 0.7679,
         "length_ok": 0.8571,
         "stamp_clean": 0.8571,
         "datetime_clean": 0.8571,
         "name_rule": 0.8571,
         "lexicon_cover": 0.0952,
-        "auto_score": 69.1666
+        "auto_score": 75.4167
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -271,13 +271,13 @@
         "truncated_rate": 0.1429,
         "fill_rate": 0.8571,
         "claim_binding": 0.8571,
-        "sanitizer_pass": 0.5833,
+        "sanitizer_pass": 0.7758,
         "length_ok": 0.8571,
         "stamp_clean": 0.8571,
         "datetime_clean": 0.8571,
         "name_rule": 0.8571,
         "lexicon_cover": 0.0893,
-        "auto_score": 69.8215
+        "auto_score": 75.5953
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -318,13 +318,13 @@
         "truncated_rate": 0.0,
         "fill_rate": 0.9484,
         "claim_binding": 0.9643,
-        "sanitizer_pass": 0.6786,
+        "sanitizer_pass": 0.8948,
         "length_ok": 0.9643,
         "stamp_clean": 0.9643,
         "datetime_clean": 0.9643,
         "name_rule": 0.9643,
         "lexicon_cover": 0.0714,
-        "auto_score": 78.6905
+        "auto_score": 85.1786
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -365,13 +365,13 @@
         "truncated_rate": 0.0,
         "fill_rate": 1.0,
         "claim_binding": 0.9881,
-        "sanitizer_pass": 0.6369,
+        "sanitizer_pass": 0.9306,
         "length_ok": 1.0,
         "stamp_clean": 1.0,
         "datetime_clean": 1.0,
         "name_rule": 1.0,
         "lexicon_cover": 0.0952,
-        "auto_score": 79.9405
+        "auto_score": 88.7501
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -412,13 +412,13 @@
         "truncated_rate": 0.2143,
         "fill_rate": 0.5357,
         "claim_binding": 0.5357,
-        "sanitizer_pass": 0.377,
+        "sanitizer_pass": 0.5,
         "length_ok": 0.5357,
         "stamp_clean": 0.5357,
         "datetime_clean": 0.5357,
         "name_rule": 0.5357,
         "lexicon_cover": 0.0595,
-        "auto_score": 44.0476
+        "auto_score": 47.7381
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -459,13 +459,13 @@
         "truncated_rate": 0.1786,
         "fill_rate": 0.6786,
         "claim_binding": 0.6746,
-        "sanitizer_pass": 0.4484,
+        "sanitizer_pass": 0.6091,
         "length_ok": 0.6786,
         "stamp_clean": 0.6786,
         "datetime_clean": 0.6786,
         "name_rule": 0.6786,
         "lexicon_cover": 0.1012,
-        "auto_score": 55.1389
+        "auto_score": 59.9604
       },
       "stamp_hits": 0,
       "datetime_leak": 0
@@ -475,8 +475,8 @@
   "task_id": "narrative-model-eval-v1",
   "run_id": "20260809T082931Z",
   "created_at": "2026-08-09T08:29:31.147633+00:00",
-  "spent_usd": 1.25771,
-  "call_count": 448,
+  "spent_usd": 0.816314,
+  "call_count": 280,
   "raw_response_count": 280,
   "coverage": {
     "evidence_levels": [

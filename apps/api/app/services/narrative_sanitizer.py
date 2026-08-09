@@ -12,13 +12,15 @@
 # inputs: provider-generated narrative text and, for grounding, its selected
 #   product sphere/facets plus polarity.
 # outputs: stripped safe text or None when the text must not be published;
-#   grounding violations are reported as booleans without exposing raw text.
+#   grounding violations are reported as booleans or safe rule metadata without
+#   exposing raw text.
 # dependencies: Python standard library only.
 # side_effects: none; pure validation.
-# emitted_logs: none.
+# emitted_logs: none (the narrative service owns claim-null instrumentation).
 # invariants: rejected text is never returned as a sanitized value; an unknown
-#   sphere, facet, or polarity fails closed; a nullable facet never authorizes
-#   narrow facet language.
+#   sphere, facet, or polarity fails closed; hard cross-sphere/domain language
+#   and forbidden tokens remain fail-closed; soft connective words do not
+#   authorize a foreign hard facet.
 # failure_policy: fail closed with None for blank or forbidden text.
 # END_MODULE_CONTRACT: M-NARRATIVE-SANITIZER
 
@@ -27,9 +29,10 @@
 #   - has_forbidden_narrative_tokens
 #   - sanitize_narrative_text
 #   - has_narrative_grounding_violation
+#   - explain_narrative_grounding_violation
 # semantic_blocks:
 #   - FORBIDDEN_TOKENS: machine prefixes, generic Planet labels, and list artifacts.
-#   - GROUNDING: canonical sphere/facet vocabulary, scope checks, health safety,
+#   - GROUNDING: hard/soft sphere/facet vocabulary, scope checks, health safety,
 #     lot-name masking, polarity-antonym checks, and negation windows.
 #   - SANITIZE: deterministic trim-and-reject boundary.
 # owned_tests:
@@ -39,7 +42,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 
 _FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -86,6 +89,50 @@ _SPHERE_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     ),
 }
 
+# A sphere word can be ordinary connective language («семья», «общение»,
+# «ресурс») rather than a hard cross-sphere claim. Keep the complete table
+# above for deterministic detection/audit, but only these high-signal terms
+# reject a foreign sphere. Explicit «сфера отношений» remains hard.
+_HARD_SPHERE_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "work": (
+        re.compile(r"(?<!\w)(?:карьер\w*|статус\w*|начальник\w*|профессиональн\w*)", re.IGNORECASE),
+    ),
+    "finance": (
+        re.compile(r"(?<!\w)(?:финанс\w*|деньг\w*|кредит\w*|налог\w*)", re.IGNORECASE),
+    ),
+    "documents": (
+        re.compile(r"(?<!\w)(?:документ\w*|формальност\w*|бумаг\w*|договор\w*)", re.IGNORECASE),
+    ),
+    "relationships": (
+        re.compile(
+            r"(?<!\w)(?:брак\w*|супруг\w*|партн[её]р\w*|сфер\w*\s+отношени\w*)",
+            re.IGNORECASE,
+        ),
+    ),
+    "sport": (
+        re.compile(r"(?<!\w)(?:движен\w*|трениров\w*|спорт\w*)", re.IGNORECASE),
+    ),
+    "communication": (
+        re.compile(r"(?<!\w)(?:коммуникац\w*|переговор\w*|аудитор\w*|публичн\w* выступ\w*)", re.IGNORECASE),
+    ),
+    "health": (
+        re.compile(r"(?<!\w)(?:здоров\w*|болезн\w*|симптом\w*|лечен\w*)", re.IGNORECASE),
+    ),
+    "home_family": (
+        re.compile(r"(?<!\w)(?:жиль\w*|недвижим\w*|семейн\w* корн\w*|домашн\w* баз\w*)", re.IGNORECASE),
+    ),
+    "travel": (
+        re.compile(r"(?<!\w)(?:поезд\w*|маршрут\w*|дорог\w*)", re.IGNORECASE),
+    ),
+    "creativity": (re.compile(r"(?<!\w)(?:творч\w*|креатив\w*)", re.IGNORECASE),),
+    "study": (
+        re.compile(r"(?<!\w)(?:обуч\w*|уч[её]б\w*|образован\w*)", re.IGNORECASE),
+    ),
+    "friends_goals": (
+        re.compile(r"(?<!\w)(?:друз\w*|сообществ\w*)", re.IGNORECASE),
+    ),
+}
+
 _RELATED_SPHERES: dict[str, frozenset[str]] = {
     # The resolver assigns one sphere to one physical signal. Narrative text
     # therefore cannot borrow a neighbouring sphere as an implicit allowance.
@@ -93,17 +140,26 @@ _RELATED_SPHERES: dict[str, frozenset[str]] = {
 }
 
 
-# Narrow language is permitted only when the selected facet explicitly owns
-# it. These patterns intentionally avoid generic sphere words such as
-# "документы", "деньги" and "отношения", so facet=null can still use a
-# general sphere description.
-_FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+# A1 audit showed that one undifferentiated facet table treated ordinary
+# connective language as a hard domain leak. Hard patterns remain fail-closed:
+# credit/tax/debt, purchase/price, career/status, documents, marriage, and the
+# S17 phrase «романтических разговорах». The exact false-positive examples
+# were `ценности` matching `цен*`, `долгий` matching `долг*`, and everyday
+# `тонус`/`разговоры` in otherwise valid sport/relationship claims.
+_HARD_FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "daily_work": (re.compile(r"(?:служебн\w*|рабоч\w* нагруз\w*|рабоч\w* задач\w*)", re.IGNORECASE),),
     "career_status": (re.compile(r"(?:карьер\w*|продвижен\w*|публичн\w* роль\w*)", re.IGNORECASE),),
     "personal_money": (re.compile(r"(?:доход\w*|расход\w*|накоплен\w*|личн\w* (?:средств\w*|имуще\w*))", re.IGNORECASE),),
     "shared_money": (re.compile(r"(?:общ\w* бюджет\w*|партнёрск\w* средств\w*|страхов\w*|наслед\w*)", re.IGNORECASE),),
-    "purchases_transactions": (re.compile(r"(?:покуп\w*|продаж\w*|(?<![а-яёА-ЯЁ])цен\w*|сделк\w*|транзакц\w*|магазин\w*|заказ\w*)", re.IGNORECASE),),
-    "financial_obligations": (re.compile(r"(?:кредит\w*|долг(?!осроч)\w*|налог\w*|рассроч\w*|возврат\w*)", re.IGNORECASE),),
+    "purchases_transactions": (
+        re.compile(
+            r"(?:покуп\w*|продаж\w*|(?<![а-яёА-ЯЁ])цен(?:а|у|ы|е|ой|ою|ами|ам|ах|ник\w*)\b|сделк\w*|транзакц\w*|магазин\w*)",
+            re.IGNORECASE,
+        ),
+    ),
+    "financial_obligations": (
+        re.compile(r"(?:кредит\w*|долг(?:а|и|ов|у|ом|ами|ам|ах)?\b|налог\w*|рассроч\w*|возврат\w*)", re.IGNORECASE),
+    ),
     "admin_documents": (re.compile(r"(?:заявлен\w*|справк\w*|оформлен\w*|переписк\w*)", re.IGNORECASE),),
     "legal_foreign_education_documents": (re.compile(r"(?:юридическ\w*|иностран\w* документ\w*|виз\w*|образовательн\w* документ\w*)", re.IGNORECASE),),
     "contracts": (re.compile(r"(?:контракт\w*|договор\w* между|договорн\w* отношен\w*)", re.IGNORECASE),),
@@ -114,13 +170,12 @@ _FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "physical_energy": (re.compile(r"(?:телесн\w* энерг\w*|готовност\w* действ\w*)", re.IGNORECASE),),
     "training_routine": (re.compile(r"(?:трениров\w*|режим активност\w*)", re.IGNORECASE),),
     "competition_performance": (re.compile(r"(?:соревн\w*|спортивн\w* выступ\w*|результат\w* выступ\w*)", re.IGNORECASE),),
-    "everyday_contacts": (re.compile(r"(?:разговор\w*|переписк\w*|повседневн\w* контакт\w*)", re.IGNORECASE),),
+    "everyday_contacts": (re.compile(r"романтическ\w*\s+(?:разговор\w*|переписк\w*)", re.IGNORECASE),),
     "negotiations": (re.compile(r"(?:переговор\w*|договорённост\w*|договоренност\w*)", re.IGNORECASE),),
     "groups_audience": (re.compile(r"(?:групп\w*|аудитор\w*|сообществ\w*)", re.IGNORECASE),),
     "public_speech_teaching": (re.compile(r"(?:публичн\w* выступ\w*|преподав\w*|лекц\w*)", re.IGNORECASE),),
-    "general_condition": (re.compile(r"(?:самочув\w*|общ\w* состоян\w*|тонус\w*)", re.IGNORECASE),),
     "symptoms_routine_treatment": (re.compile(r"(?:симптом\w*|лечен\w*|восстановительн\w* режим\w*)", re.IGNORECASE),),
-    "recovery_isolation": (re.compile(r"(?:отдых\w*|изоляц\w*|стационар\w*)", re.IGNORECASE),),
+    "recovery_isolation": (re.compile(r"(?:изоляц\w*|стационар\w*)", re.IGNORECASE),),
     "family_roots": (re.compile(r"(?:родител\w*|семейн\w* корн\w*|домашн\w* баз\w*)", re.IGNORECASE),),
     "housing_property": (re.compile(r"(?:жиль\w*|недвижим\w*|бытов\w* пространств\w*)", re.IGNORECASE),),
     "relocation": (re.compile(r"(?:переезд\w*|перемещен\w* дом\w*)", re.IGNORECASE),),
@@ -134,6 +189,23 @@ _FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "friends_community": (re.compile(r"(?:друз\w*|сообществ\w* единомышлен\w*|единомышлен\w*)", re.IGNORECASE),),
     "collective_projects": (re.compile(r"(?:совместн\w* проект\w*|коллективн\w* проект\w*)", re.IGNORECASE),),
     "long_term_goals": (re.compile(r"(?:долгосрочн\w* (?:план\w*|направлен\w*|цел\w*)|направлен\w* развит\w*)", re.IGNORECASE),),
+}
+
+_SOFT_FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "daily_work": (re.compile(r"рутин\w*", re.IGNORECASE),),
+    "purchases_transactions": (re.compile(r"заказ\w*", re.IGNORECASE),),
+    "everyday_contacts": (
+        re.compile(r"(?:разговор\w*|переписк\w*|повседневн\w* контакт\w*)", re.IGNORECASE),
+    ),
+    "romance": (re.compile(r"(?:уют\w*|нежн\w*|тепл\w*)", re.IGNORECASE),),
+    "partnership": (re.compile(r"(?:близост\w*|взаимн\w*)", re.IGNORECASE),),
+    "general_condition": (re.compile(r"(?:самочув\w*|общ\w* состоян\w*|тонус\w*)", re.IGNORECASE),),
+    "recovery_isolation": (re.compile(r"отдых\w*", re.IGNORECASE),),
+}
+
+_FACET_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    facet: (*_HARD_FACET_PATTERNS.get(facet, ()), *_SOFT_FACET_PATTERNS.get(facet, ()))
+    for facet in (*_HARD_FACET_PATTERNS, *_SOFT_FACET_PATTERNS)
 }
 
 _FACET_TO_SPHERE: dict[str, str] = {
@@ -156,7 +228,7 @@ _FACET_TO_SPHERE: dict[str, str] = {
 }
 
 _BROAD_SCOPE_RE = re.compile(
-    r"(?:\bвс(?:е|ё|я|ю|ем|ех)\b|\bобщ(?:ий|ая|ее|ем|их)?\b|\bв\s+целом\b|\bцеликом\b|\bпо\s+всей\b)",
+    r"(?:\bвс(?:е|ё|я|ю|ем|ех)\b|\bв\s+целом\b|\bцеликом\b|\bпо\s+всей\b|\bобщ\w*\s+сфер\w*)",
     re.IGNORECASE,
 )
 _POLARITY_SCOPE_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
@@ -221,12 +293,157 @@ def _has_polarity_conflict(text: str, polarity: str) -> bool:
     sentence_boundaries = ".!?;\n"
     for pattern in _POLARITY_CONFLICT_PATTERNS.get(polarity, ()):
         for match in pattern.finditer(text):
+            if _is_contextual_tense_easy(text, match, polarity):
+                continue
             prefix = text[max(0, match.start() - 40) : match.start()]
             boundary = max((prefix.rfind(marker) for marker in sentence_boundaries), default=-1)
             window = prefix[boundary + 1 :]
             if _POLARITY_NEGATION_MARKER_PATTERN.search(window) is None:
                 return True
     return False
+
+
+def _is_contextual_tense_easy(text: str, match: re.Match[str], polarity: str) -> bool:
+    """Keep risk wording such as «легко задеть» out of tense false positives."""
+    if polarity != "tense" or match.group(0).lower().startswith(("гармони",)):
+        return False
+    suffix = text[match.end() : match.end() + 36]
+    return re.search(
+        r"^\s+(?:задет\w*|задеть\w*|вспых\w*|вспыл\w*|перегн\w*|зацеп\w*|потер\w*|приня\w*|оберн\w*|возник\w*|забы\w*|наруш\w*|устат\w*|утом\w*|скат\w*)",
+        suffix,
+        re.IGNORECASE,
+    ) is not None
+
+
+def _pattern_matches(
+    text: str,
+    patterns: Mapping[str, tuple[re.Pattern[str], ...]],
+    *,
+    prefix: str,
+) -> dict[str, tuple[str, ...]]:
+    return {
+        key: tuple(
+            f"{prefix}:{key}:{index}"
+            for index, pattern in enumerate(patterns_for_key)
+            if pattern.search(text) is not None
+        )
+        for key, patterns_for_key in patterns.items()
+        if any(pattern.search(text) is not None for pattern in patterns_for_key)
+    }
+
+
+def _grounding_rule_hits(
+    text: str,
+    *,
+    allowed_spheres: Collection[str],
+    polarity: str,
+    allowed_facets: Collection[str],
+) -> tuple[dict[str, str], ...]:
+    """Return safe reason metadata for the current facet-exclusive policy.
+
+    S21's A1 matrix showed that generic body/communication words were being
+    treated as hard domain leaks. Soft words now remain available for natural
+    copy, while hard domain vocabulary and explicit sphere claims still fail
+    closed. This helper is also the single reason source for production claim
+    instrumentation; it never returns the candidate text.
+    """
+    if not isinstance(text, str) or not isinstance(polarity, str):
+        return ({"reason_class": "sphere_conflict", "pattern_id": "invalid_input", "pair": "input"},)
+    try:
+        raw_spheres = tuple(allowed_spheres)
+        raw_facets = tuple(allowed_facets)
+    except TypeError:
+        return ({"reason_class": "sphere_conflict", "pattern_id": "invalid_input", "pair": "input"},)
+    normalized_spheres = {
+        sphere for sphere in raw_spheres if isinstance(sphere, str) and sphere.strip()
+    }
+    normalized_facets = {
+        facet for facet in raw_facets if isinstance(facet, str) and facet.strip()
+    }
+    if (
+        not normalized_spheres
+        or any(not isinstance(sphere, str) or not sphere.strip() for sphere in raw_spheres)
+        or not normalized_spheres.issubset(_SPHERE_PATTERNS)
+        or polarity not in {"supportive", "tense", "mixed"}
+        or any(not isinstance(facet, str) or not facet.strip() for facet in raw_facets)
+        or not normalized_facets.issubset(_FACET_TO_SPHERE)
+        or any(_FACET_TO_SPHERE[facet] not in normalized_spheres for facet in normalized_facets)
+    ):
+        return ({"reason_class": "sphere_conflict", "pattern_id": "invalid_input", "pair": "input"},)
+
+    masked_text = _mask_lot_names(text)
+    hits: list[dict[str, str]] = []
+    hard_facets = _pattern_matches(masked_text, _HARD_FACET_PATTERNS, prefix="facet")
+    for facet, pattern_ids in hard_facets.items():
+        if facet in normalized_facets:
+            continue
+        for pattern_id in pattern_ids:
+            hits.append(
+                {
+                    "reason_class": "facet_conflict",
+                    "pattern_id": pattern_id,
+                    "pair": f"{next(iter(normalized_facets), 'null')}×{facet}",
+                }
+            )
+
+    hard_spheres = _pattern_matches(masked_text, _HARD_SPHERE_PATTERNS, prefix="sphere")
+    allowed_facet_owners = {
+        _FACET_TO_SPHERE[facet]
+        for facet in hard_facets
+        if facet in normalized_facets
+    }
+    for sphere, pattern_ids in hard_spheres.items():
+        if sphere in normalized_spheres or sphere in allowed_facet_owners:
+            continue
+        for pattern_id in pattern_ids:
+            hits.append(
+                {
+                    "reason_class": "sphere_conflict",
+                    "pattern_id": pattern_id,
+                    "pair": f"{next(iter(normalized_spheres), 'null')}×{sphere}",
+                }
+            )
+
+    if "health" in normalized_spheres:
+        for index, pattern in enumerate(_HEALTH_DIAGNOSIS_PATTERNS):
+            if pattern.search(text) is not None:
+                hits.append(
+                    {
+                        "reason_class": "sphere_conflict",
+                        "pattern_id": f"health_diagnosis:{index}",
+                        "pair": "health×health_diagnosis",
+                    }
+                )
+
+    if normalized_facets and any(
+        sphere in normalized_spheres for sphere in hard_spheres
+    ) and _BROAD_SCOPE_RE.search(masked_text) is not None:
+        hits.append(
+            {
+                "reason_class": "sphere_conflict",
+                "pattern_id": "broad_scope",
+                "pair": f"{next(iter(normalized_facets), 'null')}×{next(iter(normalized_spheres), 'null')}",
+            }
+        )
+
+    sentence_boundaries = ".!?;\n"
+    for index, pattern in enumerate(_POLARITY_CONFLICT_PATTERNS.get(polarity, ())):
+        for match in pattern.finditer(masked_text):
+            if _is_contextual_tense_easy(masked_text, match, polarity):
+                continue
+            prefix = masked_text[max(0, match.start() - 40) : match.start()]
+            boundary = max((prefix.rfind(marker) for marker in sentence_boundaries), default=-1)
+            window = prefix[boundary + 1 :]
+            if _POLARITY_NEGATION_MARKER_PATTERN.search(window) is None:
+                hits.append(
+                    {
+                        "reason_class": "polarity_antonym",
+                        "pattern_id": f"polarity:{polarity}:{index}",
+                        "pair": f"{polarity}×antonym",
+                    }
+                )
+                break
+    return tuple(hits)
 
 
 # END_BLOCK: GROUNDING_HELPERS
@@ -288,91 +505,45 @@ def has_narrative_grounding_violation(
     # emitted_logs: none.
     # error_behavior: malformed text, unknown spheres, or unknown polarity fail closed.
     # END_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER.has_narrative_grounding_violation
-    if not isinstance(text, str) or not isinstance(polarity, str):
-        return True
-    try:
-        raw_spheres = tuple(allowed_spheres)
-        raw_facets = tuple(allowed_facets)
-    except TypeError:
-        return True
-    normalized_spheres = {
-        sphere for sphere in raw_spheres if isinstance(sphere, str) and sphere.strip()
-    }
-    if (
-        not normalized_spheres
-        or any(not isinstance(sphere, str) or not sphere.strip() for sphere in raw_spheres)
-        or not normalized_spheres.issubset(_SPHERE_PATTERNS)
-    ):
-        return True
-    if polarity not in {"supportive", "tense", "mixed"}:
-        return True
-
-    masked_text = _mask_lot_names(text)
-
-    normalized_facets = {
-        facet for facet in raw_facets if isinstance(facet, str) and facet.strip()
-    }
-    if any(not isinstance(facet, str) or not facet.strip() for facet in raw_facets):
-        return True
-    if (
-        not normalized_facets.issubset(_FACET_TO_SPHERE)
-        or any(_FACET_TO_SPHERE[facet] not in normalized_spheres for facet in normalized_facets)
-    ):
-        return True
-
-    detected_facets = {
-        facet
-        for facet, patterns in _FACET_PATTERNS.items()
-        if any(pattern.search(masked_text) is not None for pattern in patterns)
-    }
-    # A nullable facet authorizes only general sphere wording. A selected
-    # facet authorizes exactly that facet; all other narrow terms fail closed.
-    if detected_facets.difference(normalized_facets):
-        return True
-
-    detected_spheres = {
-        sphere
-        for sphere, patterns in _SPHERE_PATTERNS.items()
-        if any(pattern.search(masked_text) is not None for pattern in patterns)
-    }
-    allowed_facet_owners = {
-        _FACET_TO_SPHERE[facet]
-        for facet in detected_facets.intersection(normalized_facets)
-    }
-    for detected_sphere in detected_spheres:
-        if detected_sphere in normalized_spheres:
-            continue
-        # Some facet language is intentionally shared by ordinary product
-        # wording (for example correspondence in admin_documents). The
-        # explicit facet ownership is the only narrow exception; old related
-        # sphere allowances are not restored.
-        if detected_sphere in allowed_facet_owners:
-            continue
-        return True
-
-    if "health" in normalized_spheres and any(
-        pattern.search(text) is not None for pattern in _HEALTH_DIAGNOSIS_PATTERNS
-    ):
-        return True
-
-    if normalized_facets and detected_spheres.intersection(normalized_spheres):
-        # A facet-specific claim must not silently become a claim about the
-        # whole sphere: both explicit broad quantifiers and direct sphere
-        # polarity wording are rejected.
-        if _BROAD_SCOPE_RE.search(masked_text) is not None:
-            return True
-        if any(
-            pattern.search(masked_text) is not None
-            for pattern in _POLARITY_SCOPE_PATTERNS.get(polarity, ())
-        ) and not detected_facets.intersection(normalized_facets):
-            return True
-
-    return _has_polarity_conflict(masked_text, polarity)
+    return bool(
+        _grounding_rule_hits(
+            text,
+            allowed_spheres=allowed_spheres,
+            allowed_facets=allowed_facets,
+            polarity=polarity,
+        )
+    )
 # END_BLOCK: GROUNDING
+
+
+def explain_narrative_grounding_violation(
+    text: str,
+    *,
+    allowed_spheres: Collection[str],
+    polarity: str,
+    allowed_facets: Collection[str] = (),
+) -> dict[str, str] | None:
+    # START_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER.explain_narrative_grounding_violation
+    # purpose: Expose non-PII rule metadata for one grounding decision.
+    # inputs: text, allowed sphere/facet collections, and canonical polarity.
+    # returns: first reason metadata mapping, or None when the claim passes.
+    # side_effects: none; the mapping contains no candidate text.
+    # emitted_logs: none.
+    # error_behavior: malformed grounding input returns a fail-closed reason.
+    # END_FUNCTION_CONTRACT: F-M-NARRATIVE-SANITIZER.explain_narrative_grounding_violation
+    """Return non-PII reason metadata for one grounding decision."""
+    hits = _grounding_rule_hits(
+        text,
+        allowed_spheres=allowed_spheres,
+        allowed_facets=allowed_facets,
+        polarity=polarity,
+    )
+    return dict(hits[0]) if hits else None
 
 
 __all__ = [
     "has_forbidden_narrative_tokens",
     "has_narrative_grounding_violation",
+    "explain_narrative_grounding_violation",
     "sanitize_narrative_text",
 ]

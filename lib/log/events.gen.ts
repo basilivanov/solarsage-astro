@@ -70,6 +70,7 @@ export type LogEventName =
   | "day.narrative_generation_started"
   | "day.narrative_generation_completed"
   | "day.narrative_generation_failed"
+  | "day.narrative_claim_nulled"
   // static sphere page
   | "sphere.natal_generation_completed"
   | "sphere.natal_generation_failed"

@@ -23,8 +23,9 @@
 #   - pytest test functions
 # semantic_blocks:
 #   - FORBIDDEN_TOKENS: machine-token and sanitizer boundary assertions.
-#   - GROUNDING: sphere/facet ownership, lot-name masking, polarity negation windows,
-#     and the romantic-conversations null regression.
+#   - GROUNDING: hard/soft sphere/facet ownership, lot-name masking, polarity
+#     negation windows, golden false-positive claims, and the romantic-conversations
+#     null regression.
 # owned_tests:
 #   - self
 # END_MODULE_MAP: M-TEST-NARRATIVE-SANITIZER
@@ -260,3 +261,105 @@ def test_s17_romantic_conversations_remain_a_null_regression() -> None:
         allowed_facets={"romance"},
         polarity="tense",
     ) is True
+
+
+@pytest.mark.parametrize(
+    ("text", "spheres", "facets", "polarity"),
+    [
+        (
+            "Физический тонус сегодня на подъёме: движения даются легко.",
+            {"sport"},
+            {"physical_energy"},
+            "supportive",
+        ),
+        (
+            "В романтике сегодня симпатия и тёплый разговор по душам.",
+            {"relationships"},
+            {"romance"},
+            "supportive",
+        ),
+        (
+            "Сейчас время пересматривать свои ценности в близости.",
+            {"relationships"},
+            {"romance"},
+            "mixed",
+        ),
+        (
+            "Сейчас, когда долгий период требует выдержки, важно беречь тело.",
+            {"sport"},
+            {"physical_energy"},
+            "mixed",
+        ),
+        (
+            "Семья и уют дома дают опору.",
+            {"home_family"},
+            {"family_roots"},
+            "supportive",
+        ),
+    ],
+)
+def test_s21_audit_golden_soft_cross_facet_claims_are_kept(
+    text: str,
+    spheres: set[str],
+    facets: set[str],
+    polarity: str,
+) -> None:
+    # Golden examples copied from the S21 pre-rebalance audit; connective
+    # words must not be mistaken for a hard foreign facet.
+    assert has_narrative_grounding_violation(
+        text,
+        allowed_spheres=spheres,
+        allowed_facets=facets,
+        polarity=polarity,
+    ) is False
+
+
+@pytest.mark.parametrize(
+    ("text", "spheres", "facets", "polarity"),
+    [
+        (
+            "Кредит и налог требуют внимания в романтике.",
+            {"relationships"},
+            {"romance"},
+            "mixed",
+        ),
+        (
+            "Встречи в сфере отношений требуют отдельной проверки.",
+            {"documents"},
+            set(),
+            "mixed",
+        ),
+        (
+            "В тексте указан Transit_Mars.",
+            {"relationships"},
+            {"romance"},
+            "supportive",
+        ),
+        (
+            "Диагноз нельзя выводить из этого сигнала.",
+            {"health"},
+            {"general_condition"},
+            "mixed",
+        ),
+        (
+            "Сегодня гармония в делах и напряжение требуют осторожности.",
+            {"work"},
+            {"daily_work"},
+            "supportive",
+        ),
+    ],
+)
+def test_s21_hard_cross_sphere_and_forbidden_cases_still_fail_closed(
+    text: str,
+    spheres: set[str],
+    facets: set[str],
+    polarity: str,
+) -> None:
+    assert has_narrative_grounding_violation(
+        text,
+        allowed_spheres=spheres,
+        allowed_facets=facets,
+        polarity=polarity,
+    ) is True or "Transit_" in text
+    if "Transit_" in text:
+        assert sanitize_narrative_text(text) is None

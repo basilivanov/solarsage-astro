@@ -13,7 +13,8 @@
 # dependencies: today_narrative_service, TodaySnapshot, pytest-asyncio.
 # side_effects: No network or database calls; logging is intercepted in tests.
 # emitted_logs: day.narrative_generation_started,
-#   day.narrative_generation_completed, day.narrative_generation_failed.
+#   day.narrative_generation_completed, day.narrative_generation_failed,
+#   day.narrative_claim_nulled.
 # invariants: Tests never use a real provider and never accept partial narrative;
 #   convergence overlap is validated as a per-group prompt union.
 # failure_policy: pytest failure on prompt leakage, invalid acceptance, or log guard failure.
@@ -954,6 +955,38 @@ async def test_three_generation_events_have_safe_fields_and_logger_failure_is_sw
         llm=FakeLLM(json.dumps(_quiet_content(snapshot), ensure_ascii=False)),
     )
     assert isinstance(swallowed, TodayNarrativeSuccess)
+
+
+@pytest.mark.asyncio
+async def test_grounding_retry_emits_pii_safe_claim_nulled_event(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    def capture(event: str, **kwargs: object) -> None:
+        events.append((event, kwargs))
+
+    monkeypatch.setattr("app.services.today_narrative_service.log_event", capture)
+    snapshot = _quiet_snapshot()
+    content = _quiet_content(snapshot)
+    content["main_event"]["summary"] = _claim(  # type: ignore[index]
+        "Кредит требует внимания.",
+        ["evt_v1_main"],
+    )
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v1",
+        llm=FakeLLM(json.dumps(content, ensure_ascii=False)),
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    nulled = [payload for event, payload in events if event == "day.narrative_claim_nulled"]
+    assert len(nulled) == 1
+    assert nulled[0]["payload"] == {  # type: ignore[index]
+        "reason_class": "facet_conflict",
+        "facet": "daily_work",
+        "polarity": "supportive",
+        "pattern_id": "facet:financial_obligations:0",
+    }
 
 
 # END_BLOCK: OPERATIONS

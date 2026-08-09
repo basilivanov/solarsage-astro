@@ -1523,7 +1523,7 @@ def _load_raw_envelopes(
 ) -> list[ResponseEnvelope]:
     envelopes: list[ResponseEnvelope] = []
     for path in sorted(raw_dir.glob("*.json")):
-        if path.name == "manifest.json":
+        if path.name in {"manifest.json", "review-key.json"}:
             continue
         value = _read_json(path)
         model_key = str(value.get("model_key"))
