@@ -31,9 +31,9 @@
 #     `docker cp`, and keeps AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe/ephe plus the
 #     manifest artifact_id/sha256-vs-health assertions.
 #   - The sidecar Dockerfile keeps the bundle root-owned 0555/0444.
-#   - Both audit-day-freeze steps pin SOLARSAGE_V2_ENABLED/DUAL_RUN/
-#     FRONTEND_ENABLED=true (the contour the committed baseline was frozen
-#     with).
+#   - Pre-convergence acceptance steps (audit-day-freeze, V2 API/UI proofs)
+#     stay retired with an explicit TODO(convergence-acceptance) marker until
+#     the convergence acceptance realignment package lands.
 # failure_policy: assertion failure.
 # END_MODULE_CONTRACT: M-TESTS-DEPLOY-WORKFLOW-CONTRACTS
 
@@ -130,33 +130,28 @@ def test_sidecar_image_keeps_readonly_ephemeris_bake() -> None:
 # END_BLOCK: EPHEMERIS_EXTRACTION_CONTRACT
 
 
-# START_BLOCK: AUDIT_FREEZE_V2_CONTOUR
-def test_audit_freeze_steps_pin_same_v2_contour() -> None:
-    # START_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_audit_freeze_steps_pin_same_v2_contour
-    # purpose: Prove both audit-day-freeze steps pin the same V2 contour the
-    #   committed baseline was frozen with. Without it artifact_source.json
-    #   flips solarsage_v2_* to settings defaults and the tracked-clean gate
-    #   fails on env drift alone (run 29945668331).
+# START_BLOCK: RETIRED_ACCEPTANCE_STEPS
+def test_pre_convergence_acceptance_steps_retired() -> None:
+    # START_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_pre_convergence_acceptance_steps_retired
+    # purpose: Fail closed against silently reintroducing the retired
+    #   pre-convergence acceptance steps (audit-day-freeze runs, real V2 API
+    #   proof, same-payload V2 UI proof) without the convergence realignment
+    #   package. They validated the today.v2.2 payload retired by the
+    #   spheres/facets rework and could not run green (no live API in the job).
+    #   Retirement marker: TODO(convergence-acceptance) in the workflow.
     # inputs: .github/workflows/deploy-production.yml (read-only).
     # returns: None; raises AssertionError on any violation.
     # side_effects: none.
     # emitted_logs: none.
-    # error_behavior: assertion failure on missing/mismatched V2 flags.
-    # END_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_audit_freeze_steps_pin_same_v2_contour
-    jobs = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    # error_behavior: assertion failure on retired step names or missing marker.
+    # END_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_pre_convergence_acceptance_steps_retired
+    text = WORKFLOW.read_text(encoding="utf-8")
+    jobs = yaml.safe_load(text)["jobs"]
     steps = jobs["artifact-acceptance"]["steps"]
-    freeze_steps = [
-        s for s in steps
-        if isinstance(s, dict) and str(s.get("name", "")).startswith("Audit day freeze")
-    ]
-    assert len(freeze_steps) == 2, [s.get("name") for s in freeze_steps]
-    expected = {
-        "SOLARSAGE_V2_ENABLED": "true",
-        "SOLARSAGE_V2_DUAL_RUN": "true",
-        "SOLARSAGE_V2_FRONTEND_ENABLED": "true",
-    }
-    for step in freeze_steps:
-        env = step.get("env") or {}
-        for key, value in expected.items():
-            assert env.get(key) == value, (step.get("name"), key, env.get(key))
-# END_BLOCK: AUDIT_FREEZE_V2_CONTOUR
+    names = [str(s.get("name", "")) for s in steps if isinstance(s, dict)]
+    retired = ("Audit day freeze", "Real V2 API proof", "Same-payload V2 UI proof")
+    for name in names:
+        assert not name.startswith(retired), name
+    assert "TODO(convergence-acceptance)" in text
+    assert any(name == "Golden snapshots gate" for name in names), names
+# END_BLOCK: RETIRED_ACCEPTANCE_STEPS
