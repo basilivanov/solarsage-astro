@@ -269,7 +269,9 @@ export { expect };
 //   today-screen root. loading/error are never success; a test must not
 //   proceed (or finish) while a day request is still in flight.
 // inputs: page — Playwright page; expected — 'ready' | 'locked' |
-//   'terminal' (either ready-with-calculation or locked); timeout — default 90000
+//   'terminal' (either ready-with-calculation or locked); 'locked' accepts the
+//   no-full-access family locked|preview (convergence preview replaced the
+//   hard lock for fresh users); timeout — default 90000
 //   (evidence-based: observed real /api/day first-pass range 8.3–67.5s
 //   across candidate runs, incl. a valid HTTP 200 at 67.515s that a 60s
 //   budget killed early; 90s covers the deterministic pipeline work plus
@@ -285,10 +287,11 @@ export async function waitForTodayState(
 ): Promise<void> {
   const screen = page.getByTestId('today-screen');
   // New Today contract: data-screen-state marks transport readiness,
-  // data-access-state=locked means no calculation is exposed at all, and a
+  // data-access-state=locked|preview is the no-full-access terminal family
+  // (convergence renders a preview teaser instead of a hard lock), and a
   // ready non-locked screen carries data-state convergence_today|quiet_day|unavailable.
   if (expected === 'locked') {
-    await expect(screen).toHaveAttribute('data-access-state', 'locked', { timeout });
+    await expect(screen).toHaveAttribute('data-access-state', /^(locked|preview)$/, { timeout });
     return;
   }
   await expect(screen).toHaveAttribute('data-screen-state', 'ready', { timeout });

@@ -397,6 +397,9 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
           SOLARSAGE_URL: http://127.0.0.1:18091
+          # Freeze pipeline authenticates via signed Telegram initData; the
+          # generator and the ephemeral API share this placeholder token.
+          TELEGRAM_BOT_TOKEN: acceptance-test-token
           # Same V2 contour the committed baseline was frozen with; without it
           # artifact_source.json flips solarsage_v2_* to defaults (run 29945668331).
           SOLARSAGE_V2_ENABLED: "true"
@@ -410,6 +413,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
           SOLARSAGE_URL: http://127.0.0.1:18091
+          TELEGRAM_BOT_TOKEN: acceptance-test-token
           SOLARSAGE_V2_ENABLED: "true"
           SOLARSAGE_V2_DUAL_RUN: "true"
           SOLARSAGE_V2_FRONTEND_ENABLED: "true"

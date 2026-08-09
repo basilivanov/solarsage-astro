@@ -96,11 +96,14 @@ test.describe('Referral deep-link auto-claim — Real API (P1-6)', () => {
 
       // Unlocked full-day proof: the claimed 14-day access unlocks Today
       // (structural only, never LLM text). Wait for the exact terminal ready
-      // state — the day payload can take ~19s in candidate runs.
+      // state — the day payload can take ~19s in candidate runs. The
+      // convergence contract exposes full access via data-access-state and
+      // the sphere navigator as the always-present content block.
       await inviteePage.goto('/');
       await waitForTodayState(inviteePage, 'ready');
-      await expect(inviteePage.getByTestId('day-summary-card')).toBeVisible({ timeout: 15000 });
-      await expect(inviteePage.getByTestId('concrete-day-advice')).toBeVisible({ timeout: 15000 });
+      const inviteeScreen = inviteePage.getByTestId('today-screen');
+      await expect(inviteeScreen).toHaveAttribute('data-access-state', 'full');
+      await expect(inviteePage.getByTestId('sphere-navigator')).toBeVisible({ timeout: 15000 });
 
       // Referrer-side proof: exactly one invite recorded.
       const after = await readReferralInfo();
