@@ -339,7 +339,7 @@ def _presentation(
     value: Mapping[str, Any],
     *,
     event_id_key: str = "event_id",
-) -> tuple[str, str | None, str, str, str]:
+) -> tuple[str, str, str | None, str, str]:
     event_id = _text(_value(value, event_id_key, "eventId"), "selected_event_id")
     sphere = _enum_text(_value(value, "sphere"), _SPHERES, "selected_sphere")
     facet = _optional_text(_value(value, "facet", default=None), "selected_facet")
