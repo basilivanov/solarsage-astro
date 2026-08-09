@@ -50,6 +50,8 @@ from app.services.today_narrative_service import (
     TodayNarrativeSuccess,
     build_today_narrative_prompt,
     generate_today_narrative,
+    _split_prompt,
+    strict_response_schema,
 )
 
 
@@ -1074,3 +1076,143 @@ def test_s19_prompt_carries_planet_gender_grammar_rule() -> None:
     assert "сошлось" in prompt
     assert "Род планет" in prompt
 # END_BLOCK: S19_GRAMMAR
+
+
+def test_v6_prompt_split_fails_closed_when_input_marker_is_missing() -> None:
+    prompt = build_today_narrative_prompt(
+        _quiet_impulses_only_snapshot(),
+        prompt_version="today-narrative-v6",
+    )
+    marker = "\nВход:\n"
+
+    assert marker in prompt
+    system, user = _split_prompt(prompt)
+    assert system
+    assert user == prompt[prompt.index(marker) + 1 :]
+
+    prompt_without_marker = prompt.replace(marker, "\nВход: ", 1)
+    fallback_system, fallback_user = _split_prompt(prompt_without_marker)
+
+    assert fallback_system is None
+    assert fallback_user == prompt_without_marker
+    assert fallback_user.count("Ты пишешь короткие персональные тексты") == 1
+
+
+# START_BLOCK: S20_FLASH_STRICT_MIGRATION
+class StrictCaptureLLM:
+    def __init__(self, response: object) -> None:
+        self.response = response
+        self.calls: list[dict[str, object]] = []
+
+    async def generate(
+        self,
+        prompt: str,
+        *,
+        max_output_tokens: int,
+        timeout_seconds: float,
+        system: str,
+        json_schema: dict[str, object],
+        model: str,
+        models: list[str],
+    ) -> object:
+        self.calls.append(
+            {
+                "prompt": prompt,
+                "system": system,
+                "max_output_tokens": max_output_tokens,
+                "timeout_seconds": timeout_seconds,
+                "json_schema": json_schema,
+                "model": model,
+                "models": models,
+            }
+        )
+        return self.response
+
+
+def _array_content(content: dict[str, object]) -> dict[str, object]:
+    return {
+        "convergences": [
+            {"groupId": group_id, **block}
+            for group_id, block in content["convergences"].items()  # type: ignore[union-attr]
+        ],
+        "main_event": content["main_event"],
+        "impulses": [
+            {"eventId": event_id, **block}
+            for event_id, block in content["impulses"].items()  # type: ignore[union-attr]
+        ],
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("generation_path", "expected_model", "expected_cap"),
+    [
+        ("ondemand", "openai/gpt-4.1-nano", settings.today_narrative_max_output_tokens),
+        ("pregen", "deepseek/deepseek-v4-flash", settings.today_narrative_pregen_max_output_tokens),
+    ],
+)
+async def test_v6_strict_array_parses_keyed_and_routes_by_path(
+    generation_path: str,
+    expected_model: str,
+    expected_cap: int,
+) -> None:
+    snapshot = _convergence_snapshot()
+    fake = StrictCaptureLLM(
+        json.dumps(_array_content(_convergence_content(snapshot)), ensure_ascii=False)
+    )
+
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v6",
+        generation_path=generation_path,  # type: ignore[arg-type]
+        llm=fake,
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    assert set(result.content_json["convergences"]) == {"cvg-1", "cvg-2", "cvg-3"}
+    call = fake.calls[0]
+    assert call["model"] == expected_model
+    assert call["models"] == [expected_model, *settings.today_narrative_fallback_models]
+    assert call["max_output_tokens"] == expected_cap
+    assert call["prompt"].startswith("Вход:\n")
+    assert "Ты пишешь короткие персональные тексты" in call["system"]
+    assert call["json_schema"] == strict_response_schema()
+    assert call["json_schema"]["properties"]["convergences"]["type"] == "array"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_v6_strict_array_duplicate_id_fails_closed() -> None:
+    snapshot = _convergence_snapshot()
+    response = _array_content(_convergence_content(snapshot))
+    response["convergences"].append(response["convergences"][0])  # type: ignore[union-attr]
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v6",
+        llm=StrictCaptureLLM(json.dumps(response, ensure_ascii=False)),
+    )
+
+    assert isinstance(result, TodayNarrativeFailure)
+    assert result.error_code == "schema_invalid"
+
+
+@pytest.mark.asyncio
+async def test_v6_strict_array_accepts_empty_convergence_section() -> None:
+    snapshot = _quiet_impulses_only_snapshot()
+    content = _quiet_impulses_only_content(snapshot)
+    result = await generate_today_narrative(
+        snapshot,
+        prompt_version="today-narrative-v6",
+        llm=StrictCaptureLLM(
+            json.dumps(_array_content(content), ensure_ascii=False)
+        ),
+    )
+
+    assert isinstance(result, TodayNarrativeSuccess)
+    assert result.content_json["convergences"] == {}
+    assert result.content_json["main_event"] is None
+    assert set(result.content_json["impulses"]) == {
+        "evt_v1_impulse_only_1",
+        "evt_v1_impulse_only_2",
+        "evt_v1_impulse_only_3",
+    }
+# END_BLOCK: S20_FLASH_STRICT_MIGRATION

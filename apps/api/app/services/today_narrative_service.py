@@ -11,8 +11,8 @@
 #   ground each claim on deterministic driver evidence before publication.
 # owns:
 #   - apps/api/app/services/today_narrative_service.py
-# inputs: TodaySnapshot-like row, prompt version, injectable LLM client, and
-#   optional correlation/timeout controls.
+# inputs: TodaySnapshot-like row, prompt version, injectable LLM client, an
+#   ondemand/pregen generation path, and optional correlation/timeout controls.
 # outputs: TodayNarrativeSuccess with canonical content_json, or typed
 #   TodayNarrativeFailure with a stable error code and latency.
 # dependencies: TodaySnapshot JSON shape, Settings, existing LLM provider layer,
@@ -22,7 +22,10 @@
 #   database writes, lease transitions, or template fallback.
 # emitted_logs: day.narrative_generation_started,
 #   day.narrative_generation_completed, day.narrative_generation_failed.
-# invariants: only selected public units enter the prompt; date-aware EventTime
+# invariants: only selected public units enter the prompt; v6 provider calls use
+#   the strict array schema and normalize accepted arrays into the existing
+#   keyed content shape before the unchanged validators/storage boundary;
+#   date-aware EventTime
 #   instants use the same local timezone semantics as the public projection;
 #   convergence evidence may overlap between groups and remains present in each
 #   group; selected IDs validate the union while main/impulse IDs stay disjoint;
@@ -39,10 +42,12 @@
 #   - TodayNarrativeErrorCode
 #   - TodayNarrativeSuccess
 #   - TodayNarrativeFailure
+#   - strict_response_schema
 #   - build_today_narrative_prompt
 #   - generate_today_narrative
 # semantic_blocks:
 #   - PROMPT: selected-unit, deterministic-driver, and capability-bounded prompt construction.
+#   - STRICT_SCHEMA: provider-enforced array schema and keyed-shape normalization.
 #   - EVENT_TIME: clock and absolute instant projection for prompt evidence.
 #   - CALL: injectable provider invocation and existing provider adapter.
 #   - VALIDATE: exact response shape, claim binding, and grounding retry/nulling.
@@ -65,7 +70,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone as dt_timezone
 from enum import StrEnum
 from functools import lru_cache
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.core.config import settings
@@ -114,6 +119,74 @@ _GROUNDING_RETRY_SUFFIX = """
 на title и driverThemes. Если честный summary невозможен, поставь его в null;
 не заменяй его общей фразой и не показывай неподтверждённую сферу.
 """
+
+
+# START_BLOCK: STRICT_SCHEMA
+def strict_response_schema() -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.strict_response_schema
+    # purpose: Return the provider-enforced array schema used by Today narrative.
+    # inputs: none.
+    # returns: fresh strict JSON Schema without dynamic object property names.
+    # side_effects: none.
+    # error_behavior: none.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.strict_response_schema
+    claim = {
+        "anyOf": [
+            {"type": "null"},
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "text": {"type": "string"},
+                    "sourceEventIds": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["text", "sourceEventIds"],
+            },
+        ]
+    }
+    claim_ref = {"$ref": "#/$defs/claim"}
+    block = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {name: claim_ref for name in _NARRATIVE_FIELDS},
+        "required": list(_NARRATIVE_FIELDS),
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "convergences": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "groupId": {"type": "string"},
+                        **{name: claim_ref for name in _NARRATIVE_FIELDS},
+                    },
+                    "required": ["groupId", *_NARRATIVE_FIELDS],
+                },
+            },
+            "main_event": {"anyOf": [{"$ref": "#/$defs/block"}, {"type": "null"}]},
+            "impulses": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "eventId": {"type": "string"},
+                        **{name: claim_ref for name in _NARRATIVE_FIELDS},
+                    },
+                    "required": ["eventId", *_NARRATIVE_FIELDS],
+                },
+            },
+        },
+        "required": ["convergences", "main_event", "impulses"],
+        "$defs": {"claim": claim, "block": block},
+    }
+
+
+# END_BLOCK: STRICT_SCHEMA
 
 # S16: per-facet safe lexicon handed to the provider. Narrow words of OTHER
 # facets trip the grounding sanitizer even when the sentence is fine, so the
@@ -957,6 +1030,7 @@ def _prompt_event(event: _PromptEvent) -> dict[str, Any]:
 
 
 def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
+    strict_mode = prompt_version == "today-narrative-v6"
     person_block: dict[str, Any] = {}
     if context.person is not None:
         if context.person.first_name:
@@ -1016,24 +1090,60 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
             "action": {"text": "", "sourceEventIds": list(event_ids)},
         }
 
-    response_template = {
-        "convergences": {
-            group.block_id: _template_block(group.event_ids) for group in context.convergences
-        },
-        "main_event": (
-            None
-            if context.main_event is None
-            else _template_block(context.main_event.event_ids)
-        ),
-        "impulses": {
-            impulse.block_id: _template_block(impulse.event_ids) for impulse in context.impulses
-        },
-    }
+    if strict_mode:
+        response_template = {
+            "convergences": [
+                {
+                    "groupId": group.block_id,
+                    **_template_block(group.event_ids),
+                }
+                for group in context.convergences
+            ],
+            "main_event": (
+                None
+                if context.main_event is None
+                else _template_block(context.main_event.event_ids)
+            ),
+            "impulses": [
+                {
+                    "eventId": impulse.block_id,
+                    **_template_block(impulse.event_ids),
+                }
+                for impulse in context.impulses
+            ],
+        }
+    else:
+        response_template = {
+            "convergences": {
+                group.block_id: _template_block(group.event_ids)
+                for group in context.convergences
+            },
+            "main_event": (
+                None
+                if context.main_event is None
+                else _template_block(context.main_event.event_ids)
+            ),
+            "impulses": {
+                impulse.block_id: _template_block(impulse.event_ids)
+                for impulse in context.impulses
+            },
+        }
     serialized_template = json.dumps(
         response_template,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
+    )
+    strict_tail = (
+        "\nДля плеча strict json_schema сохрани массивы: в convergences используй "
+        "groupId, в impulses — eventId. Не превращай массивы в словари. "
+        "Замени только пустые значения text на текст и верни этот JSON. "
+        "Сохрани все ключи, идентификаторы и массивы sourceEventIds; не добавляй и не удаляй поля."
+        if strict_mode
+        else "\nЗамени только пустые значения text на текст и верни этот JSON. Сохрани\n"
+        "все ключи, идентификаторы и массивы sourceEventIds; не добавляй и не удаляй\n"
+        "поля. В каждом присутствующем блоке summary.text, meaning.text и action.text\n"
+        "обязательны.\n"
     )
     return f"""Ты пишешь короткие персональные тексты для экрана «Сегодня» астрологического приложения, на русском языке. Ты пишешь одному конкретному человеку, на «ты», тепло и по делу — как внимательный друг-астролог, а не как справочник.
 
@@ -1103,10 +1213,7 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
 
 Точный JSON-шаблон ответа для этого snapshot:
 {serialized_template}
-Замени только пустые значения text на текст и верни этот JSON. Сохрани
-все ключи, идентификаторы и массивы sourceEventIds; не добавляй и не удаляй
-поля. В каждом присутствующем блоке summary.text, meaning.text и action.text
-обязательны.
+{strict_tail}
 """
 
 
@@ -1153,6 +1260,11 @@ def _call_kwargs(
     max_output_tokens: int,
     timeout_seconds: float,
     deadline_at: float,
+    *,
+    json_schema: dict[str, Any] | None,
+    system: str | None,
+    model: str | None,
+    models: list[str] | None,
 ) -> dict[str, Any]:
     try:
         parameters = inspect.signature(method).parameters
@@ -1168,7 +1280,15 @@ def _call_kwargs(
         if supports("max_tokens"):
             kwargs["max_tokens"] = max_output_tokens
         if supports("json_object"):
-            kwargs["json_object"] = True
+            kwargs["json_object"] = json_schema is None
+        if json_schema is not None and supports("json_schema"):
+            kwargs["json_schema"] = json_schema
+        if system and supports("system"):
+            kwargs["system"] = system
+        if model is not None and supports("model"):
+            kwargs["model"] = model
+        if models is not None and supports("models"):
+            kwargs["models"] = list(models)
         if supports("deadline_at"):
             kwargs["deadline_at"] = deadline_at
         return kwargs
@@ -1183,8 +1303,25 @@ def _call_kwargs(
     if supports("deadline_at"):
         kwargs["deadline_at"] = deadline_at
     if supports("json_object"):
-        kwargs["json_object"] = True
+        kwargs["json_object"] = json_schema is None
+    if json_schema is not None and supports("json_schema"):
+        kwargs["json_schema"] = json_schema
+    if system and supports("system"):
+        kwargs["system"] = system
+    if model is not None and supports("model"):
+        kwargs["model"] = model
+    if models is not None and supports("models"):
+        kwargs["models"] = list(models)
     return kwargs
+
+
+def _split_prompt(prompt: str) -> tuple[str | None, str]:
+    """Split a prompt only when its explicit system/user boundary is present."""
+    marker = "\nВход:\n"
+    index = prompt.find(marker)
+    if index < 0:
+        return None, prompt
+    return prompt[:index], prompt[index + 1 :]
 
 
 async def _invoke_provider(
@@ -1193,12 +1330,34 @@ async def _invoke_provider(
     *,
     max_output_tokens: int,
     timeout_seconds: float,
+    json_schema: dict[str, Any] | None,
+    model: str,
+    models: list[str],
 ) -> object:
     client = LLMService() if llm is None else llm
     method, method_name = _provider_method(client)
     deadline_at = time.monotonic() + timeout_seconds
-    kwargs = _call_kwargs(method, method_name, max_output_tokens, timeout_seconds, deadline_at)
-    result = method(prompt, **kwargs)
+    system_prompt, user_prompt = _split_prompt(prompt)
+    kwargs = _call_kwargs(
+        method,
+        method_name,
+        max_output_tokens,
+        timeout_seconds,
+        deadline_at,
+        json_schema=json_schema,
+        system=system_prompt,
+        model=model,
+        models=models,
+    )
+    try:
+        method_parameters = inspect.signature(method).parameters
+    except (TypeError, ValueError):
+        method_parameters = {}
+    accepts_system = any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD or name == "system"
+        for name, parameter in method_parameters.items()
+    )
+    result = method(user_prompt if system_prompt and accepts_system else prompt, **kwargs)
     if inspect.isawaitable(result):
         return await result
     return result
@@ -1348,6 +1507,52 @@ def _block_content(
     return result
 
 
+def _normalise_array_response(parsed: object) -> object:
+    """Convert strict array output into the canonical keyed content shape."""
+    if not isinstance(parsed, dict):
+        return parsed
+    raw_convergences = parsed.get("convergences")
+    raw_impulses = parsed.get("impulses")
+    if not isinstance(raw_convergences, list) and not isinstance(raw_impulses, list):
+        return parsed
+    if set(parsed) != {"convergences", "main_event", "impulses"}:
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+    if not isinstance(raw_convergences, list) or not isinstance(raw_impulses, list):
+        raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+
+    convergences: dict[str, Any] = {}
+    for item in raw_convergences:
+        if (
+            not isinstance(item, Mapping)
+            or set(item) != {"groupId", *_NARRATIVE_FIELDS}
+            or not isinstance(item.get("groupId"), str)
+        ):
+            raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+        group_id = item["groupId"]
+        if group_id in convergences:
+            raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+        convergences[group_id] = {field: item.get(field) for field in _NARRATIVE_FIELDS}
+
+    impulses: dict[str, Any] = {}
+    for item in raw_impulses:
+        if (
+            not isinstance(item, Mapping)
+            or set(item) != {"eventId", *_NARRATIVE_FIELDS}
+            or not isinstance(item.get("eventId"), str)
+        ):
+            raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+        event_id = item["eventId"]
+        if event_id in impulses:
+            raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
+        impulses[event_id] = {field: item.get(field) for field in _NARRATIVE_FIELDS}
+
+    return {
+        "convergences": convergences,
+        "main_event": parsed.get("main_event"),
+        "impulses": impulses,
+    }
+
+
 def _validate_response(
     raw_text: str,
     context: _SnapshotContext,
@@ -1368,6 +1573,7 @@ def _validate_response(
         parsed = json.loads(raw_text)
     except (TypeError, ValueError, json.JSONDecodeError) as exc:
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID) from exc
+    parsed = _normalise_array_response(parsed)
     if not isinstance(parsed, dict) or set(parsed) != {"convergences", "main_event", "impulses"}:
         raise _NarrativeValidationError(TodayNarrativeErrorCode.SCHEMA_INVALID)
     _validate_capability_texts(_raw_claim_texts(parsed), context)
@@ -1566,6 +1772,19 @@ def _provider_error_code(exc: BaseException) -> TodayNarrativeErrorCode:
     return TodayNarrativeErrorCode.PROVIDER_ERROR
 
 
+def _narrative_provider_options(
+    generation_path: Literal["ondemand", "pregen"],
+) -> tuple[str, list[str], int]:
+    if generation_path == "pregen":
+        model = settings.today_narrative_model_pregen
+        max_output_tokens = settings.today_narrative_pregen_max_output_tokens
+    else:
+        model = settings.today_narrative_model_ondemand
+        max_output_tokens = settings.today_narrative_max_output_tokens
+    fallback_models = list(settings.today_narrative_fallback_models)
+    return model, [model, *fallback_models], max_output_tokens
+
+
 async def generate_today_narrative(
     snapshot: object,
     *,
@@ -1575,6 +1794,7 @@ async def generate_today_narrative(
     timeout_seconds: float | None = None,
     clock: Callable[[], float] | None = None,
     person: TodayNarrativePerson | None = None,
+    generation_path: Literal["ondemand", "pregen"] = "ondemand",
 ) -> TodayNarrativeSuccess | TodayNarrativeFailure:
     # START_FUNCTION_CONTRACT: F-M-TODAY-NARRATIVE.generate_today_narrative
     # purpose: Generate and atomically validate one bounded Today narrative;
@@ -1582,7 +1802,8 @@ async def generate_today_narrative(
     #   are withheld as null.
     # inputs: snapshot — published TodaySnapshot-like row; prompt_version — lease
     #   identity; llm — injectable provider; correlation_id — caller context;
-    #   timeout_seconds/clock — optional test and deadline controls.
+    #   timeout_seconds/clock — optional test/deadline controls; generation_path
+    #   selects the pregen flash cap or on-demand nano cap.
     # returns: TodayNarrativeSuccess with canonical content_json, or
     #   TodayNarrativeFailure with timeout/provider/schema/claim/capability code.
     # side_effects: at most two bounded provider calls (only for grounding retry)
@@ -1614,6 +1835,11 @@ async def generate_today_narrative(
             latency_ms = _latency_ms(active_clock, started_at)
             _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
             return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
+        if generation_path not in {"ondemand", "pregen"}:
+            error_code = TodayNarrativeErrorCode.SCHEMA_INVALID.value
+            latency_ms = _latency_ms(active_clock, started_at)
+            _log_failed(snapshot_identifier, prompt_version, error_code, latency_ms)
+            return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
 
         configured_timeout = settings.today_narrative_timeout_seconds if timeout_seconds is None else timeout_seconds
         try:
@@ -1627,7 +1853,7 @@ async def generate_today_narrative(
             return TodayNarrativeFailure(error_code=error_code, latency_ms=latency_ms)
 
         prompt = _build_prompt(context, prompt_version)
-        max_output_tokens = settings.today_narrative_max_output_tokens
+        model, models, max_output_tokens = _narrative_provider_options(generation_path)
         provider_text: _ProviderText | None = None
         content: dict[str, Any] | None = None
         for attempt in range(2):
@@ -1639,6 +1865,13 @@ async def generate_today_narrative(
                         attempt_prompt,
                         max_output_tokens=max_output_tokens,
                         timeout_seconds=bounded_timeout,
+                        json_schema=(
+                            strict_response_schema()
+                            if prompt_version == "today-narrative-v6"
+                            else None
+                        ),
+                        model=model,
+                        models=models,
                     ),
                     timeout=bounded_timeout,
                 )
@@ -1708,4 +1941,5 @@ __all__ = [
     "TodayNarrativeSuccess",
     "build_today_narrative_prompt",
     "generate_today_narrative",
+    "strict_response_schema",
 ]

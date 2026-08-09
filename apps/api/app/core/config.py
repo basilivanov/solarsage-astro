@@ -60,9 +60,10 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -162,9 +163,25 @@ class Settings(BaseSettings):
 
     # Model configuration
     llm_model: str = Field("openai/gpt-4.1-nano", alias="LLM_MODEL")
+    llm_fallback_model: str = Field(
+        "google/gemma-4-31b-it", alias="LLM_FALLBACK_MODEL"
+    )
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
 
     # --- Today bounded narrative (P6) ---
+    today_narrative_model_pregen: str = Field(
+        "deepseek/deepseek-v4-flash", alias="TODAY_NARRATIVE_MODEL_PREGEN"
+    )
+    today_narrative_model_ondemand: str = Field(
+        "openai/gpt-4.1-nano", alias="TODAY_NARRATIVE_MODEL_ONDEMAND"
+    )
+    today_narrative_fallback_models: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["google/gemma-4-31b-it"],
+        alias="TODAY_NARRATIVE_FALLBACK_MODELS",
+    )
+    today_narrative_pregen_max_output_tokens: int = Field(
+        3000, gt=0, alias="TODAY_NARRATIVE_PREGEN_MAX_OUTPUT_TOKENS"
+    )
     today_narrative_max_output_tokens: int = Field(
         2000, alias="TODAY_NARRATIVE_MAX_OUTPUT_TOKENS"
     )
@@ -172,7 +189,7 @@ class Settings(BaseSettings):
         45, alias="TODAY_NARRATIVE_TIMEOUT_SECONDS"
     )
     today_narrative_prompt_version: str = Field(
-        "today-narrative-v5", alias="TODAY_NARRATIVE_PROMPT_VERSION"
+        "today-narrative-v6", alias="TODAY_NARRATIVE_PROMPT_VERSION"
     )
     today_sphere_natal_prompt_version: str = Field(
         "sphere-natal-v1", alias="TODAY_SPHERE_NATAL_PROMPT_VERSION"
@@ -180,6 +197,26 @@ class Settings(BaseSettings):
     today_llm_on_demand_concurrency: int = Field(
         3, alias="TODAY_LLM_ON_DEMAND_CONCURRENCY"
     )
+
+    @field_validator("today_narrative_fallback_models", mode="before")
+    @classmethod
+    def _parse_today_narrative_fallback_models(cls, value: object) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONFIG._parse_today_narrative_fallback_models
+        # purpose: Parse the ordered comma-separated Today narrative fallback model list.
+        # inputs: value — environment string or an already typed list/tuple.
+        # returns: model identifiers in configured order; an explicit None yields an empty list.
+        # side_effects: none.
+        # error_behavior: raises ValueError for unsupported input shapes.
+        # END_FUNCTION_CONTRACT: F-M-CONFIG._parse_today_narrative_fallback_models
+        # The runtime contract is a comma-separated env value while the
+        # application consumes a typed ordered model list.
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, (list, tuple)):
+            return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+        if value is None:
+            return []
+        raise ValueError("TODAY_NARRATIVE_FALLBACK_MODELS must be comma-separated")
 
     # --- Nightly Today convergence pre-generation (P5) ---
     # All values are positive by contract so the one-shot job fails closed

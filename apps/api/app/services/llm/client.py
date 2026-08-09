@@ -1,8 +1,9 @@
 # ############################################################################
 # AI_HEADER: MODULE_LLM_CLIENT
-# ROLE: LLM HTTP client — OpenRouter, DeepSeek, Anthropic providers
+# ROLE: LLM HTTP client — OpenRouter and Anthropic providers with a configured
+#       OpenRouter fallback model.
 # DEPENDENCIES: anthropic, httpx, app.core.config
-# GRACE_ANCHORS: [OPENROUTER_CLIENT, DEEPSEEK_CLIENT, ANTHROPIC_CLIENT, LLM_CLIENT_FALLBACK]
+# GRACE_ANCHORS: [OPENROUTER_CLIENT, FALLBACK_CLIENT, ANTHROPIC_CLIENT, LLM_CLIENT_FALLBACK]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-LLM-CLIENT
@@ -17,10 +18,10 @@
 #   - M-CONFIG (settings)
 #   - anthropic, httpx
 # side_effects:
-#   - HTTP requests to OpenRouter / DeepSeek / Anthropic
+#   - HTTP requests to OpenRouter / Anthropic
 # emitted_logs: llm.response_rejected
 # invariants:
-#   - falls back through providers: OpenRouter → DeepSeek → None
+#   - falls back through models: primary OpenRouter → configured fallback → None
 # failure_policy:
 #   - returns None if all providers fail
 #   - raises HoraryGenerationError if horary fails after 2 attempts
@@ -33,8 +34,8 @@
 #   - LLMClient._generate_text
 # semantic_blocks:
 #   - OPENROUTER_CLIENT: primary provider
-#   - DEEPSEEK_CLIENT: first fallback
-#   - ANTHROPIC_CLIENT: second fallback
+#   - FALLBACK_CLIENT: configured OpenRouter fallback model
+#   - ANTHROPIC_CLIENT: legacy SDK boundary
 #   - LLM_CLIENT_FALLBACK: fallback chain logic
 # END_MODULE_MAP: M-LLM-CLIENT
 
@@ -78,7 +79,13 @@ class LLMClient:
         elif self.provider != "openrouter":
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
-    async def _openrouter_generate(self, prompt: str, max_tokens: int) -> str:
+    async def _openrouter_generate(
+        self,
+        prompt: str,
+        max_tokens: int,
+        *,
+        model: str | None = None,
+    ) -> str:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{settings.openrouter_base_url}/chat/completions",
@@ -89,7 +96,7 @@ class LLMClient:
                     "X-Title": settings.openrouter_app_name,
                 },
                 json={
-                    "model": settings.llm_model,
+                    "model": model or settings.llm_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_tokens,
                 },
@@ -99,25 +106,13 @@ class LLMClient:
             return resp.json()["choices"][0]["message"]["content"].strip()
 
     async def _deepseek_generate(self, prompt: str, max_tokens: int) -> str:
-        key = getattr(settings, "deepseek_api_key", None)
-        if not key:
-            raise ValueError("DEEPSEEK_API_KEY not set")
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                },
-                timeout=60.0,
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+        # Keep the legacy method name for compatibility; use the supported
+        # OpenRouter-owned fallback model.
+        return await self._openrouter_generate(
+            prompt,
+            max_tokens,
+            model=settings.llm_fallback_model,
+        )
 
     async def _anthropic_generate(self, prompt: str, max_tokens: int) -> str:
         resp = self.anthropic_client.messages.create(
@@ -128,7 +123,7 @@ class LLMClient:
         return resp.content[0].text.strip()
 
     async def _generate_text(self, prompt: str, max_tokens: int) -> str | None:
-        """Generate text with fallback: OpenRouter → DeepSeek → None."""
+        """Generate text with fallback: OpenRouter → configured model → None."""
         try:
             return await self._openrouter_generate(prompt, max_tokens)
         except Exception as e:
@@ -147,7 +142,7 @@ class LLMClient:
                 log_event(
                     "llm.response_rejected",
                     level="warn",
-                    msg=f"[LLM] DeepSeek fallback failed: {type(e).__name__}",
+                    msg=f"[LLM] OpenRouter fallback failed: {type(e).__name__}",
                     payload={"reason": _error_reason(e)},
                 )
 

@@ -42,7 +42,9 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
+from app.core.config import Settings
 from app.services.llm_service import LLMService
+from app.services.llm.client import LLMClient
 from app.schemas.normalization import AstroSignal
 
 
@@ -217,6 +219,133 @@ async def test_generate_reading_max_paragraphs(sample_signals):
         assert len(paragraphs) == 3
         assert paragraphs == ["P1.", "P2.", "P3."]
 # END_BLOCK: TEST_MAX_PARAGRAPHS
+
+
+# START_BLOCK: TEST_FLASH_STRICT_TRANSPORT
+def test_today_narrative_settings_defaults_and_csv_fallbacks() -> None:
+    defaults = Settings(_env_file=None)
+    assert defaults.llm_model == "openai/gpt-4.1-nano"
+    assert defaults.today_narrative_model_pregen == "deepseek/deepseek-v4-flash"
+    assert defaults.today_narrative_model_ondemand == "openai/gpt-4.1-nano"
+    assert defaults.today_narrative_fallback_models == ["google/gemma-4-31b-it"]
+    assert defaults.today_narrative_pregen_max_output_tokens == 3000
+
+    configured = Settings(
+        _env_file=None,
+        TODAY_NARRATIVE_FALLBACK_MODELS="model-a, model-b",
+    )
+    assert configured.today_narrative_fallback_models == ["model-a", "model-b"]
+
+
+@pytest.mark.asyncio
+async def test_openrouter_legacy_body_is_byte_identical() -> None:
+    response = MagicMock()
+    response.json = MagicMock(return_value={"choices": [{"message": {"content": "ok"}}]})
+    response.raise_for_status = MagicMock()
+    client = MagicMock()
+    client.post = AsyncMock(return_value=response)
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+        mock_class.return_value.__aenter__ = AsyncMock(return_value=client)
+        mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
+        await LLMService()._openrouter_generate("prompt", 123)
+
+    assert client.post.call_args.kwargs["json"] == {
+        "model": "openai/gpt-4.1-nano",
+        "messages": [{"role": "user", "content": "prompt"}],
+        "max_tokens": 123,
+    }
+
+
+@pytest.mark.asyncio
+async def test_openrouter_strict_transport_has_system_models_and_provider_guard() -> None:
+    response_json = {"choices": [{"message": {"content": "{}"}}]}
+    response = MagicMock()
+    response.json = MagicMock(return_value=response_json)
+    response.raise_for_status = MagicMock()
+    client = MagicMock()
+    client.post = AsyncMock(return_value=response)
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+        mock_class.return_value.__aenter__ = AsyncMock(return_value=client)
+        mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
+        service = LLMService()
+        await service._openrouter_generate(
+            "facts",
+            3000,
+            system="rules",
+            model="deepseek/deepseek-v4-flash",
+            models=["deepseek/deepseek-v4-flash", "google/gemma-4-31b-it"],
+            json_schema={"type": "object"},
+        )
+
+    body = client.post.call_args.kwargs["json"]
+    assert body["model"] == "deepseek/deepseek-v4-flash"
+    assert body["models"] == ["deepseek/deepseek-v4-flash", "google/gemma-4-31b-it"]
+    assert body["messages"] == [
+        {"role": "system", "content": "rules"},
+        {"role": "user", "content": "facts"},
+    ]
+    assert body["max_tokens"] == 3000
+    assert body["provider"] == {"require_parameters": True}
+    assert body["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "today_narrative",
+            "strict": True,
+            "schema": {"type": "object"},
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_generate_text_forwards_model_system_and_models() -> None:
+    service = LLMService()
+    with patch.object(service, "_openrouter_generate", new=AsyncMock(return_value="ok")) as primary:
+        result = await service._generate_text(
+            "facts",
+            3000,
+            system="rules",
+            model="deepseek/deepseek-v4-flash",
+            models=["deepseek/deepseek-v4-flash", "google/gemma-4-31b-it"],
+        )
+
+    assert result == "ok"
+    primary.assert_awaited_once_with(
+        "facts",
+        3000,
+        json_schema=None,
+        json_object=False,
+        deadline_at=None,
+        system="rules",
+        model="deepseek/deepseek-v4-flash",
+        models=["deepseek/deepseek-v4-flash", "google/gemma-4-31b-it"],
+    )
+
+
+@pytest.mark.asyncio
+async def test_legacy_fallback_uses_configured_openrouter_model() -> None:
+    service = LLMService()
+    with patch("app.services.llm_service.settings.llm_fallback_model", "custom/fallback"):
+        with patch.object(service, "_openrouter_generate", new=AsyncMock(return_value="ok")) as fallback:
+            result = await service._deepseek_generate("prompt", 100)
+
+    assert result == "ok"
+    fallback.assert_awaited_once()
+    assert fallback.await_args.kwargs["model"] == "custom/fallback"
+
+
+@pytest.mark.asyncio
+async def test_legacy_client_fallback_uses_configured_openrouter_model() -> None:
+    client = LLMClient()
+    with patch("app.services.llm.client.settings.llm_fallback_model", "custom/fallback"):
+        with patch.object(client, "_openrouter_generate", new=AsyncMock(return_value="ok")) as fallback:
+            result = await client._deepseek_generate("prompt", 100)
+
+    assert result == "ok"
+    fallback.assert_awaited_once()
+    assert fallback.await_args.kwargs["model"] == "custom/fallback"
+# END_BLOCK: TEST_FLASH_STRICT_TRANSPORT
 
 
 # START_BLOCK: TEST_WHY_SECTIONS_PARSING

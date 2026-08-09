@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: MODULE_LLM_SERVICE
-# ROLE: LLM integration — headline, reading, notes, why-sections, horary
+# ROLE: LLM integration — narrative generation with configured OpenRouter fallback
 # DEPENDENCIES: anthropic, httpx, app.core.config
 # GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION, NOTES_GENERATION, WHY_GENERATION, LLM_CLIENT]
 # ############################################################################
@@ -20,9 +20,9 @@
 #   - M-CONFIG (settings)
 #   - anthropic, httpx
 # side_effects:
-#   - HTTP requests to OpenRouter / DeepSeek / Anthropic
+#   - HTTP requests to OpenRouter / Anthropic
 # invariants:
-#   - falls back through providers: OpenRouter → DeepSeek → None
+#   - falls back through models: primary OpenRouter → configured fallback → None
 #   - horary generation has 2 retry attempts
 #   - horary: the LLM writes ONLY five narrative strings through
 #     provider-enforced Structured Outputs (OpenRouter response_format
@@ -208,8 +208,8 @@ def _horary_narrative_requirements_prompt() -> str:
 
 # Provider-enforced Structured Outputs for the 12-sphere concrete advice
 # batch: exactly the 12 canonical string keys, all required, no extras.
-# The DeepSeek fallback stays plain; local parse/type/key/claim/row
-# validation remains the fail-closed boundary regardless of provider.
+# The configured fallback stays provider-enforced when a schema is supplied;
+# local parse/type/key/claim/row validation remains fail-closed regardless.
 _SPHERE_DETAILS_SCHEMA = {
     "type": "object",
     "properties": {
@@ -314,17 +314,32 @@ class LLMService:
         json_schema: dict | None = None,
         json_object: bool = False,
         deadline_at: float | None = None,
+        system: str | None = None,
+        model: str | None = None,
+        models: list[str] | None = None,
     ) -> str:
         body: dict = {
-            "model": settings.llm_model,
-            "messages": [{"role": "user", "content": prompt}],
+            "model": model or settings.llm_model,
+            "messages": (
+                ([{"role": "system", "content": system}] if system else [])
+                + [{"role": "user", "content": prompt}]
+            ),
             "max_tokens": max_tokens,
         }
+        if models is not None:
+            body["models"] = list(models)
         if json_schema is not None:
             # Provider-enforced Structured Outputs (Horary narrative,
             # natal report sections and Today concrete advice only;
             # ordinary calls keep the byte-identical body).
-            body["response_format"] = {"type": "json_schema", "json_schema": json_schema}
+            wire_schema = json_schema
+            if not {"name", "schema"}.issubset(json_schema):
+                wire_schema = {
+                    "name": "today_narrative",
+                    "strict": True,
+                    "schema": json_schema,
+                }
+            body["response_format"] = {"type": "json_schema", "json_schema": wire_schema}
             body["provider"] = {"require_parameters": True}
         elif json_object:
             # Plain JSON mode for dynamic-key responses (focus narrative):
@@ -363,35 +378,23 @@ class LLMService:
         prompt: str,
         max_tokens: int,
         deadline_at: float | None = None,
+        *,
+        json_schema: dict | None = None,
+        json_object: bool = False,
+        system: str | None = None,
     ) -> str:
-        key = getattr(settings, "deepseek_api_key", None)
-        if not key:
-            raise ValueError("DEEPSEEK_API_KEY not set")
-
-        timeout = 60.0
-        if deadline_at is not None:
-            import time
-            remaining = deadline_at - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("Deadline exceeded before request start")
-            timeout = min(60.0, remaining)
-
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                },
-                timeout=timeout,
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+        # Keep the legacy method name for callers/tests, but route the old
+        # fallback through the supported OpenRouter model instead of the EOL
+        # deprecated direct-provider endpoint.
+        return await self._openrouter_generate(
+            prompt,
+            max_tokens,
+            json_schema=json_schema,
+            json_object=json_object,
+            deadline_at=deadline_at,
+            system=system,
+            model=settings.llm_fallback_model,
+        )
 
     async def _anthropic_generate(self, prompt: str, max_tokens: int) -> str:
         resp = self.anthropic_client.messages.create(
@@ -409,19 +412,26 @@ class LLMService:
         json_schema: dict | None = None,
         json_object: bool = False,
         deadline_at: float | None = None,
+        system: str | None = None,
+        model: str | None = None,
+        models: list[str] | None = None,
     ) -> str | None:
-        """Generate text with fallback: OpenRouter → DeepSeek → None.
+        """Generate text with fallback: OpenRouter → configured fallback → None.
 
-        json_schema (Horary narrative, natal report sections and Today
-        concrete advice only) is enforced provider-side via
-        OpenRouter Structured Outputs; the DeepSeek fallback always runs the
-        plain prompt (no strict declaration without provider proof) — final
-        local validation runs regardless of provider.
+        json_schema is enforced provider-side via OpenRouter Structured
+        Outputs; local validation remains the fail-closed boundary.
         """
         # 1. Primary: OpenRouter
         try:
             return await self._openrouter_generate(
-                prompt, max_tokens, json_schema=json_schema, json_object=json_object, deadline_at=deadline_at
+                prompt,
+                max_tokens,
+                json_schema=json_schema,
+                json_object=json_object,
+                deadline_at=deadline_at,
+                system=system,
+                model=model,
+                models=models,
             )
         except Exception as e:
             if isinstance(e, asyncio.CancelledError):
@@ -434,7 +444,7 @@ class LLMService:
                     payload={"reason": "provider_error", "kind": type(e).__name__},
                 )
 
-        # 2. Fallback: DeepSeek - check if enough remaining budget (>= 15s)
+        # 2. Configured OpenRouter fallback - check remaining budget (>= 15s)
         if deadline_at is not None:
             import time
             remaining = deadline_at - time.monotonic()
@@ -443,13 +453,20 @@ class LLMService:
                     log_event(
                         "llm.response_rejected",
                         level="warn",
-                        msg=f"[LLM] Skipping DeepSeek fallback: remaining budget {remaining:.1f}s < 15.0s threshold",
+                        msg=f"[LLM] Skipping configured fallback: remaining budget {remaining:.1f}s < 15.0s threshold",
                         payload={"reason": "insufficient_remaining_budget"},
                     )
                 return None
 
         try:
-            return await self._deepseek_generate(prompt, max_tokens, deadline_at=deadline_at)
+            return await self._deepseek_generate(
+                prompt,
+                max_tokens,
+                deadline_at=deadline_at,
+                json_schema=json_schema,
+                json_object=json_object,
+                system=system,
+            )
         except Exception as e:
             if isinstance(e, asyncio.CancelledError):
                 raise
@@ -457,7 +474,7 @@ class LLMService:
                 log_event(
                     "llm.response_rejected",
                     level="warn",
-                    msg=f"[LLM] DeepSeek fallback failed: {type(e).__name__}",
+                    msg=f"[LLM] OpenRouter fallback failed: {type(e).__name__}",
                     payload={"reason": "provider_error", "kind": type(e).__name__},
                 )
 
@@ -1043,7 +1060,7 @@ JSON:"""
         # returns:
         #   - dict with key "blocks" -> list of 8 block dicts (fixed order)
         # side_effects:
-        #   - calls external LLM provider (OpenRouter / DeepSeek fallback)
+        #   - calls external LLM provider (OpenRouter / configured fallback)
         # emitted_logs:
         #   - llm.response_rejected per rejected attempt with a sanitized
         #     reject code (empty/parse/type/missing/quality/provider); payload

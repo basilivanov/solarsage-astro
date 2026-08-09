@@ -793,6 +793,7 @@ class TodayPregenService:
             "prompt_version": prompt_version,
             "correlation_id": self._run_id,
             "timeout_seconds": self.settings.day_pregen_llm_deadline_seconds,
+            "generation_path": "pregen",
         }
         if self.llm is not None:
             kwargs["llm"] = self.llm
