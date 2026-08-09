@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "run_id": "20260809T082931Z",
+  "blocks": [
+    {
+      "block_id": "blk-01",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-02",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-03",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-04",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-05",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-06",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-07",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-08",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-09",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-10",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-11",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-12",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-13",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-14",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-15",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-16",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-17",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-18",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-19",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-20",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-21",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-22",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-23",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-24",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-25",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-26",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-27",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-28",
+      "candidate": "candidate-a",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-29",
+      "candidate": "candidate-b",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    },
+    {
+      "block_id": "blk-30",
+      "candidate": "candidate-c",
+      "beauty": null,
+      "accuracy": null,
+      "note": ""
+    }
+  ]
+}

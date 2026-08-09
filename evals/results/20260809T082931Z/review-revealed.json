@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "run_id": "20260809T082931Z",
+  "revealed_at": "2026-08-09T15:05:00Z",
+  "review_type": "owner aggregate ranking (no per-block scores)",
+  "owner_ranking": ["candidate-c", "candidate-b", "candidate-a"],
+  "candidates": {
+    "candidate-a": {
+      "model_key": "baseline-nano",
+      "model": "openai/gpt-4.1-nano",
+      "arm": "json_object",
+      "label": "GPT-4.1 nano (baseline, текущий продовый конфиг)",
+      "owner_rank": 3
+    },
+    "candidate-b": {
+      "model_key": "gemma-4-31b",
+      "model": "google/gemma-4-31b-it",
+      "arm": "strict_json_schema",
+      "label": "Gemma 4 31B IT",
+      "owner_rank": 2
+    },
+    "candidate-c": {
+      "model_key": "deepseek-v4-flash",
+      "model": "deepseek/deepseek-v4-flash",
+      "arm": "strict_json_schema",
+      "label": "DeepSeek V4 Flash",
+      "owner_rank": 1
+    }
+  },
+  "combined_verdict": {
+    "winner": "deepseek-v4-flash + strict_json_schema",
+    "rationale": "Слепое review владельца: лучшие тексты. Автометрики: json_valid 1.0, auto_score 78.2 (nano 74.7), sanitizer 0.58, $2.37/мес на 3000 вызовов (nano $1.70). Strict-схема подавляет reasoning 2295→264 токена.",
+    "runner_up": "gemma-4-31b + strict_json_schema — второй по вкусу владельца, топ по auto_score (79.9), $1.81/мес; разумный fallback-претендент.",
+    "loser_note": "baseline nano худший по вкусу при минимальной цене; pro/qwen вне ценовой гонки ($15-22/мес) без преимущества в качестве.",
+    "latency_caveat": "flash p50 27s / p95 124s — только офлайн day-pregen (04:07 батч). On-demand cache-miss путь с TODAY_NARRATIVE_TIMEOUT_SECONDS=45 будет часто уходить в таймаут: для интерактивного fallback оставить nano или детерминированный snapshot."
+  }
+}
