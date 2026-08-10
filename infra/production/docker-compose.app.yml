@@ -67,9 +67,29 @@ x-api-common: &api-common
     SOLARSAGE_URL: http://sidecar:8001
     LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
     LLM_MODEL: ${LLM_MODEL:-openai/gpt-4.1-nano}
+    # Today convergence narrative routing + pregen (2026-08-10 canon; explicit
+    # pass-through required — containers never see app.env keys not listed here;
+    # missing DAY_PREGEN_LLM_DEADLINE_SECONDS silently capped flash retries at
+    # 45s on the first prod pregen run).
+    TODAY_NARRATIVE_MODEL_PREGEN: ${TODAY_NARRATIVE_MODEL_PREGEN:-deepseek/deepseek-v4-flash}
+    TODAY_NARRATIVE_MODEL_ONDEMAND: ${TODAY_NARRATIVE_MODEL_ONDEMAND:-openai/gpt-4.1-nano}
+    TODAY_NARRATIVE_FALLBACK_MODELS: ${TODAY_NARRATIVE_FALLBACK_MODELS:-google/gemma-4-31b-it}
+    TODAY_NARRATIVE_PREGEN_MAX_OUTPUT_TOKENS: ${TODAY_NARRATIVE_PREGEN_MAX_OUTPUT_TOKENS:-3000}
+    TODAY_NARRATIVE_MAX_OUTPUT_TOKENS: ${TODAY_NARRATIVE_MAX_OUTPUT_TOKENS:-2000}
+    TODAY_NARRATIVE_TIMEOUT_SECONDS: ${TODAY_NARRATIVE_TIMEOUT_SECONDS:-45}
+    TODAY_NARRATIVE_PROMPT_VERSION: ${TODAY_NARRATIVE_PROMPT_VERSION:-today-narrative-v6}
+    TODAY_LLM_ON_DEMAND_CONCURRENCY: ${TODAY_LLM_ON_DEMAND_CONCURRENCY:-3}
+    LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-google/gemma-4-31b-it}
+    DAY_PREGEN_ACTIVE_DAYS: ${DAY_PREGEN_ACTIVE_DAYS:-14}
+    DAY_PREGEN_LLM_ACTIVE_DAYS: ${DAY_PREGEN_LLM_ACTIVE_DAYS:-7}
+    DAY_PREGEN_CONCURRENCY: ${DAY_PREGEN_CONCURRENCY:-3}
+    DAY_PREGEN_MAX_USERS: ${DAY_PREGEN_MAX_USERS:-500}
+    DAY_PREGEN_DETERMINISTIC_DEADLINE_SECONDS: ${DAY_PREGEN_DETERMINISTIC_DEADLINE_SECONDS:-10}
+    DAY_PREGEN_LLM_DEADLINE_SECONDS: ${DAY_PREGEN_LLM_DEADLINE_SECONDS:-180}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?openrouter key required}
-    # Egress relay override (see infra/relay/): prod sets this to
-    # https://openrouter.ai:8443/api/v1 in /etc/solarsage/app.env
+    # Egress relay override (see infra/relay/): direct openrouter.ai by default;
+    # set OPENROUTER_BASE_URL in app.env only if the host returns to a
+    # geo-blocked jurisdiction.
     OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?telegram bot token required}

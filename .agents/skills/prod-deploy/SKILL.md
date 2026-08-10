@@ -40,6 +40,8 @@ ssh -i ~/.ssh/solarsage_prod_server_ed25519 root@2.26.20.80 'grep -oE "^[A-Z_0-9
 PASS: каждый новый alias из `config.py` присутствует в выводе. FAIL → добавить по процедуре «Изменения prod app.env» ДО диспатча. Значения ключей не печатать никуда.
 Если релиз env не трогает — проверка пропускается.
 
+⚠️ app.env сам по себе НЕ достаточен: compose передаёт в контейнеры только явно перечисленные ключи `infra/production/docker-compose.app.yml` (`x-api-common.environment`). Новый ключ = app.env + compose-строка `${KEY:-default}` + recreate контейнера. Укушено 2026-08-10: `DAY_PREGEN_LLM_DEADLINE_SECONDS=180` лежал в app.env, но не доехал до контейнера — первый prod pregen резал flash-вызовы на дефолтных 45с (2/3 попыток TimeoutError). Проверка после recreate: `docker exec solarsage-api printenv <KEY>`.
+
 **P3b. Версионные пины совпадают с кодом (если релиз трогает расчётный движок/эфемериды):**
 ```bash
 # канон в репо:
