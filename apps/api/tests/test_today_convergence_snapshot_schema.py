@@ -51,7 +51,7 @@ from app.db.models import EveningCheckin, TodaySnapshot, TodaySnapshotNarrative,
 
 API_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = API_DIR.parents[1]
-SNAPSHOT_REVISION = "0031_checkin_observed_spheres"
+SNAPSHOT_REVISION = "0032_pending_promo_token"
 
 
 # START_BLOCK: MIGRATION_ROUNDTRIP
