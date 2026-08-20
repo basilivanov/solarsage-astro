@@ -21,6 +21,7 @@
 # dependencies:
 #   - M-AUTH-TG.dependencies (current_user_id) — sourced from core.dependencies, not from sibling routers
 #   - M-PROFILE.service
+#   - M-PROMO-CAMPAIGN-SERVICE (PromoCampaignService, PromoDomainError)
 # invariants:
 #   - GET on a brand-new user lazily creates an empty profile row; never 404.
 #   - PUT is partial: omitted fields stay as-is.
@@ -28,10 +29,11 @@
 #   - invalid merged birth-time state returns 422 with INVALID_BIRTH_TIME_STATE
 #     before any profile field mutation.
 #   - Response NEVER carries tg_user_id / token_hash / other privacy keys.
+#   - On onboarding completion, valid pending_promo_token is auto-applied without disrupting 200 response.
 # emitted_logs:
 #   - profile.viewed, profile.lazy_created, profile.update_failed
 #   - profile.updated, profile.cache_invalidation_requested,
-#     profile.cache_invalidated
+#     profile.cache_invalidated, promo.pending_auto_apply_failed
 # failure_policy:
 #   - 401 propagates from current_user_id
 #   - 422 from FastAPI on invalid body shape or INVALID_BIRTH_TIME_STATE
@@ -47,6 +49,7 @@
 #   - ROUTE_PROFILE_PUT: PUT /api/profile handler
 # owned_tests:
 #   - apps/api/tests/test_profile_endpoints.py
+#   - apps/api/tests/test_promo_pending_auto_apply.py
 # END_MODULE_MAP: M-PROFILE.api
 
 from __future__ import annotations
@@ -59,13 +62,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import current_user_id
 from app.core.logging import log_block, log_event
-from app.db.models import UserProfile
+from app.db.models import User, UserProfile
 from app.db.session import get_session
 from app.schemas.profile import BirthData, LocationData, ProfileRead, ProfileWrite
 from app.services.profile_service import (
     InvalidBirthTimeState,
     read_profile,
     update_profile,
+)
+from app.services.promo_campaign_service import (
+    PromoCampaignService,
+    PromoDomainError,
 )
 
 router = APIRouter()
@@ -154,9 +161,10 @@ async def put_profile(
     #   and invalidate cache.
     # inputs: body (ProfileWrite), user_id from session, db session
     # returns: ProfileRead with updated data
-    # side_effects: updates profile row, invalidates today cache
+    # side_effects: updates profile row, invalidates today cache, auto-applies pending promo token
     # emitted_logs: profile.updated, profile.update_failed,
-    #   profile.cache_invalidation_requested, profile.cache_invalidated
+    #   profile.cache_invalidation_requested, profile.cache_invalidated,
+    #   promo.pending_auto_apply_failed
     # error_behavior: 401 if not authenticated, 422 on validation failure
     # END_FUNCTION_CONTRACT: F-M-PROFILE.api.put_profile
     try:
@@ -185,5 +193,40 @@ async def put_profile(
         )
 
     await db.commit()
-    return _to_read(profile)
+    result = _to_read(profile)
+
+    # PROMO-PERSIST-02: Auto-apply pending promo token upon onboarding completion
+    user = await db.get(User, user_id)
+    if user and user.pending_promo_token and profile.is_onboarded:
+        pending_token = user.pending_promo_token
+        try:
+            promo_service = PromoCampaignService(db)
+            await promo_service.redeem(user_id, pending_token)
+            user = await db.get(User, user_id)
+            if user:
+                user.pending_promo_token = None
+                await db.commit()
+        except PromoDomainError as err:
+            if err.code in (
+                "INVALID_CODE",
+                "CAMPAIGN_EXPIRED",
+                "CAMPAIGN_FULL",
+                "ALREADY_REDEEMED",
+            ):
+                user = await db.get(User, user_id)
+                if user:
+                    user.pending_promo_token = None
+                    await db.commit()
+            log_event(
+                "promo.pending_auto_apply_failed",
+                payload={"error_code": err.code},
+            )
+        except Exception:
+            await db.rollback()
+            log_event(
+                "promo.pending_auto_apply_failed",
+                payload={"error_code": "UNEXPECTED"},
+            )
+
+    return result
 # END_BLOCK: ROUTE_PROFILE_PUT
