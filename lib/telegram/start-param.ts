@@ -1,31 +1,31 @@
 // ############################################################################
-// AI_HEADER: MODULE_TELEGRAM_START_PARAM — closed Telegram start_param classifier and sessionStorage manager.
-// ROLE: Parses and classifies Telegram WebApp start_param into referral, promo, or ignored intent, and safely manages pending promo tokens in sessionStorage.
+// AI_HEADER: MODULE_TELEGRAM_START_PARAM — closed Telegram start_param classifier and localStorage manager.
+// ROLE: Parses and classifies Telegram WebApp start_param into referral, promo, or ignored intent, and safely manages pending promo tokens in localStorage.
 // DEPENDENCIES: none
 // GRACE_ANCHORS: [TELEGRAM_START_PARAM]
 // WAVE: W-NAMED-PROMO-CAMPAIGN
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TELEGRAM-START-PARAM
-// purpose: Classify raw Telegram WebApp start_param strings into structured intents and manage pending promo tokens in sessionStorage without leaking PII.
+// purpose: Classify raw Telegram WebApp start_param strings into structured intents and manage pending promo tokens in localStorage without leaking PII.
 // owns:
 //   - lib/telegram/start-param.ts
 // inputs:
 //   - rawParam: string | null | undefined
 // outputs:
 //   - StartParamIntent ({ kind: "referral", code } | { kind: "promo", token } | { kind: "ignored" })
-//   - sessionStorage promo token management functions
+//   - localStorage promo token management functions
 //   - localStorage consumed-token marker functions
 // dependencies: none
 // side_effects:
-//   - reads/writes/clears sessionStorage for promo pending token
+//   - reads/writes/clears localStorage for promo pending token
 //   - reads/writes localStorage for promo consumed marker (reload-loop guard)
 //   - updates window.history.replaceState to remove tgWebAppStartParam query parameter from visible URL
 // invariants:
 //   - referral codes are strictly numeric (/^\d+$/)
 //   - promo tokens are strictly Base58 lowercase 12..16 chars containing at least one letter
 //   - input parameters are evaluated exact without trimming leading/trailing whitespace
-//   - pending token uses sessionStorage only; consumed marker uses localStorage only
+//   - pending token and consumed marker both use localStorage safely
 //   - storage functions never throw
 // failure_policy:
 //   - invalid start params or storage errors fail-closed to ignored or null without throwing
@@ -44,7 +44,7 @@
 //   - PROMO_CONSUMED_STORAGE_KEY
 // semantic_blocks:
 //   - CLASSIFIER: pure regex classification into referral, promo, or ignored
-//   - STORAGE_HELPERS: safe sessionStorage operations for pending promo token
+//   - STORAGE_HELPERS: safe localStorage operations for pending promo token
 //   - CONSUMED_MARKER: localStorage consumed-token marker (reload-loop guard)
 //   - URL_CLEANUP: query parameter removal from visible browser location
 // owned_tests:
@@ -90,10 +90,10 @@ export function classifyStartParam(rawParam?: string | null): StartParamIntent {
 
 // START_BLOCK: STORAGE_HELPERS
 // START_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.savePendingPromoToken
-// purpose: Validate and store a pending promo token into sessionStorage.
+// purpose: Validate and store a pending promo token into localStorage.
 // inputs: token — promo token string
 // returns: boolean — true if successfully stored, false otherwise
-// side_effects: writes to sessionStorage
+// side_effects: writes to localStorage
 // emitted_logs: none
 // error_behavior: catches storage exceptions and returns false without throwing
 // END_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.savePendingPromoToken
@@ -102,28 +102,28 @@ export function savePendingPromoToken(token: string): boolean {
   if (!PROMO_REGEX.test(token)) return false
 
   try {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      window.sessionStorage.setItem(PROMO_PENDING_SESSION_KEY, token)
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem(PROMO_PENDING_SESSION_KEY, token)
       return true
     }
   } catch {
-    // sessionStorage unavailable or blocked
+    // localStorage unavailable or blocked
   }
   return false
 }
 
 // START_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.getPendingPromoToken
-// purpose: Retrieve and validate pending promo token from sessionStorage, clearing it if invalid.
+// purpose: Retrieve and validate pending promo token from localStorage, clearing it if invalid.
 // inputs: none
 // returns: string | null — validated promo token or null
-// side_effects: reads and potentially clears invalid item from sessionStorage
+// side_effects: reads and potentially clears invalid item from localStorage
 // emitted_logs: none
 // error_behavior: catches storage exceptions and returns null without throwing
 // END_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.getPendingPromoToken
 export function getPendingPromoToken(): string | null {
   try {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      const stored = window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)
+    if (typeof window !== "undefined" && window.localStorage) {
+      const stored = window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)
       if (!stored) return null
       if (PROMO_REGEX.test(stored)) {
         return stored
@@ -132,26 +132,26 @@ export function getPendingPromoToken(): string | null {
       clearPendingPromoToken()
     }
   } catch {
-    // sessionStorage unavailable
+    // localStorage unavailable
   }
   return null
 }
 
 // START_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.clearPendingPromoToken
-// purpose: Remove pending promo token from sessionStorage.
+// purpose: Remove pending promo token from localStorage.
 // inputs: none
 // returns: void
-// side_effects: removes item from sessionStorage
+// side_effects: removes item from localStorage
 // emitted_logs: none
 // error_behavior: catches storage exceptions without throwing
 // END_FUNCTION_CONTRACT: F-M-TELEGRAM-START-PARAM.clearPendingPromoToken
 export function clearPendingPromoToken(): void {
   try {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      window.sessionStorage.removeItem(PROMO_PENDING_SESSION_KEY)
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.removeItem(PROMO_PENDING_SESSION_KEY)
     }
   } catch {
-    // sessionStorage unavailable
+    // localStorage unavailable
   }
 }
 // END_BLOCK: STORAGE_HELPERS

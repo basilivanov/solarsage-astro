@@ -1,16 +1,16 @@
 // ############################################################################
 // AI_HEADER: MODULE_TESTS_START_PARAM
-// ROLE: Unit tests for Telegram start_param classification, Base58 rules, and sessionStorage helpers (Slice 01)
+// ROLE: Unit tests for Telegram start_param classification, Base58 rules, and localStorage helpers (Slice 01)
 // DEPENDENCIES: vitest, lib/telegram/start-param
 // GRACE_ANCHORS: [TELEGRAM_START_PARAM_TESTS]
 // WAVE: W-NAMED-PROMO-CAMPAIGN
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TESTS-START-PARAM
-// purpose: Validate start_param intent classification (referral vs promo vs ignored), Base58 constraints, sessionStorage pending promo token isolation, and URL query parameter cleanup.
+// purpose: Validate start_param intent classification (referral vs promo vs ignored), Base58 constraints, localStorage pending promo token isolation, and URL query parameter cleanup.
 // owns:
 //   - __tests__/lib/start-param.test.ts
-// inputs: raw start_param strings and browser location/sessionStorage mocks
+// inputs: raw start_param strings and browser location/localStorage mocks
 // outputs: Vitest assertion results
 // dependencies:
 //   - M-TELEGRAM-START-PARAM (lib/telegram/start-param)
@@ -23,7 +23,7 @@
 //   - none (test suite)
 // semantic_blocks:
 //   - CLASSIFICATION_TESTS: test referral, promo, and ignored routing rules
-//   - STORAGE_TESTS: test sessionStorage promo token persistence and validation
+//   - STORAGE_TESTS: test localStorage promo token persistence and validation
 //   - URL_CLEANUP_TESTS: test tgWebAppStartParam removal from window location
 // owned_tests:
 //   - __tests__/lib/start-param.test.ts
@@ -41,8 +41,9 @@ import {
 
 describe("Telegram start_param Classifier & Storage — Slice 01", () => {
   beforeEach(() => {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      window.sessionStorage.clear()
+    if (typeof window !== "undefined") {
+      if (window.sessionStorage) window.sessionStorage.clear()
+      if (window.localStorage) window.localStorage.clear()
     }
   })
 
@@ -93,11 +94,11 @@ describe("Telegram start_param Classifier & Storage — Slice 01", () => {
     })
   })
 
-  describe("SessionStorage Promo Token Helpers", () => {
-    it("stores valid promo token in sessionStorage and retrieves it successfully", () => {
+  describe("LocalStorage Promo Token Helpers", () => {
+    it("stores valid promo token in localStorage and retrieves it successfully", () => {
       const saved = savePendingPromoToken("m7q4n9x2r5kd")
       expect(saved).toBe(true)
-      expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+      expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
       expect(getPendingPromoToken()).toBe("m7q4n9x2r5kd")
     })
 
@@ -108,21 +109,15 @@ describe("Telegram start_param Classifier & Storage — Slice 01", () => {
     })
 
     it("clears invalid stored token upon retrieval", () => {
-      window.sessionStorage.setItem(PROMO_PENDING_SESSION_KEY, "invalid_stored_value")
+      window.localStorage.setItem(PROMO_PENDING_SESSION_KEY, "invalid_stored_value")
       expect(getPendingPromoToken()).toBeNull()
-      expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
+      expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
     })
 
     it("clears token on clearPendingPromoToken call", () => {
       savePendingPromoToken("m7q4n9x2r5kd")
       clearPendingPromoToken()
       expect(getPendingPromoToken()).toBeNull()
-    })
-
-    it("uses sessionStorage ONLY and never writes to localStorage", () => {
-      const localSetSpy = vi.spyOn(window.localStorage, "setItem")
-      savePendingPromoToken("m7q4n9x2r5kd")
-      expect(localSetSpy).not.toHaveBeenCalled()
     })
   })
 

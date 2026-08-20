@@ -7,7 +7,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-HOOK-TELEGRAM-AUTH
-// purpose: Authenticate Telegram WebApp session via /api/auth/telegram, route start_param into referral vs promo intents safely, and manage pending promo token in sessionStorage.
+// purpose: Authenticate Telegram WebApp session via /api/auth/telegram, route start_param into referral vs promo intents safely, and manage pending promo token in localStorage.
 // owns:
 //   - hooks/use-telegram-auth.ts
 // inputs: Component props / hook params
@@ -16,7 +16,7 @@
 // side_effects:
 //   - POST /api/auth/telegram or /api/auth/dev
 //   - POST /api/referral/claim (only for numeric referral codes)
-//   - writes promo intent to sessionStorage
+//   - writes promo intent to localStorage
 //   - cleans tgWebAppStartParam from browser location URL
 // emitted_logs: frontend.flow_failed
 // invariants:

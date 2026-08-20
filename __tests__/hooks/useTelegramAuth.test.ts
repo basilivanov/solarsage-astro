@@ -7,7 +7,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TESTS-USE-TELEGRAM-AUTH
-// purpose: Validate Telegram authentication lifecycle, dev vs production auth, start_param intent classification (referral vs promo vs ignored), promo sessionStorage persistence, URL cleanup, and PII log redaction.
+// purpose: Validate Telegram authentication lifecycle, dev vs production auth, start_param intent classification (referral vs promo vs ignored), promo localStorage persistence, URL cleanup, and PII log redaction.
 // owns:
 //   - __tests__/hooks/useTelegramAuth.test.ts
 // inputs: mock window.Telegram, webApp context, fetch responses and start_params
@@ -24,7 +24,7 @@
 //   - none (test suite)
 // semantic_blocks:
 //   - AUTH_TESTS: test dev auth, production telegram auth, timeout, and duplicate prevention
-//   - START_PARAM_TESTS: test referral auto-claim (numeric only), promo intent sessionStorage routing, ignored intent, URL cleanup, and PII log redaction
+//   - START_PARAM_TESTS: test referral auto-claim (numeric only), promo intent localStorage routing, ignored intent, URL cleanup, and PII log redaction
 // owned_tests:
 //   - __tests__/hooks/useTelegramAuth.test.ts
 // END_MODULE_MAP: M-TESTS-USE-TELEGRAM-AUTH
@@ -278,7 +278,7 @@ describe("useTelegramAuth", () => {
     )
   })
 
-  it("routes promo intent start_param to sessionStorage AFTER successful auth and skips referral claim", async () => {
+  it("routes promo intent start_param to localStorage AFTER successful auth and skips referral claim", async () => {
     ;(process.env as any).NODE_ENV = "production"
     setupTelegram({
       initDataUnsafe: { start_param: "m7q4n9x2r5kd", user: { id: 1 } },
@@ -299,7 +299,7 @@ describe("useTelegramAuth", () => {
     )
     expect(referralCalls).toHaveLength(0)
 
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
     expect(window.localStorage.getItem("__astro_referral_code")).toBeNull()
   })
 
@@ -319,7 +319,7 @@ describe("useTelegramAuth", () => {
       { timeout: LONG_TIMEOUT }
     )
 
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
   })
 
   it("falls back to parsing start_param from the raw initData string when initDataUnsafe misses it", async () => {
@@ -337,7 +337,7 @@ describe("useTelegramAuth", () => {
       { timeout: LONG_TIMEOUT }
     )
 
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
   })
 
   it("stores promo intent on the dev-auth path before returning", async () => {
@@ -354,7 +354,7 @@ describe("useTelegramAuth", () => {
         { timeout: LONG_TIMEOUT }
       )
 
-      expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+      expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
     } finally {
       ;(window as any).location = originalLocation
     }
@@ -404,7 +404,7 @@ describe("useTelegramAuth", () => {
       ([url]: [string]) => url === "/api/referral/claim"
     )
     expect(referralCalls).toHaveLength(0)
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
   })
 
   it("never claims referral when invalid raw start_param is present even if preloaded numeric code is in localStorage", async () => {
@@ -483,7 +483,7 @@ describe("useTelegramAuth", () => {
     )
 
     expect(result.current.isAuthenticated).toBe(false)
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
   })
 
   it("reads start_param from URL query parameter when initDataUnsafe.start_param is missing, cleans URL, and stores promo token after auth", async () => {
@@ -514,8 +514,8 @@ describe("useTelegramAuth", () => {
       "/readings?other=abc#tab-2"
     )
 
-    // Verify promo token was successfully stored in sessionStorage
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+    // Verify promo token was successfully stored in localStorage
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
   })
 
   it("ignores invalid start_param without creating storage keys or calling referral claim", async () => {
@@ -538,7 +538,7 @@ describe("useTelegramAuth", () => {
       ([url]: [string]) => url === "/api/referral/claim"
     )
     expect(referralCalls).toHaveLength(0)
-    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
+    expect(window.localStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
     expect(window.localStorage.getItem("__astro_referral_code")).toBeNull()
   })
 
