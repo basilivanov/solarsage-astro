@@ -62,7 +62,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from app.api.auth import _is_local_dev_auth_request
+from app.api.auth import (
+    _host_header_name,
+    _is_local_dev_auth_request,
+    _is_loopback_client,
+)
 from app.core.config import settings
 from app.db.models import Session as SessionRow, User, UserProfile
 
@@ -542,3 +546,17 @@ async def test_dev_auth_repairs_existing_onboarded_profile_invalid_gender(
     await db_session.refresh(profile)
     assert profile.is_onboarded is True
     assert profile.gender in {"female", "male"}
+
+
+def test_host_header_name_and_loopback_helpers() -> None:
+    assert _host_header_name(None) == ""
+    assert _host_header_name("[::1]:8000") == "::1"
+    assert _host_header_name("[invalid") == "[invalid"
+    assert _host_header_name("::1") == "::1"
+    assert _host_header_name("localhost:8000") == "localhost"
+
+    req_no_client = Request({"type": "http", "client": None, "headers": []})
+    assert _is_loopback_client(req_no_client) is False
+
+    req_named = Request({"type": "http", "client": ("localhost", 1234), "headers": []})
+    assert _is_loopback_client(req_named) is True
