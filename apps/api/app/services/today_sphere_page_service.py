@@ -896,10 +896,14 @@ class TodaySpherePageService:
     @staticmethod
     def _validate_profile(profile: UserProfile | None) -> UserProfile:
         if profile is None or not profile.is_onboarded:
+            raw_missing = NatalContextService.missing_profile_fields(profile)
             raise ProfileIncompleteError(
-                NatalContextService.missing_profile_fields(profile)
+                [f for f in raw_missing if not (f == "birth_time" and profile and profile.birth_time_mode in ("unknown", "bucket"))]
             )
-        missing = NatalContextService.missing_profile_fields(profile)
+        missing = [
+            field for field in NatalContextService.missing_profile_fields(profile)
+            if not (field == "birth_time" and profile.birth_time_mode in ("unknown", "bucket"))
+        ]
         if missing:
             raise ProfileIncompleteError(missing)
         return profile
@@ -986,7 +990,7 @@ class TodaySpherePageService:
             client = get_solarsage_client()
             raw_layer = await client.get_activation_layer(
                 birth_date=profile.birthday.isoformat(),  # type: ignore[union-attr]
-                birth_time=profile.birth_time.strftime("%H:%M"),  # type: ignore[union-attr]
+                birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
                 birth_lat=float(profile.birth_lat),  # type: ignore[arg-type]
                 birth_lon=float(profile.birth_lon),  # type: ignore[arg-type]
                 birth_tz=profile.birth_tz,  # type: ignore[arg-type]

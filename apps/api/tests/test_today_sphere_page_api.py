@@ -277,6 +277,52 @@ async def test_sphere_page_keeps_natal_when_period_sidecar_is_unavailable(
     assert data["natal"]["state"] == "ready"
     assert data["housesAvailable"] is False
     assert data["birthTimeMode"] == "bucket"
+
+
+@pytest.mark.asyncio
+async def test_sphere_page_supports_unknown_birth_time_mode(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    await _login(async_client, make_initdata, 247006)
+    user = await _complete_profile(db_session, 247006, mode="unknown")
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.birth_time = None
+    await db_session.commit()
+
+    client = _PeriodClient()
+    from app.schemas.access import ContentAccessState
+
+    with (
+        patch("app.services.today_sphere_page_service.get_solarsage_client", return_value=client),
+        patch(
+            "app.services.today_sphere_page_service.AccessService.can_access_day",
+            new=AsyncMock(
+                return_value=ContentAccessState(
+                    state="full",
+                    reason="active_subscription",
+                    referral_days_left=None,
+                    subscription_active=True,
+                    access_until="2027-01-01",
+                )
+            ),
+        ),
+        patch(
+            "app.services.today_sphere_page_service.NatalContextService.get_or_build_natal_context",
+            new=AsyncMock(return_value=_context()),
+        ),
+        patch("app.services.llm_service.LLMService", return_value=_NatalLLM()),
+    ):
+        response = await async_client.get("/api/spheres/work")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sphere"] == "work"
+    assert data["birthTimeMode"] == "unknown"
+    assert data["housesAvailable"] is False
+    assert data["natal"]["state"] == "ready"
+    assert data["period"][0]["title"] == "Большой фирдар Солнца"
 # END_BLOCK: PAGE_WIRE
 
 
