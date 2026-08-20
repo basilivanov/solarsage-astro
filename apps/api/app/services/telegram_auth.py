@@ -16,6 +16,7 @@
 #   - settings.telegram_auth_max_age_seconds (replay window)
 # outputs:
 #   - verify_init_data(raw) -> TelegramUser
+#   - parse_start_param(raw) -> str | None
 #   - TelegramAuthError exception with stable `code` field
 # dependencies:
 #   - M-CONFIG (settings)
@@ -45,6 +46,7 @@
 #   - TelegramUser
 #   - TelegramAuthError
 #   - verify_init_data
+#   - parse_start_param
 # semantic_blocks:
 #   - INITDATA_PARSE: parse_qsl(raw, strict) into the canonical mapping
 #   - HMAC_VERIFY: derive secret_key, recompute hash, constant-time compare
@@ -128,6 +130,21 @@ def _parse_init_data(raw: str) -> dict[str, str]:
     if "auth_date" not in out:
         raise TelegramAuthError("MISSING_FIELDS", "missing `auth_date`")
     return out
+
+
+def parse_start_param(raw: str) -> str | None:
+    # START_FUNCTION_CONTRACT: F-M-AUTH-TG.service.parse_start_param
+    # purpose: Extract optional start_param query parameter from raw initData.
+    #   MUST be called ONLY after successful verify_init_data (HMAC already verified).
+    #   This function does not re-verify HMAC signature or check replay freshness.
+    # inputs: raw (str) — value of the initData payload.
+    # returns: str | None — value of start_param if present in initData, else None.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises TelegramAuthError on empty or malformed initData.
+    # END_FUNCTION_CONTRACT: F-M-AUTH-TG.service.parse_start_param
+    parsed = _parse_init_data(raw)
+    return parsed.get("start_param")
 # END_BLOCK: INITDATA_PARSE
 
 

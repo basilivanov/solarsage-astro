@@ -20,7 +20,7 @@
 # inputs:
 #   - app.db.session.Base (DeclarativeBase singleton)
 # outputs:
-#   - User: row in `users` keyed by UUID, unique tg_user_id
+#   - User: row in `users` keyed by UUID, unique tg_user_id, optional tg_username and pending_promo_token
 #   - UserProfile: row in `user_profiles` (1:1 with User), birth data and
 #     persisted birth-time precision/dismissal state
 #   - Session: row in `sessions`, opaque-token-hash → user_id mapping
@@ -162,6 +162,7 @@ class User(Base):
         BigInteger, unique=True, index=True, nullable=False
     )
     tg_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    pending_promo_token: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

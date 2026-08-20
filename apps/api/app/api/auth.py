@@ -20,11 +20,18 @@
 # outputs:
 #   - APIRouter with the three auth endpoints
 # dependencies:
-#   - M-AUTH-TG.service (verify_init_data)
+#   - M-AUTH-TG.service (verify_init_data, parse_start_param)
 #   - M-AUTH-TG.session (create_session, revoke_session)
 #   - M-PROFILE.service (get_or_create_user, read_profile)
+#   - M-PROMO-CAMPAIGN-SERVICE (PROMO_TOKEN_REGEX)
 #   - M-AUTH-TG.security (set_session_cookie, clear_session_cookie)
 #   - M-AUTH-TG.dependencies (current_user_id) — for logout
+# emitted_logs:
+#   - auth.tg_login_succeeded
+#   - auth.tg_login_failed
+#   - auth.logout
+#   - auth.dev_login_succeeded
+#   - promo.pending_token_saved
 # invariants:
 #   - tampered initData -> 400 INVALID_HMAC, NO DB write (HMAC fails before any
 #     session write).
@@ -69,8 +76,13 @@ from app.core.security import (
 from app.db.session import get_session
 from app.schemas.auth import AuthError, AuthSession, TelegramAuthRequest
 from app.services.profile_service import get_or_create_user, read_profile
+from app.services.promo_campaign_service import PROMO_TOKEN_REGEX
 from app.services.session_service import create_session, revoke_session
-from app.services.telegram_auth import TelegramAuthError, verify_init_data
+from app.services.telegram_auth import (
+    TelegramAuthError,
+    parse_start_param,
+    verify_init_data,
+)
 
 router = APIRouter()
 
@@ -170,7 +182,7 @@ async def auth_telegram(
     # inputs: body (TelegramAuthRequest), request, response, db
     # returns: AuthSession with user_id, expires_at, is_new_user
     # side_effects: upserts User row, creates Session row, sets cookie
-    # emitted_logs: auth.tg_login_succeeded, auth.tg_login_failed
+    # emitted_logs: auth.tg_login_succeeded, auth.tg_login_failed, promo.pending_token_saved
     # error_behavior: TelegramAuthError -> 400/401 per code mapping; commit
     #   only on success (exception bubbles before flush+commit).
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
@@ -183,6 +195,14 @@ async def auth_telegram(
     user, is_new = await get_or_create_user(db, tg)
     # Ensure a (possibly empty) profile row exists; later reads never 404.
     await read_profile(db, user.id)
+
+    start_param = parse_start_param(body.init_data)
+    if start_param and PROMO_TOKEN_REGEX.fullmatch(start_param):
+        user.pending_promo_token = start_param
+        log_event(
+            "promo.pending_token_saved",
+            payload={"source": "start_param"},
+        )
 
     user_agent = request.headers.get("user-agent")
     opaque_token, session = await create_session(

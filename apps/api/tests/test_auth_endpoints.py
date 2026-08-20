@@ -29,6 +29,9 @@
 #   - test_login_idempotent_user_upsert
 #   - test_login_400_on_invalid_hmac_no_db_write
 #   - test_login_401_on_expired_initdata
+#   - test_login_saves_valid_promo_start_param
+#   - test_login_without_start_param_preserves_existing_pending_promo_token
+#   - test_login_with_non_promo_start_param_ignored
 #   - test_logout_revokes_and_clears_cookie
 #   - test_revoked_session_is_unauthorized
 #   - test_revoked_token_is_explicitly_revoked
@@ -185,6 +188,61 @@ async def test_login_401_on_expired_initdata(
     r = await async_client.post("/api/auth/telegram", json={"initData": raw})
     assert r.status_code == 401
     assert r.json()["detail"]["code"] == "INITDATA_EXPIRED"
+
+
+@pytest.mark.asyncio
+async def test_login_saves_valid_promo_start_param(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    raw = make_initdata(user_id=888, start_param="sfnqpmfdwkuk")
+    r = await async_client.post("/api/auth/telegram", json={"initData": raw})
+    assert r.status_code == 200
+    user = (await db_session.execute(select(User).where(User.tg_user_id == 888))).scalar_one()
+    assert user.pending_promo_token == "sfnqpmfdwkuk"
+
+
+@pytest.mark.asyncio
+async def test_login_without_start_param_preserves_existing_pending_promo_token(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    # First login with promo start_param
+    raw1 = make_initdata(user_id=889, start_param="sfnqpmfdwkuk")
+    r1 = await async_client.post("/api/auth/telegram", json={"initData": raw1})
+    assert r1.status_code == 200
+    user1 = (await db_session.execute(select(User).where(User.tg_user_id == 889))).scalar_one()
+    assert user1.pending_promo_token == "sfnqpmfdwkuk"
+
+    # Second login without start_param must NOT overwrite
+    raw2 = make_initdata(user_id=889, start_param=None)
+    r2 = await async_client.post("/api/auth/telegram", json={"initData": raw2})
+    assert r2.status_code == 200
+    user2 = (await db_session.execute(select(User).where(User.tg_user_id == 889))).scalar_one()
+    assert user2.pending_promo_token == "sfnqpmfdwkuk"
+
+
+@pytest.mark.asyncio
+async def test_login_with_non_promo_start_param_ignored(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    # Numeric referral ID or invalid format should not be saved as promo token
+    raw1 = make_initdata(user_id=890, start_param="123456789")
+    r1 = await async_client.post("/api/auth/telegram", json={"initData": raw1})
+    assert r1.status_code == 200
+    user1 = (await db_session.execute(select(User).where(User.tg_user_id == 890))).scalar_one()
+    assert user1.pending_promo_token is None
+
+    # Invalid characters / length
+    raw2 = make_initdata(user_id=891, start_param="invalid_token!")
+    r2 = await async_client.post("/api/auth/telegram", json={"initData": raw2})
+    assert r2.status_code == 200
+    user2 = (await db_session.execute(select(User).where(User.tg_user_id == 891))).scalar_one()
+    assert user2.pending_promo_token is None
 
 
 @pytest.mark.asyncio

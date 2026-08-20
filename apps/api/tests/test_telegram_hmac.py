@@ -31,7 +31,11 @@ from pathlib import Path
 import pytest
 
 from app.core.config import settings
-from app.services.telegram_auth import TelegramAuthError, verify_init_data
+from app.services.telegram_auth import (
+    TelegramAuthError,
+    parse_start_param,
+    verify_init_data,
+)
 from tests.conftest import fake_initdata
 
 # Define PROJECT_ROOT for the new env test
@@ -44,6 +48,15 @@ def test_happy_path() -> None:
     assert tu.id == 42
     assert tu.first_name == "Grace"
     assert tu.username == "grace"
+    assert parse_start_param(raw) is None
+
+
+def test_parse_start_param() -> None:
+    raw = fake_initdata(user_id=42, start_param="sfnqpmfdwkuk")
+    assert parse_start_param(raw) == "sfnqpmfdwkuk"
+
+    raw_no_param = fake_initdata(user_id=42)
+    assert parse_start_param(raw_no_param) is None
 
 
 def test_invalid_hmac() -> None:

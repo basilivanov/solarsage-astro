@@ -154,6 +154,7 @@ LogEventName = Literal[
     "promo.redemption_failed",
     "promo.campaign_created",
     "promo.campaign_disabled",
+    "promo.pending_token_saved",
     # sidecar / scoring / llm
     "sidecar.called",
     "scoring.computed",

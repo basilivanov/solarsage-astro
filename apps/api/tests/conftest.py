@@ -124,6 +124,7 @@ def fake_initdata(
     username: str | None = "ada",
     first_name: str | None = "Ada",
     auth_date: int | None = None,
+    start_param: str | None = None,
     extra: dict[str, str] | None = None,
     bot_token: str = BOT_TOKEN,
     sign: bool = True,
@@ -138,6 +139,8 @@ def fake_initdata(
         "query_id": "AAH-deadbeef",
         "user": json.dumps(user, separators=(",", ":")),
     }
+    if start_param is not None:
+        parsed["start_param"] = start_param
     if extra:
         parsed.update(extra)
     if sign:
