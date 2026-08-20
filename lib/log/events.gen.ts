@@ -133,6 +133,8 @@ export type LogEventName =
   | "promo.redemption_failed"
   | "promo.campaign_created"
   | "promo.campaign_disabled"
+  | "promo.pending_token_saved"
+  | "promo.pending_auto_apply_failed"
   // sidecar / scoring / llm
   | "sidecar.called"
   | "scoring.computed"

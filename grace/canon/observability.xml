@@ -483,6 +483,8 @@
     <event name="promo.redemption_failed"     owner="W-PROMO-CAMPAIGN" desc="Promo redemption unexpected rollback or 500 error." />
     <event name="promo.campaign_created"      owner="W-PROMO-CAMPAIGN" desc="Admin created new promo campaign." />
     <event name="promo.campaign_disabled"     owner="W-PROMO-CAMPAIGN" desc="Admin disabled promo campaign." />
+    <event name="promo.pending_token_saved"    owner="W-PROMO-CAMPAIGN" desc="Pending promo token saved to user record on auth." />
+    <event name="promo.pending_auto_apply_failed" owner="W-PROMO-CAMPAIGN" desc="Auto-apply of pending promo token failed upon onboarding." />
 
     <!-- ================ sidecar / scoring / llm ======================== -->
     <event name="sidecar.called"          owner="W-3.4">
