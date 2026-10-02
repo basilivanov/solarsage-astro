@@ -298,14 +298,17 @@ prove_health() {
   # $1 = expected full SHA; rc 0 only when all identities match exactly.
   # Sidecar must prove exact ephemeris identity (engine=swieph, canonical
   # calculation version, artifact present; optional exact artifact pins).
-  local want="$1"
-  [ "$(health_release_sha 8000 /api/health)" = "$want" ] || return 1
-  [ "$(health_release_sha 18091 /v1/health)" = "$want" ] || return 1
-  [ "$(health_field_nonempty 18091 /v1/health engine)" = "swieph" ] || return 1
-  [ "$(health_field_nonempty 18091 /v1/health calculation_version)" = "$EXPECTED_CALCULATION_VERSION" ] || return 1
-  [ "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" = "$EPHEMERIS_EXPECTED_ARTIFACT_ID" ] || return 1
-  [ "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" = "$EPHEMERIS_EXPECTED_MANIFEST_SHA256" ] || return 1
-  [ "$(health_release_sha 3002 /api/release-health)" = "$want" ] || return 1
+  # Every failed check names itself and prints got-vs-want on stderr:
+  # health proof failures must be diagnosable from the deploy log alone
+  # (silent rc=1 forced host-side archaeology on run 31339482621).
+  local want="$1" got
+  got=$(health_release_sha 8000 /api/health); [ "$got" = "$want" ] || { echo "health proof failed: api release_sha got='$got' want='$want'" >&2; return 1; }
+  got=$(health_release_sha 18091 /v1/health); [ "$got" = "$want" ] || { echo "health proof failed: sidecar release_sha got='$got' want='$want'" >&2; return 1; }
+  got=$(health_field_nonempty 18091 /v1/health engine); [ "$got" = "swieph" ] || { echo "health proof failed: sidecar engine got='$got' want='swieph'" >&2; return 1; }
+  got=$(health_field_nonempty 18091 /v1/health calculation_version); [ "$got" = "$EXPECTED_CALCULATION_VERSION" ] || { echo "health proof failed: sidecar calculation_version got='$got' want='$EXPECTED_CALCULATION_VERSION'" >&2; return 1; }
+  got=$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id); [ "$got" = "$EPHEMERIS_EXPECTED_ARTIFACT_ID" ] || { echo "health proof failed: sidecar ephemeris_artifact_id got='$got' want='$EPHEMERIS_EXPECTED_ARTIFACT_ID'" >&2; return 1; }
+  got=$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256); [ "$got" = "$EPHEMERIS_EXPECTED_MANIFEST_SHA256" ] || { echo "health proof failed: sidecar ephemeris_manifest_sha256 got='$got' want='$EPHEMERIS_EXPECTED_MANIFEST_SHA256'" >&2; return 1; }
+  got=$(health_release_sha 3002 /api/release-health); [ "$got" = "$want" ] || { echo "health proof failed: frontend release_sha got='$got' want='$want'" >&2; return 1; }
   return 0
 }
 
@@ -314,16 +317,18 @@ run_smoke() {
   # written, so a smoke failure triggers the same rollback path as a health
   # failure. Telegram delivery is intentionally NOT part of smoke (synthetic
   # webhook checks are separate tooling and never stand in for real delivery).
-  "$CURL" -fsS -o /dev/null --max-time 5 "http://127.0.0.1:3002/" || return 1
+  # Failures name the failed leg on stderr (front vs geo) for deploy-log
+  # diagnosability.
+  "$CURL" -fsS -o /dev/null --max-time 5 "http://127.0.0.1:3002/" || { echo "smoke failed: frontend / unreachable" >&2; return 1; }
   local geo_out
-  geo_out=$("$CURL" -fsS --max-time 8 "http://127.0.0.1:8000/api/geo/autocomplete?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&limit=1" 2>/dev/null) || return 1
+  geo_out=$("$CURL" -fsS --max-time 8 "http://127.0.0.1:8000/api/geo/autocomplete?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&limit=1" 2>/dev/null) || { echo "smoke failed: geo autocomplete request failed" >&2; return 1; }
   printf '%s' "$geo_out" | "$PYTHON" -c 'import json,sys
 try:
     d = json.load(sys.stdin)
     ok = isinstance(d, list) and len(d) > 0 and any(bool(s.get("timezone_id")) for s in d)
 except Exception:
     ok = False
-sys.exit(0 if ok else 1)' || return 1
+sys.exit(0 if ok else 1)' || { echo "smoke failed: geo autocomplete payload has no timezone_id" >&2; return 1; }
   return 0
 }
 

@@ -48,7 +48,9 @@
     ".next-v2-preview/types/**/*.ts",
     ".next-v2-preview/dev/types/**/*.ts",
     ".next-v2-real-preview/types/**/*.ts",
-    ".next-v2-real-preview/dev/types/**/*.ts"
+    ".next-v2-real-preview/dev/types/**/*.ts",
+    ".next-v2-preview-1001/types/**/*.ts",
+    ".next-v2-preview-1001/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

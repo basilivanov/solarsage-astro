@@ -7,15 +7,15 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SCRIPTS-TRIAGE
-# purpose: Fetch unresolved Bugsink issues, deduplicate against GitHub issues using bugsink-issue:<id> marker, create GitHub issues, invoke fix_runner.py for new and still-unfixed pending issues, and output digest.
+# purpose: Fetch unresolved Bugsink issues with > 3 events, deduplicate against GitHub issues using bugsink-issue:<id> marker, create GitHub issues (if needed), and send alerts to Telegram (@vi_astro_bot).
 # owns:
 #   - scripts/prod-errors/triage.py
-# inputs: CLI flags (--dry-run), environment variables (BUGSINK_URL, BUGSINK_TOKEN, GH_REPO, MAX_FIXES_PER_RUN, MAX_FIX_ATTEMPTS)
+# inputs: CLI flags (--dry-run, --alert), environment variables (BUGSINK_URL, BUGSINK_TOKEN, GH_REPO, AUTO_FIX_ENABLED, MIN_EVENTS_THRESHOLD, TELEGRAM_BOT_TOKEN, TELEGRAM_DIGEST_CHAT_ID)
 # outputs: stdout summary digest
 # dependencies:
 #   - scripts/prod-errors/bugsink_client.py (BugsinkClient)
 #   - gh CLI via subprocess
-# side_effects: creates GitHub issues, invokes fix_runner.py, optional Telegram digest
+# side_effects: creates GitHub issues, sends Telegram alerts
 # failure_policy: logs error and continues or exits with non-zero code on unhandled failure; Telegram delivery failures never break the run
 # END_MODULE_CONTRACT: M-SCRIPTS-TRIAGE
 
@@ -36,6 +36,62 @@ import sys
 from pathlib import Path
 
 from bugsink_client import BugsinkClient
+
+
+def format_human_summary(kind: str, route: str, event_data: dict) -> dict[str, str]:
+    """Produce human-readable summary, affected scope, and urgency guidance."""
+    data = event_data.get("data") if isinstance(event_data.get("data"), dict) else {}
+    extra = data.get("extra") if isinstance(data.get("extra"), dict) else {}
+    http_info = extra.get("http") if isinstance(extra.get("http"), dict) else {}
+    payload = extra.get("payload") if isinstance(extra.get("payload"), dict) else {}
+    tags = data.get("tags") if isinstance(data.get("tags"), dict) else {}
+
+    http_status = str(http_info.get("status") or "")
+    http_method = str(http_info.get("method") or "")
+    target_route = str(http_info.get("route_template") or tags.get("route") or payload.get("route") or route)
+    operation = str(payload.get("operation") or "")
+
+    # Analyze nature of the error
+    summary = f"{kind} на {target_route}"
+    impact = "Неизвестно"
+    urgency = "⚠️ Средний (нужно проверить)"
+
+    # Specific known patterns
+    if route == "/api/_log" or "frontend." in str(data.get("message", "")):
+        # Frontend error logged back to API
+        if http_status == "401":
+            summary = f"401 Unauthorized при запросе {target_route}"
+            impact = "Пользователь с истекшей сессией или без авторизации открыл экран"
+            urgency = "ℹ️ Низкий (штатное поведение при экспирации auth токена)"
+        elif http_status == "404":
+            summary = f"404 Not Found при запросе {target_route}"
+            impact = "Запрошен несуществующий ресурс/дата/профиль"
+            urgency = "ℹ️ Низкий (штатная ошибка клиента)"
+        elif http_status.startswith("5"):
+            summary = f"Сетевая/серверная ошибка {http_status} на {target_route}"
+            impact = f"Фронтенд не смог получить данные для {operation or target_route}"
+            urgency = "🚨 Высокий (бэкенд падает или недоступен)"
+        else:
+            summary = f"Ошибка на клиенте (фронтенд): {operation or target_route}"
+            impact = f"Сбой в интерфейсе или обработке данных: {operation or target_route}"
+            urgency = "⚠️ Средний (ошибка в JS на фронтенде)"
+    elif route.startswith("/api/"):
+        if "500" in http_status or kind in ("InternalServerError", "Exception", "RuntimeError", "KeyError"):
+            summary = f"Падение бэкенда (500) на {http_method} {route}"
+            impact = f"Эндпоинт {route} ломается при обработке запросов"
+            urgency = "🚨 Срочно (500 на API, пользователи получают ошибку)"
+        else:
+            summary = f"Ошибка API {kind} на {route}"
+            impact = f"Сбой при вызове эндпоинта {route}"
+            urgency = "⚠️ Средний"
+
+    return {
+        "summary": summary,
+        "impact": impact,
+        "urgency": urgency,
+        "target_route": target_route,
+        "http_status": http_status,
+    }
 
 
 def gh_issue_exists(repo: str, bugsink_issue_id: str) -> bool:
@@ -252,6 +308,7 @@ def send_telegram_digest(lines: list[str]) -> None:
     body = json.dumps({
         "chat_id": chat_id,
         "text": text,
+        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -270,20 +327,23 @@ def send_telegram_digest(lines: list[str]) -> None:
 
 def run_triage(dry_run: bool = False) -> None:
     repo = os.environ.get("GH_REPO", "basilivanov/solarsage-astro")
+    auto_fix_enabled = os.environ.get("AUTO_FIX_ENABLED", "false").lower() in ("true", "1", "yes")
+    min_events_threshold = int(os.environ.get("MIN_EVENTS_THRESHOLD", "4"))  # > 3 events, so at least 4
     max_fixes = int(os.environ.get("MAX_FIXES_PER_RUN", "3"))
 
-    print(f"Starting production error triage (repo: {repo}, dry_run: {dry_run})...")
+    print(f"Starting production error triage (repo: {repo}, dry_run: {dry_run}, min_events: >={min_events_threshold}, auto_fix: {auto_fix_enabled})...")
 
     client = BugsinkClient()
     try:
-        unresolved = client.list_unresolved(min_events=1, limit=10)
+        # Only fetch issues with > 3 events (min_events >= 4)
+        unresolved = client.list_unresolved(min_events=min_events_threshold, limit=20)
     except Exception as err:
         sys.stderr.write(f"Failed to fetch Bugsink issues: {err}\n")
         sys.exit(1)
 
-    print(f"Found {len(unresolved)} unresolved Bugsink issues with >= 1 events.")
+    print(f"Found {len(unresolved)} unresolved Bugsink issues with >= {min_events_threshold} events.")
 
-    created_issues: list[str] = []
+    created_issues: list[tuple[str, dict]] = []
 
     for item in unresolved:
         issue_id = str(item.get("id") or item.get("issue_id"))
@@ -296,36 +356,58 @@ def run_triage(dry_run: bool = False) -> None:
 
         new_issue_num = create_github_issue(repo, item, dry_run)
         if new_issue_num:
-            created_issues.append(new_issue_num)
+            created_issues.append((new_issue_num, item))
 
     print(f"\nTriage complete. Created {len(created_issues)} new GitHub issues.")
 
-    # Issues created earlier (manually or by previous runs) that never got a
-    # successful fix are picked up here, with bounded retries on failure.
-    pending_issues = [n for n in find_pending_fix_issues(repo) if n not in created_issues]
-    if pending_issues:
-        print(f"Pending unfixed prod-error issues: {', '.join('#' + n for n in pending_issues)}")
-
-    fix_queue = (created_issues + pending_issues)[:max_fixes]
-
-    if not dry_run and fix_queue:
-        script_dir = Path(__file__).resolve().parent
-        fix_runner = script_dir / "fix_runner.py"
-
-        for num in fix_queue:
-            print(f"\nInvoking fix_runner.py for Issue #{num}...")
-            subprocess.run([sys.executable, str(fix_runner), num])
-
-        digest_lines: list[str] = []
-        if created_issues:
-            digest_lines.append(f"prod-errors: новых issue — {len(created_issues)}")
-            digest_lines.extend(
-                f"#{num} https://github.com/{repo}/issues/{num}" for num in created_issues
+    # Send telegram alert for newly created issues (>3 events)
+    if created_issues:
+        alert_lines: list[str] = [f"🚨 <b>Bugsink Alert (&gt;3 событий)</b>: {len(created_issues)} новых issue:"]
+        for num, item in created_issues:
+            kind = str(item.get("calculated_type") or "Error")
+            route = str(item.get("transaction") or "unknown")
+            count = item.get("digested_event_count") or 0
+            issue_id = str(item.get("id") or "")
+            latest_event = client.get_latest_event(issue_id) if issue_id else {}
+            human = format_human_summary(kind, route, latest_event)
+            alert_lines.append(
+                f"• #{num} <b>{human['summary']}</b>\n"
+                f"  └ <b>Что затрагивает:</b> {human['impact']}\n"
+                f"  └ <b>Срочность:</b> {human['urgency']}\n"
+                f"  └ <b>Событий:</b> {count} | <b>Route:</b> <code>{route}</code>\n"
+                f"  └ https://github.com/{repo}/issues/{num}"
             )
+        send_telegram_digest(alert_lines)
+
+    # Optional auto-fix loop (disabled by default)
+    if auto_fix_enabled:
+        created_numbers = [num for num, _ in created_issues]
+        pending_issues = [n for n in find_pending_fix_issues(repo) if n not in created_numbers]
         if pending_issues:
-            digest_lines.append(f"повторные/зависшие: {', '.join('#' + n for n in pending_issues)}")
-        digest_lines.append(f"авто-фикс запущен для {len(fix_queue)}: {', '.join('#' + n for n in fix_queue)}")
-        send_telegram_digest(digest_lines)
+            print(f"Pending unfixed prod-error issues: {', '.join('#' + n for n in pending_issues)}")
+
+        fix_queue = (created_numbers + pending_issues)[:max_fixes]
+
+        if not dry_run and fix_queue:
+            script_dir = Path(__file__).resolve().parent
+            fix_runner = script_dir / "fix_runner.py"
+
+            for num in fix_queue:
+                print(f"\nInvoking fix_runner.py for Issue #{num}...")
+                subprocess.run([sys.executable, str(fix_runner), num])
+
+            digest_lines: list[str] = []
+            if created_issues:
+                digest_lines.append(f"prod-errors: новых issue — {len(created_issues)}")
+                digest_lines.extend(
+                    f"#{num} https://github.com/{repo}/issues/{num}" for num in created_numbers
+                )
+            if pending_issues:
+                digest_lines.append(f"повторные/зависшие: {', '.join('#' + n for n in pending_issues)}")
+            digest_lines.append(f"авто-фикс запущен для {len(fix_queue)}: {', '.join('#' + n for n in fix_queue)}")
+            send_telegram_digest(digest_lines)
+    else:
+        print("Auto-fix is disabled (AUTO_FIX_ENABLED=false).")
 
 
 ALERT_STATE_PATH = Path(__file__).resolve().parent / ".alert-state.json"
@@ -333,7 +415,7 @@ ALERT_SPIKE_DELTA = 5
 
 
 def run_alert() -> None:
-    """Fast alert-only pass: brand-new issue types and event spikes to Telegram.
+    """Fast alert-only pass: issues with > 3 events and event spikes to Telegram.
 
     No GitHub issues, no fix runner. State (.alert-state.json) holds last seen
     digested_event_count per issue; first run initializes silently to avoid a
@@ -341,7 +423,8 @@ def run_alert() -> None:
     """
     client = BugsinkClient()
     try:
-        issues = client.list_unresolved(min_events=1, limit=50)
+        # Check issues with > 3 events (at least 4)
+        issues = client.list_unresolved(min_events=4, limit=50)
     except Exception as err:
         sys.stderr.write(f"Failed to fetch Bugsink issues: {err}\n")
         sys.exit(1)
@@ -365,10 +448,23 @@ def run_alert() -> None:
         kind = str(item.get("calculated_type") or "Error")
         route = str(item.get("transaction") or "unknown")
         prev = state.get(issue_id)
-        if prev is None:
-            alert_lines.append(f"NEW {kind} ({route}) — {count} ev")
-        elif count - int(prev) >= ALERT_SPIKE_DELTA:
-            alert_lines.append(f"SPIKE {kind} ({route}) — +{count - int(prev)} ev (total {count})")
+        if prev is None or count - int(prev) >= ALERT_SPIKE_DELTA:
+            latest_event = client.get_latest_event(issue_id)
+            human = format_human_summary(kind, route, latest_event)
+            if prev is None:
+                alert_lines.append(
+                    f"🚨 NEW: <b>{human['summary']}</b>\n"
+                    f"  └ <b>Что затрагивает:</b> {human['impact']}\n"
+                    f"  └ <b>Срочность:</b> {human['urgency']}\n"
+                    f"  └ <b>Событий:</b> {count} (>3) | <b>Route:</b> <code>{route}</code>"
+                )
+            else:
+                alert_lines.append(
+                    f"📈 SPIKE (+{count - int(prev)} ev): <b>{human['summary']}</b>\n"
+                    f"  └ <b>Что затрагивает:</b> {human['impact']}\n"
+                    f"  └ <b>Срочность:</b> {human['urgency']}\n"
+                    f"  └ <b>Всего событий:</b> {count} | <b>Route:</b> <code>{route}</code>"
+                )
 
     ALERT_STATE_PATH.write_text(json.dumps(new_state))
 
@@ -377,11 +473,11 @@ def run_alert() -> None:
         return
 
     if alert_lines:
-        send_telegram_digest(["prod-errors ALERT:"] + alert_lines[:10])
+        send_telegram_digest(["<b>Bugsink Alert (>3 событий):</b>"] + alert_lines[:10])
         for line in alert_lines:
             print(line)
     else:
-        print("alert: no new or spiking issues")
+        print("alert: no new or spiking issues with >3 events")
 
 
 def main() -> None:
