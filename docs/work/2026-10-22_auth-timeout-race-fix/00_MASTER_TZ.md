@@ -73,3 +73,20 @@
 - Backend pool warmup (ТЗ 2026-09-27 §2.2) — отдельной задачей.
 - Natal promo «entitled, ждёт генерации» (§2.5) — отдельной задачей.
 - Редизайн auth-error, смена auth-контракта (кроме additive `auth_attempt_id`).
+
+## 7. Follow-ups, зафиксированные на приёмке (2026-10-22)
+
+- **Remount anti-loop в useTodayConvergence** (из доклада кодера, срез 03): bound
+  «одна re-auth на монтирование» живёт в ref; `AuthenticatedShell` при `isLoading`
+  размонтирует children, поэтому после успешной re-auth страница перемонтируется и
+  ref обнуляется. Патологический цикл возможен только если сервер стабильно
+  отвечает 401 сразу после успешной re-auth (сломанная session-persistence — громкий
+  глобальный инцидент, не скрытый). Если захотим жёсткий bound и через remount —
+  отдельный packet (например, sessionStorage-маркер).
+- **Осознанное отклонение среза 04**: `auth_attempt_id` — compact UUID без дефисов
+  (32 hex): backend redactor маскирует дефисный UUID в `[redacted-uuid]` и убивал бы
+  корреляцию (проверено живым эмиттером). Если нужен канонический вид — правка
+  redactor ALLOW_KEYS, отдельный packet.
+- **e2e WebKit**: `e2e/auth-resilience.spec.ts` гоняется с `--project=chromium`
+  (канонический `test:e2e` в package.json делает так же); WebKit на dev-хосте не
+  запускается (нет системных библиотек).

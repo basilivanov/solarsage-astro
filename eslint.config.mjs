@@ -87,6 +87,8 @@ export default [
       // the Next.js app/ tree. Kept in-tree so packets W-2.1..W-2.8 can pull
       // files into app/(grace)/** with markers without juggling two zips.
       "legacy/**",
+      // Vendored third-party Telegram WebApp SDK — not our code, never lint it.
+      "public/telegram-web-app.js",
     ],
   },
   // Browser/DOM globals for all files
