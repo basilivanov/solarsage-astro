@@ -72,6 +72,7 @@ slice_var: contextvars.Var[str] = contextvars.ContextVar("slice", default="")
 module_var: contextvars.Var[str] = contextvars.ContextVar("module", default="")
 block_var: contextvars.Var[str] = contextvars.ContextVar("block", default="")
 operation_id_var: contextvars.Var[str] = contextvars.ContextVar("operation_id", default="")
+auth_attempt_id_var: contextvars.Var[str] = contextvars.ContextVar("auth_attempt_id", default="")
 service_var: contextvars.Var[str] = contextvars.ContextVar("service", default="api")
 env_var: contextvars.Var[str] = contextvars.ContextVar("env", default="dev")
 
@@ -86,14 +87,15 @@ def bind_log_context(
     module: str = "",
     block: str = "",
     operation_id: str = "",
+    auth_attempt_id: str = "",
     service: str = "",
     env: str = "",
 ) -> None:
     # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
     # purpose: Bind one or more log context variables for the current scope.
-    # inputs: correlation_id, user_id_hash, http_route, http_method, slice, module, block, operation_id, service, env
+    # inputs: correlation_id, user_id_hash, http_route, http_method, slice, module, block, operation_id, auth_attempt_id, service, env
     # returns: None
-    # side_effects: mutates contextvars
+    # side_effects: mutates contextvars; empty auth_attempt_id is a no-op
     # emitted_logs: none
     # error_behavior: never raises
     # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
@@ -119,6 +121,8 @@ def bind_log_context(
         block_var.set(block)
     if operation_id:
         operation_id_var.set(operation_id)
+    if auth_attempt_id:
+        auth_attempt_id_var.set(auth_attempt_id)
     if service:
         service_var.set(service)
     if env:
@@ -143,6 +147,7 @@ def clear_log_context() -> None:
     module_var.set("")
     block_var.set("")
     operation_id_var.set("")
+    auth_attempt_id_var.set("")
     service_var.set("api")
     env_var.set(os.getenv("GRACE_ENV", "dev"))
 

@@ -38,6 +38,8 @@
 #   - stale initData -> 401 INITDATA_EXPIRED.
 #   - upsert is idempotent on tg_user_id; the response carries is_new_user.
 #   - error bodies expose only AuthError(code, message); never the raw payload.
+#   - optional auth_attempt_id (validated [A-Za-z0-9-]+) is bound to the request
+#     log context and echoed only in auth.tg_login_succeeded/failed payloads.
 #   - local dev auth fail-closed outside canonical dev|development, even for
 #     loopback requests.
 # failure_policy:
@@ -179,17 +181,24 @@ async def auth_telegram(
     # START_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
     # purpose: Verify initData, upsert user, lazy-create profile row, mint
     #   server-side session, set HttpOnly cookie.
-    # inputs: body (TelegramAuthRequest), request, response, db
+    # inputs: body (TelegramAuthRequest incl. optional auth_attempt_id), request, response, db
     # returns: AuthSession with user_id, expires_at, is_new_user
-    # side_effects: upserts User row, creates Session row, sets cookie
+    # side_effects: upserts User row, creates Session row, sets cookie, binds auth_attempt_id to log context
     # emitted_logs: auth.tg_login_succeeded, auth.tg_login_failed, promo.pending_token_saved
     # error_behavior: TelegramAuthError -> 400/401 per code mapping; commit
     #   only on success (exception bubbles before flush+commit).
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
+    auth_attempt_id = body.auth_attempt_id or ""
+    if auth_attempt_id:
+        bind_log_context(auth_attempt_id=auth_attempt_id)
+
     try:
         tg = verify_init_data(body.init_data)
     except TelegramAuthError as exc:
-        log_event("auth.tg_login_failed", payload={"reason": exc.code.lower()})
+        failed_payload = {"reason": exc.code.lower()}
+        if auth_attempt_id:
+            failed_payload["auth_attempt_id"] = auth_attempt_id
+        log_event("auth.tg_login_failed", payload=failed_payload)
         raise _telegram_error_to_http(exc) from exc
 
     user, is_new = await get_or_create_user(db, tg)
@@ -221,9 +230,16 @@ async def auth_telegram(
     # Bind user_id_hash to context
     bind_log_context(user_id_hash=hash_user_id(user.id))
 
+    success_payload: dict[str, bool | str] = {
+        "is_new_user": is_new,
+        "has_start_param": "start_param=" in body.init_data,
+    }
+    if auth_attempt_id:
+        success_payload["auth_attempt_id"] = auth_attempt_id
+
     log_event(
         "auth.tg_login_succeeded",
-        payload={"is_new_user": is_new, "has_start_param": "start_param=" in body.init_data},
+        payload=success_payload,
     )
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
 # END_BLOCK: ROUTE_AUTH_TG

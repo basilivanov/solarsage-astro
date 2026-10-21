@@ -7,12 +7,15 @@
 // purpose: Expose the transport screen state and generated Today payload to /day/[date].
 // owns:
 //   - lib/grace/hooks/useTodayConvergence.ts
-// inputs: dateParam, Telegram auth readiness, and route retry actions.
+// inputs: dateParam, shared Telegram auth state (readiness, terminal error, retry), and route retry actions.
 // outputs: screenState, optional TodayConvergencePayload, retry cooldown state, and refetch callback.
-// dependencies: lib/api/today-convergence.ts, hooks/use-telegram-auth, next/navigation.
+// dependencies: lib/api/today-convergence.ts, M-HOOK-TELEGRAM-AUTH (shared auth state), next/navigation.
 // side_effects: GET/POST day requests, one best-effort day impression, timers, and onboarding redirect.
 // emitted_logs: delegated API events plus day.impression_recorded/day.impression_rejected.
-// invariants: pending polling is bounded; impression is once per snapshot and never for preview/locked/unavailable.
+// invariants:
+//   - pending polling is bounded; impression is once per snapshot and never for preview/locked/unavailable.
+//   - the day API is never called while shared auth is loading or ended with an error.
+//   - a 401 triggers at most one shared re-auth per mount; a 401 after that becomes screenState=error.
 // failure_policy: request failures become error state; retry/poll aborts are ignored after cancellation or unmount.
 // END_MODULE_CONTRACT: M-HOOK-TODAY-CONVERGENCE
 
@@ -22,10 +25,10 @@
 //   - UseTodayConvergenceResult
 //   - useTodayConvergence
 // semantic_blocks:
-//   - INITIAL_LOAD: auth-gated date fetch and onboarding routing.
+//   - INITIAL_LOAD: shared-auth-gated date fetch (waits while auth loads, stops on terminal auth error) and onboarding routing.
 //   - IMPRESSION: post-paint, full-access snapshot guard.
 //   - PENDING_POLLING: four-second bounded GET polling.
-//   - RETRY: POST retry, Retry-After countdown, and follow-up GET.
+//   - RETRY: POST retry, Retry-After countdown, bounded 401 -> shared re-auth, and follow-up GET.
 //   - LIFECYCLE: abort and unmount safety.
 // owned_tests:
 //   - __tests__/hooks/useTodayConvergence.test.ts
@@ -65,6 +68,10 @@ function isOnboardingFailure(error: unknown): boolean {
   );
 }
 
+function isUnauthorizedFailure(error: unknown): boolean {
+  return error instanceof TodayConvergenceApiError && error.status === 401;
+}
+
 function isCurrent(
   mounted: boolean,
   generation: number,
@@ -85,7 +92,12 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
   // error_behavior: active non-onboarding fetch errors expose screenState=error; aborts are ignored.
   // END_FUNCTION_CONTRACT: F-M-HOOK-TODAY-CONVERGENCE.useTodayConvergence
   const router = useRouter();
-  const { isLoading: authLoading } = useTelegramAuth();
+  const {
+    isLoading: authLoading,
+    isAuthenticated,
+    error: authError,
+    retry: retryAuth,
+  } = useTelegramAuth();
   const [screenState, setScreenState] = useState<TodayConvergenceScreenState>("loading");
   const [payload, setPayload] = useState<Awaited<ReturnType<typeof fetchTodayConvergence>> | undefined>();
   const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
@@ -102,6 +114,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
   const impressionSnapshotsRef = useRef(new Set<string>());
   const retryingRef = useRef(false);
   const retryAfterRef = useRef(0);
+  const reauthenticatedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -135,6 +148,11 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
 
     if (authLoading) return undefined;
 
+    // Shared auth finished with a terminal error: the authenticated shell already
+    // renders auth-error with its own retry, so the day API must not be called.
+    // Dev-skip (error === null, isAuthenticated === false) still loads the day.
+    if (!isAuthenticated && authError !== null) return undefined;
+
     const controller = new AbortController();
     loadControllerRef.current = controller;
 
@@ -146,6 +164,13 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
         setScreenState("ready");
       } catch (error) {
         if (!isCurrent(mountedRef.current, generation, generationRef.current, controller.signal)) return;
+        // A stale session: re-auth once per mount and keep loading. The effect
+        // restarts when shared auth becomes authenticated again.
+        if (isUnauthorizedFailure(error) && !reauthenticatedRef.current) {
+          reauthenticatedRef.current = true;
+          retryAuth();
+          return;
+        }
         if (isOnboardingFailure(error)) {
           router.replace("/onboarding");
           return;
@@ -159,7 +184,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       controller.abort();
       if (loadControllerRef.current === controller) loadControllerRef.current = null;
     };
-  }, [authLoading, dateParam, router]);
+  }, [authLoading, isAuthenticated, authError, dateParam, router, retryAuth]);
   // END_BLOCK: INITIAL_LOAD
 
   // START_BLOCK: IMPRESSION
@@ -291,6 +316,14 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       setScreenState("ready");
     } catch (error) {
       if (!active()) return;
+      // Stale session on retry: re-auth once per mount and stay in loading so the
+      // auth-error screen does not flash. INITIAL_LOAD refetches after re-auth.
+      if (isUnauthorizedFailure(error) && !reauthenticatedRef.current) {
+        reauthenticatedRef.current = true;
+        setScreenState("loading");
+        retryAuth();
+        return;
+      }
       if (isOnboardingFailure(error)) {
         router.replace("/onboarding");
         return;
@@ -305,7 +338,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       }
       if (retryControllerRef.current === controller) retryControllerRef.current = null;
     }
-  }, [dateParam, router]);
+  }, [dateParam, router, retryAuth]);
   // END_BLOCK: RETRY
 
   return { screenState, payload, retryAfterSeconds, retrying, refetch };

@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-HOOK-TODAY-CONVERGENCE
-// purpose: Test the public useTodayConvergence result and lifecycle side effects.
+// purpose: Test the public useTodayConvergence result, shared-auth gating, bounded 401 re-auth, and lifecycle side effects.
 // owns:
 //   - __tests__/hooks/useTodayConvergence.test.ts
 // inputs: generated Today fixtures and mocked API functions.
@@ -12,8 +12,8 @@
 // dependencies: useTodayConvergence, today-convergence API client, React Testing Library.
 // side_effects: local timers and callback spies only.
 // emitted_logs: none.
-// invariants: no state is written after unmount; impression policy follows access/state axes.
-// failure_policy: fail on lifecycle, polling, or retry contract drift.
+// invariants: no state is written after unmount; impression policy follows access/state axes; a 401 re-auths at most once per mount.
+// failure_policy: fail on lifecycle, polling, auth-gating, re-auth, or retry contract drift.
 // END_MODULE_CONTRACT: M-TEST-HOOK-TODAY-CONVERGENCE
 
 // START_MODULE_MAP: M-TEST-HOOK-TODAY-CONVERGENCE
@@ -25,6 +25,7 @@
 //   - INITIAL_AND_IMPRESSION
 //   - PENDING_POLLING
 //   - RETRY_AND_LIFECYCLE
+//   - AUTH_GATING_AND_REAUTH
 // owned_tests:
 //   - self
 // END_MODULE_MAP: M-TEST-HOOK-TODAY-CONVERGENCE
@@ -45,6 +46,8 @@ const mocks = vi.hoisted(() => ({
   retryTodayConvergence: vi.fn(),
   recordDayImpression: vi.fn(),
   replace: vi.fn(),
+  retryAuth: vi.fn(),
+  authState: { isLoading: false, isAuthenticated: true, error: null as string | null },
 }));
 
 vi.mock("@/lib/api/today-convergence", () => ({
@@ -65,7 +68,7 @@ vi.mock("@/lib/api/today-convergence", () => ({
 }));
 
 vi.mock("@/hooks/use-telegram-auth", () => ({
-  useTelegramAuth: () => ({ isLoading: false, isAuthenticated: true, error: null }),
+  useTelegramAuth: () => ({ ...mocks.authState, retry: mocks.retryAuth }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -84,6 +87,7 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.authState = { isLoading: false, isAuthenticated: true, error: null };
 });
 
 async function flushPromises() {
@@ -270,3 +274,117 @@ describe("useTodayConvergence error and onboarding branches", () => {
   });
 });
 // END_BLOCK: ERROR_AND_REDIRECT
+
+// START_BLOCK: AUTH_GATING_AND_REAUTH
+describe("useTodayConvergence shared auth gating and 401 re-auth", () => {
+  it("does not call the day API while shared auth is loading", async () => {
+    mocks.authState = { isLoading: true, isAuthenticated: false, error: null };
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+
+    expect(mocks.fetchTodayConvergence).not.toHaveBeenCalled();
+    expect(result.current.screenState).toBe("loading");
+  });
+
+  it("does not call the day API when shared auth ended with a terminal error", async () => {
+    mocks.authState = { isLoading: false, isAuthenticated: false, error: "Authentication timeout" };
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+
+    expect(mocks.fetchTodayConvergence).not.toHaveBeenCalled();
+    expect(result.current.screenState).toBe("loading");
+  });
+
+  it("still loads the day when auth finished unauthenticated without an error (dev skip)", async () => {
+    mocks.authState = { isLoading: false, isAuthenticated: false, error: null };
+    mocks.fetchTodayConvergence.mockResolvedValue(heroSupportive);
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(result.current.screenState).toBe("ready"));
+
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(1);
+    expect(result.current.payload).toBe(heroSupportive);
+  });
+
+  it("re-authenticates once on a 401 from the initial load and stays loading", async () => {
+    const { TodayConvergenceApiError } = await import("@/lib/api/today-convergence");
+    mocks.fetchTodayConvergence.mockRejectedValue(
+      new TodayConvergenceApiError("Unauthorized", "http", 401),
+    );
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(mocks.retryAuth).toHaveBeenCalledTimes(1));
+    expect(result.current.screenState).toBe("loading");
+
+    await flushPromises();
+    expect(mocks.retryAuth).toHaveBeenCalledTimes(1);
+    expect(result.current.screenState).toBe("loading");
+  });
+
+  it("becomes screenState=error on a second 401 after re-auth (no loop)", async () => {
+    const { TodayConvergenceApiError } = await import("@/lib/api/today-convergence");
+    mocks.fetchTodayConvergence.mockRejectedValue(
+      new TodayConvergenceApiError("Unauthorized", "http", 401),
+    );
+    const { result, rerender } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(mocks.retryAuth).toHaveBeenCalledTimes(1));
+    expect(result.current.screenState).toBe("loading");
+
+    // Shared auth restarts, then becomes authenticated again: INITIAL_LOAD reruns by deps.
+    mocks.authState = { isLoading: true, isAuthenticated: false, error: null };
+    rerender();
+    mocks.authState = { isLoading: false, isAuthenticated: true, error: null };
+    rerender();
+
+    await waitFor(() => expect(result.current.screenState).toBe("error"));
+
+    expect(mocks.retryAuth).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchTodayConvergence.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("re-authenticates once when refetch hits a 401 and stays loading", async () => {
+    const { TodayConvergenceApiError } = await import("@/lib/api/today-convergence");
+    mocks.fetchTodayConvergence.mockResolvedValue(stateUnavailable);
+    mocks.retryTodayConvergence.mockRejectedValue(
+      new TodayConvergenceApiError("Unauthorized", "http", 401),
+    );
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(result.current.screenState).toBe("ready"));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mocks.retryAuth).toHaveBeenCalledTimes(1);
+    expect(result.current.screenState).toBe("loading");
+    expect(result.current.retrying).toBe(false);
+  });
+
+  it("turns a 401 on a later refetch into the error screen", async () => {
+    const { TodayConvergenceApiError } = await import("@/lib/api/today-convergence");
+    mocks.fetchTodayConvergence.mockResolvedValue(stateUnavailable);
+    mocks.retryTodayConvergence.mockRejectedValue(
+      new TodayConvergenceApiError("Unauthorized", "http", 401),
+    );
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(result.current.screenState).toBe("ready"));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+    expect(mocks.retryAuth).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mocks.retryAuth).toHaveBeenCalledTimes(1);
+    expect(result.current.screenState).toBe("error");
+  });
+});
+// END_BLOCK: AUTH_GATING_AND_REAUTH

@@ -8,17 +8,19 @@
 
 # START_MODULE_CONTRACT: M-TEST-AUTH-ENDPOINTS
 # purpose: Verify public behavior of /api/auth/telegram, /api/auth/logout, and
-#   /api/auth/dev, including local-development-only guard boundaries.
+#   /api/auth/dev, including local-development-only guard boundaries and the
+#   additive auth_attempt_id correlation field.
 # owns:
 #   - apps/api/tests/test_auth_endpoints.py
 # inputs: async_client, db_session, make_initdata, monkeypatch fixtures.
 # outputs: pytest pass/fail assertions.
-# dependencies: app.api.auth, app.core.config, app.db.models.
+# dependencies: app.api.auth, app.core.config, app.core.logging, app.db.models.
 # side_effects: writes to isolated in-memory test database via ASGI requests.
-# emitted_logs: none
+# emitted_logs: none (log_event is captured via monkeypatch in correlation tests)
 # invariants:
 #   - invalid Telegram auth does not write DB rows.
 #   - local dev auth is allowed only for trusted local development requests.
+#   - auth_attempt_id is echoed only when the client supplied it.
 # failure_policy: tests fail on assertion or unexpected exception.
 # END_MODULE_CONTRACT: M-TEST-AUTH-ENDPOINTS
 
@@ -29,6 +31,10 @@
 #   - test_login_idempotent_user_upsert
 #   - test_login_400_on_invalid_hmac_no_db_write
 #   - test_login_401_on_expired_initdata
+#   - test_login_logs_auth_attempt_id_in_succeeded_payload
+#   - test_login_without_auth_attempt_id_omits_payload_key
+#   - test_login_logs_auth_attempt_id_on_failed_hmac
+#   - test_bind_log_context_accepts_auth_attempt_id
 #   - test_login_saves_valid_promo_start_param
 #   - test_login_without_start_param_preserves_existing_pending_promo_token
 #   - test_login_with_non_promo_start_param_ignored
@@ -88,6 +94,25 @@ def _trusted_loopback_dev_auth_request() -> Request:
             "headers": [(b"host", b"127.0.0.1:8000")],
         }
     )
+
+
+def _capture_auth_log_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    """Monkeypatch the auth route emitter and collect event, context and kwargs."""
+    from app.core.logging import auth_attempt_id_var
+
+    events: list[dict[str, object]] = []
+
+    def _capture(event: str, **kwargs: object) -> None:
+        events.append(
+            {
+                "event": event,
+                "context_auth_attempt_id": auth_attempt_id_var.get(),
+                **kwargs,
+            }
+        )
+
+    monkeypatch.setattr("app.api.auth.log_event", _capture)
+    return events
 
 
 @pytest.mark.asyncio
@@ -192,6 +217,90 @@ async def test_login_401_on_expired_initdata(
     r = await async_client.post("/api/auth/telegram", json={"initData": raw})
     assert r.status_code == 401
     assert r.json()["detail"]["code"] == "INITDATA_EXPIRED"
+
+
+@pytest.mark.asyncio
+async def test_login_logs_auth_attempt_id_in_succeeded_payload(
+    async_client: AsyncClient,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = _capture_auth_log_events(monkeypatch)
+    raw = make_initdata(user_id=701, username="attempt_correlation")
+    r = await async_client.post(
+        "/api/auth/telegram",
+        json={"initData": raw, "authAttemptId": "attempt-abc-123"},
+    )
+    assert r.status_code == 200, r.text
+
+    succeeded = [event for event in events if event["event"] == "auth.tg_login_succeeded"]
+    assert len(succeeded) == 1
+    assert succeeded[0]["context_auth_attempt_id"] == "attempt-abc-123"
+    payload = succeeded[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["auth_attempt_id"] == "attempt-abc-123"
+
+
+@pytest.mark.asyncio
+async def test_login_without_auth_attempt_id_omits_payload_key(
+    async_client: AsyncClient,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = _capture_auth_log_events(monkeypatch)
+    raw = make_initdata(user_id=702)
+    r = await async_client.post("/api/auth/telegram", json={"initData": raw})
+    assert r.status_code == 200, r.text
+
+    succeeded = [event for event in events if event["event"] == "auth.tg_login_succeeded"]
+    assert len(succeeded) == 1
+    assert succeeded[0]["context_auth_attempt_id"] == ""
+    payload = succeeded[0]["payload"]
+    assert isinstance(payload, dict)
+    assert "auth_attempt_id" not in payload
+
+
+@pytest.mark.asyncio
+async def test_login_logs_auth_attempt_id_on_failed_hmac(
+    async_client: AsyncClient,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = _capture_auth_log_events(monkeypatch)
+    raw = make_initdata(user_id=703)
+    bad = raw.replace("hash=", "hash=0", 1)
+    if bad == raw:
+        bad = raw[:-1] + ("0" if raw[-1] != "0" else "1")
+
+    r = await async_client.post(
+        "/api/auth/telegram",
+        json={"initData": bad, "authAttemptId": "attempt-fail-456"},
+    )
+    assert r.status_code == 400
+
+    failed = [event for event in events if event["event"] == "auth.tg_login_failed"]
+    assert len(failed) == 1
+    assert failed[0]["context_auth_attempt_id"] == "attempt-fail-456"
+    payload = failed[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["auth_attempt_id"] == "attempt-fail-456"
+    assert payload["reason"] == "invalid_hmac"
+
+
+def test_bind_log_context_accepts_auth_attempt_id() -> None:
+    from app.core.logging import (
+        auth_attempt_id_var,
+        bind_log_context,
+        clear_log_context,
+    )
+
+    clear_log_context()
+    try:
+        bind_log_context(auth_attempt_id="attempt-ctx-1")
+        assert auth_attempt_id_var.get() == "attempt-ctx-1"
+    finally:
+        clear_log_context()
+    assert auth_attempt_id_var.get() == ""
 
 
 @pytest.mark.asyncio

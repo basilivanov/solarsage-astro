@@ -15,6 +15,8 @@
 #   - TelegramAuthRequest, AuthSession, AuthError
 # invariants:
 #   - all fields snake_case in Python; camelCase on the wire (CamelModel).
+#   - auth_attempt_id is additive and optional (max 64, [A-Za-z0-9-]+); absent
+#     means older clients and is never required for a successful login.
 #   - AuthError.code is a Literal whitelist; mismatched values are 422.
 # END_MODULE_CONTRACT: M-AUTH-TG.schemas
 
@@ -47,6 +49,11 @@ class TelegramAuthRequest(CamelModel):
     """POST /api/auth/telegram — request body."""
 
     init_data: str = Field(..., min_length=1, max_length=8192)
+    auth_attempt_id: str | None = Field(
+        default=None,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9-]+$",
+    )
 # END_BLOCK: AUTH_REQUEST
 
 

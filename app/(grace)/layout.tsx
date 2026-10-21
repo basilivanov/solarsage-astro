@@ -18,7 +18,8 @@
 //   - Local fixture shell requires development mode, exact day path, and exact fixture query.
 //   - Fixture shell never mounts useTelegramAuth, AppShell, or ProfileReset.
 //   - The outer layout is prerender-safe; search parameters resolve only beneath Suspense.
-// failure_policy: Normal branch retains existing auth loading/error states.
+//   - Auth error screen renders for any terminal auth error (with auth-retry), independent of inTelegram.
+// failure_policy: Normal branch retains existing auth loading/error states; auth-retry restarts the shared auth flow.
 // END_MODULE_CONTRACT: M-GRACE-LAYOUT
 
 // START_MODULE_MAP: M-GRACE-LAYOUT
@@ -79,7 +80,7 @@ function ShellSelectionFallback() {
 }
 
 function AuthenticatedShell({ children, pathname }: { children: React.ReactNode; pathname: string | null }) {
-  const { isLoading, isAuthenticated, error } = useTelegramAuth()
+  const { isLoading, isAuthenticated, error, retry } = useTelegramAuth()
   const { inTelegram } = useTelegram()
 
   logger.debug("[GraceLayout] Render", { extra: { isLoading, isAuthenticated, error, pathname } })
@@ -96,14 +97,24 @@ function AuthenticatedShell({ children, pathname }: { children: React.ReactNode;
     )
   }
 
-  if (error && inTelegram) {
+  if (error) {
     logger.warn("[GraceLayout] Auth error", { extra: { error } })
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6" data-testid="auth-error">
         <div className="flex w-full max-w-md flex-col gap-3">
           <h1 className="text-balance text-xl font-semibold tracking-tight text-foreground">Ошибка авторизации</h1>
           <p className="text-pretty text-sm leading-relaxed text-muted-foreground">{error}</p>
-          <p className="text-pretty text-xs leading-relaxed text-muted-foreground">Пожалуйста, откройте приложение через Telegram бот.</p>
+          <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
+            {inTelegram ? "Пожалуйста, попробуйте ещё раз." : "Пожалуйста, откройте приложение через Telegram бот."}
+          </p>
+          <button
+            type="button"
+            data-testid="auth-retry"
+            onClick={retry}
+            className="mt-2 inline-flex h-11 items-center justify-center self-start rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition active:scale-[0.99]"
+          >
+            Попробовать снова
+          </button>
         </div>
       </div>
     )
