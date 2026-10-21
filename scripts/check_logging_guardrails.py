@@ -340,6 +340,8 @@ def check_frontend_console() -> bool:
         "lib/log/redactor.ts",
         "lib/log/logger.ts",
         "public/telemetry/fetch-interceptor.js",
+        # Vendored third-party Telegram WebApp SDK — not our code, never guard it.
+        "public/telegram-web-app.js",
     }
 
     # Allow-listed paths where console.log/warn/error is intentional

@@ -4789,6 +4789,19 @@
         "additionalProperties": false,
         "description": "POST /api/auth/telegram — request body.",
         "properties": {
+          "authAttemptId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authattemptid"
+          },
           "initData": {
             "maxLength": 8192,
             "minLength": 1,

@@ -770,6 +770,7 @@ export const SubscriptionStatusResponse = z.object({
   subscriptionId: z.union([z.string(), z.null()]).optional(),
 });
 export const TelegramAuthRequest = z.object({
+  authAttemptId: z.union([z.string(), z.null()]).optional(),
   initData: z.string().min(1).max(8192),
 });
 export const TodayConvergenceBirthCapabilities = z.object({

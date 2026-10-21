@@ -2534,6 +2534,8 @@ export interface components {
          * @description POST /api/auth/telegram — request body.
          */
         TelegramAuthRequest: {
+            /** Authattemptid */
+            authAttemptId?: string | null;
             /** Initdata */
             initData: string;
         };
