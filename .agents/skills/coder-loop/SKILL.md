@@ -99,7 +99,7 @@ sudo tmux send-keys -t astro:0.0 Enter
 
 - `grace/verification-matrix.md` — новый use case или изменённые gates (обновлять только при реальном изменении поведения/владения/gates);
 - `grace/knowledge-graph.xml` — новые/удалённые модули и рёбра зависимостей;
-- `AGENTS.md` — порты, сервисы, расположение файлов, известные баги;
+- `AGENTS.md` + `docs/agents/*` — порты, сервисы, расположение файлов, известные баги (детали сред и багов — в `docs/agents/runtime-environments.md` и `docs/agents/known-issues.md`);
 - `grace/frontend.paths` — новые директории фронтенда, которые должны попасть под marker-enforcement;
 - runbook'и (`docs/PRODUCTION_RUNBOOK.md`, `docs/PROMO_CAMPAIGN_RUNBOOK.md`) — операционные изменения.
 

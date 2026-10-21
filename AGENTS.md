@@ -1,5 +1,10 @@
 # AGENTS.md — SolarSage Astro
 
+AGENTS.md вместе с документами `docs/agents/*` — operative canon репозитория;
+`docs/GRACE_CANON.md` — policy baseline. При расхождении действует operative canon.
+Этот файл держит критичные правила и ежедневные команды inline, а справочные
+детали выносит в `docs/agents/` — у каждой ссылки указано, что там лежит.
+
 ## Канонические порты
 
 | Порт | Сервис | Где запущен | Комментарий |
@@ -9,7 +14,7 @@
 | **3002** | Frontend (Next.js) | контейнер `solarsage-frontend` (Compose `solarsage-app`) | Production build. Nginx: `/` → 3002 |
 | **80/443** | Nginx | `nginx.service` | Единая точка входа: `/api/*` → 8000, всё остальное → 3002 |
 
-Канонический production path — минимальный Compose path: immutable per-SHA OCI images + `infra/production/docker-compose.app.yml` + единственный orchestrator `/usr/local/libexec/solarsage/prod-orchestrator` (исходник `scripts/deploy/prod-orchestrator.sh`). До one-time manual cutover старые app systemd units (`solarsage-api.service`, `solarsage-sidecar.service`, `solarsage-frontend.service`) могут ещё существовать на хосте; они disabled-by-name, их templates удалены из репозитория (181 cleanup).
+Канонический production path — минимальный Compose path: immutable per-SHA OCI images + `infra/production/docker-compose.app.yml` + orchestrator `/usr/local/libexec/solarsage/prod-orchestrator`.
 
 ### Вспомогательные порты (не продакшен)
 
@@ -28,20 +33,8 @@
 | **18091** | SolarSage sidecar | контейнер `solarsage-sidecar` (Compose `solarsage-app`) | Расчётный движок, внутренний (API → sidecar по compose-сети) |
 | **18095** | Bugsink | контейнер `solarsage-bugsink` (Compose `solarsage-bugsink`) | Error tracking UI, внутренний (`127.0.0.1:18095`, доступен по SSH-туннелю) |
 
-### Docker
-
-- `infra/production/docker-compose.app.yml` — **canonical production app stack** (api/sidecar/frontend, loopback-only, digest-pinned images; проект `solarsage-app`)
-- `infra/production/docker-compose.yml` — **canonical production DB** (PostgreSQL 15, проект `solarsage-prod`, port 5433)
-- Root `docker-compose.yml` / `docker-compose.prod.yml` — **dev/compatibility only** (не production source of truth)
-- `solarsage-db` — PostgreSQL 15 контейнер DB-проекта на портах 5433+5434, `POSTGRES_DB=astro`, user/password из `.env`
-
-### Systemd
-
-- `solarsage-db.service` — PostgreSQL compose project (canonical DB, port 5433)
-- `solarsage-backup.timer` / `solarsage-backup.service` — canonical daily backup через установленный orchestrator
-- `ductor-astro.service` — Telegram бот @vi_astro_bot
-
-App-сервисы (api/sidecar/frontend) работают в контейнерах Compose `solarsage-app`, а не как systemd units. Старые app units (`solarsage-api.service`, `solarsage-sidecar.service`, `solarsage-frontend.service`), `solarsage.service`, `solarsage-frontend-preview-3001.service` и `solarsage-backup-maintenance.*` — parked: host-prepare только disable-by-name (без `--now`, без stop), фактический stop — отдельная ручная one-time cutover команда владельца непосредственно перед первым Compose deploy.
+Docker Compose проекты, systemd units (активные и parked) — см.
+[`docs/agents/runtime-environments.md`](docs/agents/runtime-environments.md).
 
 ### НЕ ИСПОЛЬЗОВАТЬ
 
@@ -52,68 +45,20 @@ App-сервисы (api/sidecar/frontend) работают в контейнер
 
 ## Production host (astro.vasiliy-ivanov.ru)
 
-Прод живёт на **отдельной машине** (с 2026-07-23 — новый хост, миграция с RU-хостера):
+Прод живёт на **отдельной машине** (`2.26.20.80`, xorek.cloud, EU; SSH
+`root@2.26.20.80 -i ~/.ssh/solarsage_prod_server_ed25519`). Рантайм — Compose
+`solarsage-app` (api/sidecar/frontend) + `solarsage-prod` (DB) + `solarsage-bugsink`.
+Деплой — только через skill `prod-deploy`.
 
-```text
-domain: astro.vasiliy-ivanov.ru
-IPv4:   2.26.20.80 (xorek.cloud, EU — прямой egress к Telegram/OpenRouter/ЮKassa)
-OS:     Ubuntu 22.04 LTS, hostname 1871962.xorek.cloud
-SSH:    root@2.26.20.80 -i ~/.ssh/solarsage_prod_server_ed25519
-Старый хост 157.22.192.242 — standby (app-контейнеры остановлены, БД запущена,
-backup.timer выключен). Не удалять до явного решения владельца.
-```
-
-### Что где лежит на проде
-
-| Что | Где |
-|-----|-----|
-| App env (секреты) | `/etc/solarsage/app.env` (root:astro 0640) |
-| Installed app compose | `/etc/solarsage/compose/docker-compose.app.yml` |
-| Repo checkout (infra) | `/opt/solarsage-astro` (нужен для `solarsage-db.service` и tmpfiles.d) |
-| Orchestrator | `/usr/local/libexec/solarsage/prod-orchestrator` |
-| Orchestrator state / release record | `/var/lib/solarsage/orchestrator/release-record` |
-| Локальные DB-дампы | `/var/backups/solarsage` |
-| Restic-репозиторий (временно на этой же машине) | `/srv/restic/solarsage` |
-| Nginx vhost | `/etc/nginx/sites-enabled/astro.vasiliy-ivanov.ru.conf` |
-| TLS cert | certbot, `/etc/letsencrypt/live/astro.vasiliy-ivanov.ru/` |
-| Error tracking (Bugsink) | `infra/production/docker-compose.bugsink.yml`, `solarsage-bugsink.service` |
-| Контейнеры | `solarsage-api`, `solarsage-sidecar`, `solarsage-frontend` (Compose `solarsage-app`), `solarsage-db` (Compose `solarsage-prod`), `solarsage-bugsink` (Compose `solarsage-bugsink`) |
-
-Systemd на проде: активны `solarsage-db.service`, `solarsage-backup.timer`, `solarsage-day-pregen.timer` (+ `.service`, с 2026-08-09 — pregen завтрашнего дня в 04:07 MSK через `docker exec solarsage-api python -m app.jobs.day_pregen`; prod-вариант юнита — `infra/systemd/solarsage-day-pregen-prod.{service,timer}`, dev-вариант на venv — `solarsage-day-pregen.{service,timer}`), `solarsage-feedback-broadcast.timer`, `fail2ban`, UFW (22/80/443). Бэкап = orchestrator `backup`: локальный pg_dump в `/var/backups/solarsage` + restic в `sftp:restic-backup@2.26.20.80:/solarsage` — **это та же машина (backup-to-self, ВРЕМЕННО)**; при появлении отдельного offsite-хоста поменять `RESTIC_REPOSITORY` в app.env и ssh-дропин.
-
-Prod app.env (convergence, 2026-08-09): narrative/pregen ключи зеркалят dev-канон (`TODAY_NARRATIVE_MODEL_PREGEN=deepseek/deepseek-v4-flash`, `TODAY_NARRATIVE_MODEL_ONDEMAND=openai/gpt-4.1-nano`, `TODAY_NARRATIVE_FALLBACK_MODELS`/`LLM_FALLBACK_MODEL=google/gemma-4-31b-it`, `TODAY_NARRATIVE_PROMPT_VERSION=today-narrative-v6`, `DAY_PREGEN_LLM_DEADLINE_SECONDS=180` и остальные `DAY_PREGEN_*`); legacy `SOLARSAGE_V2_ENABLED`/`SOLARSAGE_V2_FRONTEND_ENABLED` удалены (код работает с default False, как на dev).
-
-⚠️ `solarsage-backup.service` работает с `ProtectHome=true` — ssh внутри юнита **не читает** `/root/.ssh/config`. SSH-конфиг для restic-хоста обязан жить в `/etc/ssh/ssh_config.d/solarsage-restic.conf` (IdentityFile `/etc/solarsage/keys/restic-sftp-ed25519`, pinned UserKnownHostsFile `/etc/solarsage/keys/restic-backup-known_hosts`).
-
-### Egress и relay (состояние после миграции)
-
-С нового хоста всё доступно напрямую: `api.telegram.org`, `openrouter.ai`, `api.deepseek.com`, `api.yookassa.ru`, `github.com`. TCP egress-relay (`infra/relay/`, контейнер `egress-relay` на dev-хосте `45.88.172.246:8443`) продом **больше не используется** и оставлен в standby. В prod app.env НЕ должно быть `OPENROUTER_BASE_URL` (дефолт — прямой `https://openrouter.ai/api/v1`), в installed compose НЕ должно быть `extra_hosts`.
-
-Исторический контекст (RU-хостер, до 2026-07-23): OpenRouter — geo-block 403, api.telegram.org — SNI-DPI drop (проверено: режется TLS ClientHello по SNI на любой IP), Telegram webhook inbound — timeout. Если прод когда-либо переедет обратно в RU-юрисдикцию — поднимать relay и возвращать `extra_hosts` + `OPENROUTER_BASE_URL` (см. `infra/relay/README.md`).
-
-Корневой дизайн-вывод: любой внешний сервис, от которого зависит продукт, обязан быть проверен на достижимость **с прод-хоста** (см. post-deploy smoke); «зелёные тесты в CI/dev» ничего не говорят о прод-egress.
+Полная топология (что где лежит, app.env ключи, backup/restic, egress и relay,
+ProtectHome-caveat, список контейнеров и таймеров) —
+[`docs/agents/runtime-environments.md`](docs/agents/runtime-environments.md).
 
 ## Dev host (dev.astro.vasiliy-ivanov.ru)
 
-Дев живёт на отдельной машине (`bivanov.fvds.ru`, 45.88.172.246 — та же, где egress-relay в standby). В отличие от прода, рантайм здесь — **systemd units + локальный checkout** `/opt/solarsage-astro`, а не Compose-контейнеры.
-
-Nginx (`/etc/nginx/sites-enabled/astro.conf`): `dev.astro.vasiliy-ivanov.ru` и `test.astro.vasiliy-ivanov.ru` → `/api/*` на `127.0.0.1:8000`, всё остальное на `127.0.0.1:3002`.
-
-| Unit | Что запускает | Порт |
-|------|---------------|------|
-| `solarsage-api.service` | uvicorn `app.main:app` из `apps/api/.venv`, env из `/opt/solarsage-astro/.env` | 8000 |
-| `solarsage-frontend.service` | `npm run start` (`next start`), `NODE_ENV=production`, `PORT=3002` — отдаёт prod build из `.next-prod` | 3002 |
-| `solarsage-sidecar.service` | uvicorn `solarsage.app:app` из `apps/solarsage/venv`, `PYTHONPATH=apps/solarsage` | 18091 |
-| `solarsage-frontend-dev-3000.service` | `pnpm next dev` (обычно inactive; 3000 поднимают вручную, nginx его не обслуживает) | 3000 |
-| `solarsage-frontend-mock-dev-3001.service` | mock preview из worktree `/opt/solarsage-astro-mock-preview` (`archive/demo-origin-main`) | 3001 |
-| `solarsage-synastry-reconcile.timer` (+ `.service`) | oneshot `python -m app.jobs.synastry_reconcile` каждые 5 мин — доводит зависшие synastry-репорты до ready/failed+refund | — |
-| `solarsage-day-pregen.timer` (+ `.service`) | oneshot `python -m app.jobs.day_pregen` ежедневно в 04:07 — предгенерация завтрашнего дня активным пользователям на новом convergence-контракте (deterministic snapshot → selective LLM warm-up; cache hit вместо ~75 сек LLM). Юнит без valence-флагов; источники в `infra/systemd/` | — |
-
-Девовский API-юнит больше НЕ несёт valence drop-in (`/etc/systemd/system/solarsage-api.service.d/valence.conf` удалён при convergence cutover). `TODAY_VALENCE_V1_ENABLED`, `TODAY_VALENCE_V1_DUAL_RUN`, `SOLARSAGE_V2_ENABLED`, `SOLARSAGE_V2_FRONTEND_ENABLED` — legacy routing flags, удалены из всех runtime-окружений; новый Today от них не зависит.
-
-Новые env в `.env` (convergence RC): `DAY_PREGEN_ACTIVE_DAYS` (14), `DAY_PREGEN_LLM_ACTIVE_DAYS` (7), `DAY_PREGEN_CONCURRENCY` (3), `DAY_PREGEN_MAX_USERS` (500), `DAY_PREGEN_DETERMINISTIC_DEADLINE_SECONDS` (10), `DAY_PREGEN_LLM_DEADLINE_SECONDS` (180 — flash p95 ~124с по eval, 45с давал TimeoutError), `TODAY_NARRATIVE_MODEL_PREGEN` (`deepseek/deepseek-v4-flash`), `TODAY_NARRATIVE_MODEL_ONDEMAND` (`openai/gpt-4.1-nano`), `TODAY_NARRATIVE_FALLBACK_MODELS` (`google/gemma-4-31b-it`), `TODAY_NARRATIVE_PREGEN_MAX_OUTPUT_TOKENS` (3000), `TODAY_NARRATIVE_MAX_OUTPUT_TOKENS` (2000), `TODAY_NARRATIVE_TIMEOUT_SECONDS` (45), `TODAY_NARRATIVE_PROMPT_VERSION` (`today-narrative-v6`), `TODAY_LLM_ON_DEMAND_CONCURRENCY` (3), `LLM_FALLBACK_MODEL` (`google/gemma-4-31b-it`), `RELEASE_SHA`. Today narrative использует flash на pregen, nano on-demand и Gemma как OpenRouter fallback; фронт- и storage-контракты не меняются. Sidecar получает release identity через drop-in `/etc/systemd/system/solarsage-sidecar.service.d/release.conf` (`SOLARSAGE_RELEASE_SHA`).
-
-Девовский `.env`: `APP_ENV=staging`, `DEV_MODE=false`, `APP_DOMAIN=dev.astro.vasiliy-ivanov.ru` → auth только через Telegram HMAC, `/api/auth/dev` на деве недоступен.
+Дев — эта машина: рантайм **systemd units + локальный checkout** `/opt/solarsage-astro`
+(не Compose). Таблица units, env-ключи convergence RC, legacy-флаги —
+[`docs/agents/runtime-environments.md`](docs/agents/runtime-environments.md).
 
 ### Деплой на дев
 
@@ -138,154 +83,32 @@ systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 
 ## UI Semantic/Test Contract
 
-Фронтенд должен быть написан так, чтобы пользователь, accessibility tree и headless-тест видели один и тот же публичный UI-контракт. Тесты не должны зависеть от CSS-классов, React internals или случайного текста LLM.
+Фронтенд пишется так, чтобы пользователь, accessibility tree и headless-тест видели один публичный UI-контракт. Суть правил:
 
-### Обязательные правила для экранов и интерактивных блоков
+- Стабильные `data-testid` у экранов и крупных блоков; состояния отражаются в DOM
+  (`data-state`, `data-screen-state`, `aria-*`); icon-only buttons имеют `aria-label`;
+  loading — `role="status"`, error — `role="alert"`, modal — `role="dialog"` + `aria-modal`.
+- Тесты опираются только на публичный DOM-контракт, не на CSS-классы/React internals/тексты LLM.
+- `data-testid` — публичный контракт: не переименовывать без обновления тестов.
+- Production runtime не импортирует `lib/mocks/*` и demo/mock API; mock e2e — только test-only слой.
 
-- Каждый крупный экран имеет стабильный root selector: `data-testid="today-screen"`, `calendar-screen`, `profile-screen`, `readings-screen`, `horary-screen`, `natal-screen`.
-- Крупные повторяемые блоки имеют стабильные `data-testid`: карточки, строки календаря, CTA, paywall, loading/error/empty states.
-- Состояния, важные для UI и тестов, отражаются в DOM:
-  - для экранов и блоков вне нового Today:
-    `data-state="loading|ready|empty|error|locked|disabled"`
-  - для нового Today: `data-state="convergence_today|quiet_day|unavailable"`,
-    `data-screen-state="loading|ready|error"`,
-    `data-day-tone="steady|supportive|mixed|tense"`,
-    `data-content-state="ready|pending|unavailable|not_needed"`,
-    `data-access-state="full|preview|locked"` и
-    `data-birth-time-mode="exact|bucket|unknown"`
-  - старый Today `data-status="calm|tense|favorable|neutral"` superseded и не
-    используется новым экраном; для остальных экранов действует их собственный
-    контрактный enum
-  - `disabled`, `aria-disabled`, `aria-busy`, `aria-pressed`, `aria-expanded`, `aria-current`, `aria-selected`
-- Icon-only buttons обязательно имеют `aria-label`.
-- Табы и основная навигация используют `nav`, `aria-label`, `aria-current="page"` или `aria-selected`.
-- Формы используют реальные `label`, `aria-invalid`, `aria-describedby`; placeholder не считается label.
-- Loading state использует `role="status"` и/или `aria-busy`; error state использует `role="alert"`; modal/sheet использует `role="dialog"` и `aria-modal`.
-- Для accordion/disclosure обязательно отражать состояние через `aria-expanded` и связанный `aria-controls`, если есть раскрываемая область.
-- Динамические тексты от API/LLM не должны быть единственной опорой теста; рядом нужен стабильный structural selector или state attribute.
-- `data-testid` — это публичный test contract. Не переименовывать без обновления e2e/unit тестов и миграционной причины.
-
-### Тестовая стратегия для UI
-
-- Mock/fixture e2e через Playwright `page.route('/api/**', ...)` допустим только как test-only слой. Он проверяет visual/structural contract фронта на стабильных payload'ах.
-- Real e2e всегда идёт без route interception: Telegram HMAC → реальный API → реальные данные.
-- Visual regression baseline использовать дозировано: ключевые экраны и состояния (`day`, `calendar`, `profile`, `readings`, `horary`, `natal`, `locked`, `empty`, `error`, `generating`). Динамические текстовые зоны маскировать или проверять структурно.
-- Production runtime не должен импортировать `lib/mocks/*`, `lib/demo-data.ts` или demo/mock API. Моки живут в test harness, fixtures и старом visual reference, но не в product path.
-
-Пример контракта:
-
-```tsx
-<section
-  data-testid="today-screen"
-  data-screen-state={screenState}
-  data-state={state}
-  data-day-tone={dayTone ?? undefined}
-  data-content-state={contentState}
-  data-access-state={access.state}
-  data-birth-time-mode={birthTime.mode}
->
-  <button
-    type="button"
-    aria-expanded={open}
-    aria-controls="today-calculation-details"
-  >
-    Как это рассчитано
-  </button>
-</section>
-```
-
-Тест должен обращаться к публичному DOM-контракту:
-
-```ts
-await expect(page.getByTestId("today-screen")).toHaveAttribute("data-state", "quiet_day")
-await expect(page.getByTestId("today-screen")).toHaveAttribute("data-screen-state", "ready")
-await expect(page.getByTestId("today-screen")).toHaveAttribute("data-day-tone", "steady")
-await expect(page.getByRole("button", { name: "Как это рассчитано" })).toHaveAttribute("aria-expanded", "false")
-```
+Полные enums состояний (включая новый Today), правила для форм/табов/accordion,
+тестовая стратегия и примеры кода —
+[`docs/agents/ui-test-contract.md`](docs/agents/ui-test-contract.md).
 
 ## GRACE Canon и структурные логи
 
-Новые кодовые файлы и существенные изменения в существующих файлах должны сохранять GRACE-разметку: `AI_HEADER`, `START_MODULE_CONTRACT`, `START_MODULE_MAP`, а для нетривиальных публичных функций/классов — `START_FUNCTION_CONTRACT` и `START_BLOCK`. Старые файлы не переписывать ради формата отдельно от задачи.
-
-### Шаблон файла
-
-Использовать синтаксис комментариев языка файла (`#` для Python, `//` для TypeScript/TSX):
-
-```ts
-// ############################################################################
-// AI_HEADER: MODULE_NAME — one-line description of what this module does
-// ROLE: Detailed role. Who calls it, what it provides.
-// ############################################################################
-
-// START_MODULE_CONTRACT: M-MODULE-NAME
-// purpose: What this module does. Who calls it, what it returns/provides.
-// owns:
-//   - path/to/file.ts
-// inputs: List of inputs, parameters, or dependencies.
-// outputs: What this module returns or provides.
-// dependencies: Local modules, services, external APIs.
-// side_effects: File writes, DB inserts, network calls, subprocess spawns.
-// emitted_logs: Exact event names emitted by this module, or "none".
-// invariants: Conditions this module must preserve.
-// failure_policy: What errors are raised, returned, logged, or swallowed.
-// END_MODULE_CONTRACT: M-MODULE-NAME
-
-// START_MODULE_MAP: M-MODULE-NAME
-// public_entrypoints:
-//   - exportedFunction
-//   - ClassName.methodName
-// semantic_blocks:
-//   - BLOCK_NAME: what this block owns
-// owned_tests:
-//   - __tests__/...
-// END_MODULE_MAP: M-MODULE-NAME
-```
-
-`owned_tests` в MODULE_MAP обязателен (кроме тривиальных файлов без тестов — тогда писать `owned_tests: none`): это быстрый указатель «какой тест гонять для этого файла». Срезовая/UC-приёмка описывается отдельно в `grace/verification-matrix.md`. `docs/GRACE_CANON.md` — policy baseline канона, AGENTS.md — operative canon этого репозитория; при расхождении действует AGENTS.md.
-
-Для функций:
-
-```ts
-// START_BLOCK: BLOCK_NAME
-export async function runThing(input: string): Promise<Result> {
-  // START_FUNCTION_CONTRACT: F-M-MODULE-NAME.runThing
-  // purpose: What this function does.
-  // inputs: input — description.
-  // returns: Result — meaning.
-  // side_effects: Network calls, DB writes, log events.
-  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed.
-  // error_behavior: Throws/returns on specific failures.
-  // END_FUNCTION_CONTRACT: F-M-MODULE-NAME.runThing
-}
-// END_BLOCK: BLOCK_NAME
-```
-
-### Адаптация логов под этот репозиторий
-
-Не импортировать `grace_control.core.structured_logger.GraceLogger`: такого runtime в SolarSage Astro нет. Использовать существующие механизмы:
-
-- Frontend/browser: `logEvent`, `logStart`, `logSuccess`, `logFailure` из `lib/log/index.ts`. Для старого кода допустим существующий `logger.*`, но новые важные бизнес-события лучше писать через typed `logEvent`.
-- Frontend server/RSC/route handlers: если файл уже использует GRACE stdout envelope, использовать `lib/grace/log.ts`; не смешивать два логгера в одном модуле без причины.
-- Backend FastAPI: `log_event`, `bind_log_context`, `log_block` из `apps/api/app/core/logging.py`.
-- Список допустимых событий берётся из `lib/log/events.gen.ts` и `apps/api/app/core/logging_events.py`. Новое событие сначала добавить в registry/contract, затем использовать в коде.
-- В `emitted_logs` в contract указывать реальные event names (`ui.fetch_started`, `day.viewed`, `system.error`), а не произвольные фразы.
-- Каждый структурный log должен иметь `slice`, `module`, `block`, `event`, `correlation_id`; frontend logger заполняет defaults, но для нового feature-кода передавать точные `slice/module/block` в `meta`.
-- В логах запрещены raw Telegram initData, bot token, session cookies, email/phone и точные персональные данные без редакции. Использовать существующий redactor.
-- Логгер не должен ломать пользовательский flow: ошибки логирования swallowing/handled, бизнес-ошибки логируются и возвращаются по контракту.
-
-## Навигация по коду через GRACE-маркеры
-
-Не всасывать файлы целиком «на всякий случай»: кодовая база размечена machine-grepable якорями, и ими нужно пользоваться.
-
-1. Найти модуль по ответственности: `rg -n "purpose:" <dir>` или по имени `rg -n "M-API-PROMO"`.
-2. Сначала читать только `MODULE_CONTRACT` (purpose/owns/inputs/outputs/side_effects/invariants) и `MODULE_MAP` (public_entrypoints, semantic_blocks, owned_tests) — интерфейс и покрытие видны без реализации.
-3. Реализацию читать по блокам: `rg -n "START_BLOCK: REDEEM"` → читать до соответствующего `END_BLOCK`, а не весь файл.
-4. Поведение функции — через `START_FUNCTION_CONTRACT` прямо над ней; какой тест гонять для файла — через `owned_tests` в MODULE_MAP.
-5. Трассировка событий — по точным именам из `emitted_logs` (`rg -n "promo.redemption_succeeded"`), не по свободному тексту.
-6. Рабочие слайсы — `docs/work/YYYY-MM-DD_<slug>/`: сначала master/00_TZ, затем только нужный `NN_..._TZ.md`, не весь каталог.
-7. Чем доказывать корректность — `grace/verification-matrix.md`: фича маппится на slice gates и UC-строку (модули на happy path → gates → scenarios S1..Sn); матрица индексируется по срезам/UC с зонтичными module-ID, per-file тесты — через `owned_tests`.
-
-Ограничение: маркеры — комментарии; `scripts/grace/check-markers.sh` проверяет их наличие и парность, но не истинность. Для навигации им доверять можно; перед правкой читать сам код блока и его callers.
+- Новые кодовые файлы и существенные изменения: `AI_HEADER`, `START_MODULE_CONTRACT`,
+  `START_MODULE_MAP` (с обязательным `owned_tests`); для нетривиальных публичных
+  функций/классов — `START_FUNCTION_CONTRACT` и `START_BLOCK`. Старые файлы ради
+  формата не переписывать. Шаблоны — в [`docs/agents/grace-canon.md`](docs/agents/grace-canon.md).
+- Логирование: frontend/browser — `logEvent`/`logStart`/`logSuccess`/`logFailure` из
+  `lib/log/index.ts`; frontend server — `lib/grace/log.ts`; backend — `log_event` из
+  `apps/api/app/core/logging.py`. Допустимые события — `lib/log/events.gen.ts` и
+  `apps/api/app/core/logging_events.py`; новое событие сначала в registry. `grace_control` не существует — не импортировать.
+- Навигация по коду — через GRACE-маркеры: модуль ищем по `rg "purpose:"` / имени
+  `M-*`, читаем сначала CONTRACT/MAP, реализацию — по `START_BLOCK`, события — по
+  точным именам из `emitted_logs`. Подробный workflow — там же, в grace-canon.md.
 
 ## Sandbox-прототипирование (канон)
 
@@ -336,34 +159,11 @@ python3 scripts/generate-telegram-test-initdata.py
 
 ## Публикация отчётов и скриншотов (CF tunnel)
 
-Когда владельцу нужно посмотреть артефакты (visual baseline PNG, e2e-скриншоты,
-HTML-отчёты) — выкладываем их через **Cloudflare quick tunnel**, а не
-скриншотами в чат и не на внешний хостинг.
-
-Канонический способ:
-
-```bash
-# 1. собрать витрину (png + index.html с сеткой) во временный каталог
-mkdir -p /tmp/artifact-showcase && cp <артефакты> /tmp/artifact-showcase/
-# 2. static server на свободном loopback-порту
-cd /tmp/artifact-showcase && nohup python3 -m http.server 18923 --bind 127.0.0.1 &
-# 3. quick tunnel (без аккаунта; URL живёт, пока жив процесс)
-nohup cloudflared tunnel --url http://127.0.0.1:18923 --no-autoupdate > tunnel.log 2>&1 &
-# URL: grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" tunnel.log | head -1
-```
-
-- `cloudflared` лежит в `/tmp/cloudflared` (linux-amd64 binary из официальных
-  GitHub releases; переустановка — скачать заново тем же способом).
-- Quick tunnel — временный (до рестарта процесса/хоста). Если нужен
-  постоянный URL — named tunnel через аккаунт Cloudflare (отдельное решение
-  владельца).
-- Выкладываются ТОЛЬКО публично безопасные артефакты: masked visual
-  baselines, screenshots, aggregated reports. Никаких логов с user ids,
-  env, дампов или fixture'ов с персональными данными.
-
-Активная витрина (приёмка Today Convergence, 2026-08-01 раунд 2: импульсы, drilldown-драйверы, календарь):
-`/tmp/baseline-showcase/` (30 PNG + index.html), server :18923,
-quick tunnel `https://knee-modes-essential-drivers.trycloudflare.com` (живёт, пока жив процесс).
+Артефакты владельцу (visual baselines, e2e-скриншоты, HTML-отчёты) выкладываем через
+**Cloudflare quick tunnel** (static server на loopback + `cloudflared`), а не
+скриншотами в чат. Только публично безопасный контент — никаких логов с user ids,
+env, дампов. Пошаговые команды и активная витрина —
+[`docs/agents/artifact-publishing.md`](docs/agents/artifact-publishing.md).
 
 ## Форматирование вывода в чат (OpenCode / TUI)
 
@@ -376,7 +176,6 @@ quick tunnel `https://knee-modes-essential-drivers.trycloudflare.com` (живё�
 
 ## Известные баги / технический долг
 
-| # | Баг | Где | Суть |
-|---|-----|-----|------|
-| ~~1~~ | ~~`Transit_` / `Natal_` в UI~~ | FIXED 2026-08-01 (27c18f71) | Стриппинг + локализация в `today_service.py`/`astro_utils.strip_prefix`, плюс fail-closed `narrative_sanitizer.py` на всех narrative-ответах. |
-| 2 | SolarSage не отдаёт `planet.house` | `normalization_service.py:60` — `_planets_in_houses()` | SolarSage возвращает `houses: [{number, cusp}]` отдельно от планет. `NormalizationService` вынужден вручную маппить `planet.longitude → house` через `_find_house()`. Это лишняя работа на стороне API. **Fix:** добавить в SolarSage выдачу `planet.house` сразу при расчёте транзитов и натала. |
+Активен баг #2: SolarSage не отдаёт `planet.house` (маппинг на стороне API в
+`normalization_service.py`). Полная таблица багов и закрытых фиксов —
+[`docs/agents/known-issues.md`](docs/agents/known-issues.md).

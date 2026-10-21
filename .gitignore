@@ -38,7 +38,7 @@ playwright-report/
 dist/
 build/
 .env.production
-agents/
+/agents/
 .superpowers/
 
 # V2 personal day preview Next dist

@@ -173,7 +173,7 @@ cp -a /etc/solarsage/app.env /etc/solarsage/app.env.bak-$(date +%Y%m%d)   # 1. �
 ## Systemd/jobs на проде
 
 - App — Compose-контейнеры; периодические джобы — systemd-таймеры, дёргающие `docker exec solarsage-api python -m app.jobs.<job>`. Эталон: `infra/systemd/solarsage-day-pregen-prod.{service,timer}` (04:07 MSK).
-- Новый джоб: unit в репозиторий (`infra/systemd/`) → `install -m 644 -o root -g root` в `/etc/systemd/system/` → `systemctl daemon-reload && systemctl enable --now <name>.timer` → запись в AGENTS.md.
+- Новый джоб: unit в репозиторий (`infra/systemd/`) → `install -m 644 -o root -g root` в `/etc/systemd/system/` → `systemctl daemon-reload && systemctl enable --now <name>.timer` → запись в `docs/agents/runtime-environments.md`.
 - Известный хвост: `solarsage-synastry-reconcile.timer` есть только на dev, на проде его нет (не «поломка», просто не завезли).
 
 ## Rollback
