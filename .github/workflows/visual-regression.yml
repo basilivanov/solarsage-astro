@@ -82,9 +82,8 @@ jobs:
             sleep 1
           done
 
-          # Run Playwright tests — baseline suite only (the P1-3
-          # acceptance-day spec stays out: it is blocked on the v1 payload
-          # by design, not a visual baseline).
+          # Run Playwright tests — gate-scope baseline suite only
+          # (the explicit specs listed below are the release-blocking visual contract).
           E2E_BASE_URL=http://127.0.0.1:3003 \
             CI=true pnpm exec playwright test \
             e2e/mock-visual/calendar.spec.ts \

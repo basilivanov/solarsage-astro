@@ -25,7 +25,7 @@
 // invariants:
 //   - Promo token fixture matches the canonical promo alphabet/length
 //   - Sheet assertions use only the public DOM contract (data-testid/aria)
-//   - Raw token never appears in assertions beyond sessionStorage checks
+//   - Raw token never appears in assertions beyond localStorage checks
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-PROMO-CAMPAIGN-SPEC
 
@@ -52,6 +52,7 @@ import { profilePayload, referralPayload } from "./fixtures/profile";
 // ############################################################################
 
 const PROMO_TOKEN = "m7q4n9x2r5kd";
+// M-TELEGRAM-START-PARAM persists the pending token in localStorage.
 const PENDING_KEY = "__astro_pending_promo_token";
 
 const promoOffer = {
@@ -130,7 +131,7 @@ test("shows confirmation sheet with offer and activates once with cleared token"
   // must not reappear and the pending token must be gone.
   await page.waitForLoadState("load");
   await expect(page.getByTestId("promo-confirmation-sheet")).toHaveCount(0);
-  const pending = await page.evaluate((key) => sessionStorage.getItem(key), PENDING_KEY);
+  const pending = await page.evaluate((key) => localStorage.getItem(key), PENDING_KEY);
   expect(pending).toBeNull();
 
   await expectNoMissingApiFixtures(page, tracker);
@@ -154,7 +155,7 @@ test("dismiss clears pending token without redeem", async ({ page }) => {
   await page.getByTestId("promo-dismiss").click();
   await expect(page.getByTestId("promo-confirmation-sheet")).toHaveCount(0);
   expect(redeemCalls).toBe(0);
-  const pending = await page.evaluate((key) => sessionStorage.getItem(key), PENDING_KEY);
+  const pending = await page.evaluate((key) => localStorage.getItem(key), PENDING_KEY);
   expect(pending).toBeNull();
 
   await expectNoMissingApiFixtures(page, tracker);
@@ -173,7 +174,7 @@ test("INVALID_CODE clears pending token and never shows the sheet", async ({ pag
   await expect(page.getByTestId("today-screen")).toBeVisible();
   await expect(page.getByTestId("promo-confirmation-sheet")).toHaveCount(0);
   await expect
-    .poll(async () => page.evaluate((key) => sessionStorage.getItem(key), PENDING_KEY))
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), PENDING_KEY))
     .toBeNull();
 
   await expectNoMissingApiFixtures(page, tracker);
@@ -191,7 +192,7 @@ test("incomplete profile redirects to promoNatal onboarding and retains token", 
   // Sheet is suppressed on the onboarding route; token is retained for the
   // post-onboarding retry.
   await expect(page.getByTestId("promo-confirmation-sheet")).toHaveCount(0);
-  const pending = await page.evaluate((key) => sessionStorage.getItem(key), PENDING_KEY);
+  const pending = await page.evaluate((key) => localStorage.getItem(key), PENDING_KEY);
   expect(pending).toBe(PROMO_TOKEN);
 
   await expectNoMissingApiFixtures(page, tracker);

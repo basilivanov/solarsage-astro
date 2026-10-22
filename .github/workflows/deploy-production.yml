@@ -136,7 +136,7 @@ jobs:
 
   # START_BLOCK: VISUAL_BASELINES_JOB
   # Blocking visual baseline gate (reusable visual-regression workflow,
-  # baseline suite only — no acceptance-day, no new harness).
+  # gate-scope specs only — no new harness).
   visual-baselines:
     uses: ./.github/workflows/visual-regression.yml
   # END_BLOCK: VISUAL_BASELINES_JOB
