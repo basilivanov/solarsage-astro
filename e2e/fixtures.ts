@@ -439,9 +439,10 @@ export async function shimTelegramOpenLink(page: Page) {
 // START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
 // purpose: Pay the real YooKassa sandbox checkout with the official public
 //   no-3DS success card. Handles BOTH normal states: the card form already
-//   open OR the method chooser with the stable provider selector
-//   data-qa="bankcard-show-other-cards-payment-option" (chooser is NOT
-//   unconditionally required). The real card form has SPLIT expiry inputs
+//   open OR the method chooser. The current YooMoney contract-v2 chooser is
+//   data-qa="payment-option-preview-anyCard"; the legacy YooKassa chooser
+//   data-qa="bankcard-show-other-cards-payment-option" stays supported
+//   (chooser is NOT unconditionally required). The real card form has SPLIT expiry inputs
 //   (expiry-month/expiry-year/security-code, all data-qa'd in the provider
 //   trace) — they are filled separately and every field is verified to
 //   actually hold the value (fail-closed) BEFORE the single pay click; a
@@ -468,6 +469,8 @@ export async function paySandboxCheckout(popup: Page) {
     'input[name="expiry"], input[name="expiryDate"], input[placeholder*="ММ"], input[placeholder*="MM"], input[autocomplete="cc-exp"]';
   const cvcSel =
     'input[data-qa-bankcard-field-name="security-code"], input[name="security-code"], input[autocomplete="cc-csc"], input[name="cvc"], input[name="cvv"], input[placeholder*="CVC"], input[placeholder*="CVV"]';
+  const chooserSel =
+    '[data-qa="payment-option-preview-anyCard"], [data-qa="bankcard-show-other-cards-payment-option"]';
 
   const cardNumberVisible = async () => {
     for (const frame of popup.frames()) {
@@ -483,8 +486,9 @@ export async function paySandboxCheckout(popup: Page) {
 
   // 1) Bounded state loop: the card form is checked on EVERY iteration
   //    (the real trace shows it appearing ~360 ms AFTER the chooser click).
-  //    The chooser is clicked AT MOST once, and a successful chooser click
-  //    never breaks the loop — the bounded wait for the form continues.
+  //    The chooser (current YooMoney contract-v2 or legacy YooKassa) is
+  //    clicked AT MOST once, and a successful chooser click never breaks
+  //    the loop — the bounded wait for the form continues.
   //    The semantic exact-text fallback is probed independently whenever
   //    the primary data-qa selector is not found. A chrome-error page is an
   //    EXTERNAL provider navigation failure — reported as itself.
@@ -497,7 +501,7 @@ export async function paySandboxCheckout(popup: Page) {
     formFrame = await cardNumberVisible();
     if (formFrame) break;
 
-    const chooser = popup.locator('[data-qa="bankcard-show-other-cards-payment-option"]').first();
+    const chooser = popup.locator(chooserSel).first();
     if (await chooser.isVisible().catch(() => false)) {
       if (!chooserClicked) {
         await chooser.click({ timeout: 3000 }).catch(() => {});
@@ -507,7 +511,7 @@ export async function paySandboxCheckout(popup: Page) {
     } else if (!chooserClicked) {
       // Primary selector not found: independent semantic exact-text probe.
       for (const frame of popup.frames()) {
-        const option = frame.getByText(/^(New card|Новая карта|Банковская карта)$/).first();
+        const option = frame.getByText(/^(New card|Новая карта|Банковская карта|Bank card)$/).first();
         if (await option.isVisible().catch(() => false)) {
           await option.click({ timeout: 2000 }).catch(() => {});
           chooserClicked = true;
@@ -600,11 +604,21 @@ export async function paySandboxCheckout(popup: Page) {
 
   // 4) Pay: bounded DISCOVERY of the visible button across frames, then a
   //    SINGLE click action — never a click inside a retry/catch loop (a
-  //    dispatched-then-timed-out click must not be repeated).
+  //    dispatched-then-timed-out click must not be repeated). The current
+  //    YooMoney contract-v2 form exposes data-qa="confirm-payment-button";
+  //    the role fallback is anchored to the START of the name so the
+  //    "Payment details" toggle can never be clicked instead of Pay.
+  const payButtonSel = '[data-qa="confirm-payment-button"]';
+  const payButtonName = /^(оплатить|заплатить|pay)(\s|$)/i;
   let payButton: import('@playwright/test').Locator | null = null;
   for (let attempt = 0; attempt < 10 && !payButton; attempt += 1) {
     for (const frame of popup.frames()) {
-      const candidate = frame.getByRole('button', { name: /оплатить|заплатить|pay/i }).first();
+      const primary = frame.locator(payButtonSel).first();
+      if (await primary.isVisible().catch(() => false)) {
+        payButton = primary;
+        break;
+      }
+      const candidate = frame.getByRole('button', { name: payButtonName }).first();
       if (await candidate.isVisible().catch(() => false)) {
         payButton = candidate;
         break;
