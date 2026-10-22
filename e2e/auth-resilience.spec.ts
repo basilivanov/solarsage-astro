@@ -143,6 +143,9 @@ async function installApiMocks(page: Page, authHandler: AuthHandler): Promise<Mo
   const state: MockState = { authCalls: [], unmatched: [] };
 
   const fixtures: Record<string, unknown> = {
+    // Slice 01 mounts the release probe globally; keep this strict mock layer
+    // complete when this spec runs with the versioned-entry sha env.
+    '/api/health': { release_sha: 'e2e-test-sha' },
     '/api/day/today': quietSteady,
     '/api/profile': { isOnboarded: true },
     '/api/access': {
