@@ -1,13 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_BOOT
-# ROLE: FastAPI composition root — constructs app, wires CORS, mounts routers.
-# DEPENDENCIES: fastapi, app.core.config, app.api.health
-# GRACE_ANCHORS: [APP_CONSTRUCTION, CORS_WIRING, MIDDLEWARE_MOUNT, ROUTER_MOUNT]
-# WAVE: W-1.1, W-1.6
+# ROLE: FastAPI composition root — constructs app, wires CORS, cache-control and correlation middleware, mounts routers.
+# DEPENDENCIES: fastapi, starlette.middleware, app.core.config, app.api.health
+# GRACE_ANCHORS: [APP_CONSTRUCTION, CORS_WIRING, MIDDLEWARE_MOUNT, CACHE_CONTROL_MIDDLEWARE, ROUTER_MOUNT]
+# WAVE: W-1.1, W-1.6, W-CACHE-DELIVERY-HARDENING
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-API-BOOT
-# purpose: Construct the FastAPI application, wire CORS, mount middleware,
+# purpose: Construct the FastAPI application, wire CORS and response middleware,
 #   and mount routers. This module is the single composition root for the API.
 # owns:
 #   - apps/api/app/main.py
@@ -19,6 +19,7 @@
 # outputs:
 #   - create_app: public entrypoint function to instantiate FastAPI app
 #   - app: FastAPI ASGI application served by uvicorn
+#   - Cache-Control: no-store on every HTTP response
 # dependencies:
 #   - M-CONFIG
 #   - M-OBSERVABILITY-CORRELATION (W-1.6)
@@ -27,11 +28,13 @@
 # side_effects:
 #   - registers CORS middleware
 #   - registers CorrelationMiddleware (W-1.6)
+#   - registers NoStoreMiddleware for cache hygiene
 #   - initializes structured logging (W-1.6)
 #   - mounts routers
 # invariants:
 #   - allow_origins is restricted to policy.cors_allowed_origins
 #   - CorrelationMiddleware runs before CORS
+#   - every HTTP response carries Cache-Control: no-store
 #   - debug, metrics, health_extended, and microcopy routers are mounted dev-only
 # failure_policy:
 #   - any import-time error must crash the process; partial boot is forbidden
@@ -44,9 +47,12 @@
 # public_entrypoints:
 #   - create_app
 #   - app
+#   - NoStoreMiddleware
 # semantic_blocks:
 #   - APP_CONSTRUCTION: FastAPI() instantiation with title and version
 #   - CORS_WIRING: CORSMiddleware registration with allow_origins
+#   - CACHE_CONTROL_MIDDLEWARE: Cache-Control: no-store response adapter
+#   - CACHE_CONTROL_MOUNT: middleware registration
 #   - ROUTER_MOUNT: include_router for health
 # owned_tests:
 #   - apps/api/tests/test_health.py
@@ -55,11 +61,33 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.api import _log, access, auth, calendar, chat, checkin, day, election, geo, health, horary, natal, payment, profile, promo, referral, synastry, telegram_webhook, today_convergence
 from app.core.config import Settings, settings
 from app.core.runtime_security import build_runtime_security_policy
 from app.middleware.correlation import CorrelationMiddleware
+
+
+# START_BLOCK: CACHE_CONTROL_MIDDLEWARE
+class NoStoreMiddleware(BaseHTTPMiddleware):
+    """Disable HTTP caching for every API response."""
+
+    # START_FUNCTION_CONTRACT: F-M-API-BOOT.NoStoreMiddleware.dispatch
+    # purpose: Add Cache-Control: no-store to the downstream response.
+    # inputs: request — incoming Starlette request; call_next — downstream ASGI callable.
+    # returns: downstream Response with Cache-Control: no-store.
+    # side_effects: mutates response headers.
+    # emitted_logs: none.
+    # error_behavior: propagates downstream exceptions unchanged.
+    # END_FUNCTION_CONTRACT: F-M-API-BOOT.NoStoreMiddleware.dispatch
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response: Response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+# END_BLOCK: CACHE_CONTROL_MIDDLEWARE
 
 
 def create_app(app_settings: Settings = settings) -> FastAPI:
@@ -104,6 +132,11 @@ def create_app(app_settings: Settings = settings) -> FastAPI:
         allow_credentials=True,
     )
     # END_BLOCK: CORS_WIRING
+
+    # START_BLOCK: CACHE_CONTROL_MOUNT
+    # Register last so this response wrapper also covers CORS preflight replies.
+    application.add_middleware(NoStoreMiddleware)
+    # END_BLOCK: CACHE_CONTROL_MOUNT
 
     # START_BLOCK: ROUTER_MOUNT
     application.include_router(health.router)

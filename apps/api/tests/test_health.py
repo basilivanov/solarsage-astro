@@ -42,6 +42,12 @@ def test_health_shape_is_exact() -> None:
     assert set(response.json().keys()) == {"status", "version", "git_sha", "release_sha"}
 
 
+def test_health_response_disables_caching() -> None:
+    """W-CACHE-DELIVERY-HARDENING: API responses must never be cached."""
+    response = client.get("/api/health")
+    assert response.headers.get("Cache-Control") == "no-store"
+
+
 def test_canon_validation_runs_at_startup() -> None:
     """Canon validation is wired into the API startup/import path.
     The import of app.main above triggered validate_canon_bundle().

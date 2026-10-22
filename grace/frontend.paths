@@ -8,6 +8,7 @@
 
 app/(grace)/**/*.tsx
 app/(grace)/**/*.ts
+middleware.ts
 components/grace/**/*.tsx
 components/grace/**/*.ts
 components/promo/**/*.tsx
@@ -41,6 +42,7 @@ components/locked-feature-card.tsx
 components/paywall.tsx
 components/profile-reset.tsx
 components/reset-button.tsx
+components/release-version-check.tsx
 components/telegram-init.tsx
 components/telegram-provider.tsx
 components/theme-provider.tsx

@@ -13,7 +13,8 @@
 # inputs:
 #   - repo-root Docker context (package.json, pnpm-lock.yaml, app/, components/,
 #     lib/, hooks/, public/, next.config.mjs, tsconfig.json, ...)
-#   - build ARG RELEASE_SHA (image metadata label only, non-secret)
+#   - build ARG RELEASE_SHA (image metadata label + NEXT_PUBLIC_RELEASE_SHA,
+#     non-secret)
 #   - build ARG PROD_API_REWRITE_BASE_URL (default http://api:8000, non-secret;
 #     baked into routes-manifest at build time)
 # outputs: Next.js production server image listening on container port 3002.
@@ -60,13 +61,14 @@ COPY . .
 # Server-only production API rewrite base baked into routes-manifest at build
 # time. Canonical Compose networking uses http://api:8000; the runtime fallback
 # outside Compose (unset variable) remains http://127.0.0.1:8000.
+ARG RELEASE_SHA=unknown
 ARG PROD_API_REWRITE_BASE_URL=http://api:8000
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_GRACE_LOG_SHIPPING=true \
+    NEXT_PUBLIC_RELEASE_SHA=${RELEASE_SHA} \
     PROD_API_REWRITE_BASE_URL=${PROD_API_REWRITE_BASE_URL}
 
-ARG RELEASE_SHA=unknown
 LABEL org.opencontainers.image.revision="${RELEASE_SHA}"
 
 RUN pnpm build

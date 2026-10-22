@@ -1,50 +1,42 @@
-
 // ############################################################################
-// AI_HEADER: APP_HOME_PAGE — root-route redirect to the canonical day path.
-// ROLE: Client Next.js root page; redirects mounted users to /day/today while rendering a transient spinner.
+// AI_HEADER: APP_HOME_PAGE — root-route server redirect to the canonical day path.
+// ROLE: Server Next.js root page; every request is redirected to /day/today without a client bundle.
+// GRACE_ANCHORS: [SERVER_REDIRECT]
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-APP-HOME-PAGE
-// purpose: Keep the root route as a compatibility entry that immediately replaces itself with /day/today.
+// purpose: Keep the root route as a compatibility entry that immediately issues a server redirect to /day/today.
 // owns:
 //   - app/(grace)/page.tsx
-// inputs: component mount and Next router.
-// outputs: transient loading spinner until navigation completes.
-// dependencies: React useEffect; next/navigation; legacy frontend logger.
-// side_effects: Emits one structured legacy log envelope and performs router.replace.
-// emitted_logs: system.request.
+// inputs: route request only.
+// outputs: Next redirect response to /day/today; no rendered page body.
+// dependencies: next/navigation redirect.
+// side_effects: Performs server-side navigation control flow.
+// emitted_logs: none.
 // invariants:
-//   - Root route always replaces, never pushes, /day/today.
-//   - No data/auth API is called by this page.
-// failure_policy: Router/render failures are delegated to Next/route boundary.
+//   - Every invocation redirects exactly to /day/today.
+//   - No client bundle, component mount, auth, data API or logger call is involved.
+//   - Route is dynamic server-side, never a statically cached page with a long TTL.
+// failure_policy: Next redirect intentionally terminates rendering through framework control flow.
 // END_MODULE_CONTRACT: M-APP-HOME-PAGE
 
 // START_MODULE_MAP: M-APP-HOME-PAGE
 // public_entrypoints:
 //   - HomePage (default).
 // semantic_blocks:
-//   - ROOT_REDIRECT: log and replace the root route.
-//   - TRANSIENT_RENDER: show spinner during navigation.
+//   - SERVER_REDIRECT: issue the canonical root redirect.
 // owned_tests:
-//   - none direct.
+//   - none direct (verified by production build output and HTTP curl).
 // END_MODULE_MAP: M-APP-HOME-PAGE
-'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { logger } from '@/lib/log';
+// START_BLOCK: SERVER_REDIRECT
+import { redirect } from "next/navigation"
+
+// Keep the redirect out of the static prerender cache: the root entry must
+// never inherit a long-lived s-maxage cache entry.
+export const dynamic = "force-dynamic"
 
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    logger.info('[HomePage] Redirecting to /day/today');
-    router.replace('/day/today');
-  }, [router]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-    </div>
-  );
+  redirect("/day/today")
 }
+// END_BLOCK: SERVER_REDIRECT

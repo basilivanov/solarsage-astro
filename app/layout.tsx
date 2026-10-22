@@ -2,14 +2,15 @@
 // ############################################################################
 // AI_HEADER: MODULE_APP_LAYOUT — root document shell.
 // ROLE: Next.js RootLayout — owns HTML shell, Telegram/correlation bootstrap,
-//   global client crash capture, and Vercel-only analytics injection.
+//   global client crash capture, release freshness guard, and Vercel-only analytics injection.
 // DEPENDENCIES: next/font, @vercel/analytics/next, local modules.
 // GRACE_ANCHORS: [ROOT_LAYOUT]
 // SLICE: SLICE-FRONTEND-LAYOUT
 // ############################################################################
 // START_MODULE_CONTRACT: M-APP-LAYOUT
 // purpose: Root document shell. Bootstraps Telegram WebApp, correlation init,
-//   frontend error capture, Vercel-only analytics, and mounts children.
+//   frontend error capture, release version checking, Vercel-only analytics,
+//   and mounts children.
 // owns:
 //   - app/layout.tsx
 // inputs: children — React node tree for the matched route.
@@ -21,13 +22,16 @@
 //   - @/components/telegram-init
 //   - @/components/correlation-init
 //   - @/components/telemetry/frontend-error-capture (FrontendErrorCapture)
+//   - @/components/release-version-check (ReleaseVersionCheck)
 //   - @/lib/analytics/vercel (shouldRenderVercelAnalyticsFromEnv)
 // side_effects: Injects Telegram global, correlation tracking, error listeners,
-//   and Vercel Analytics <script> tag exclusively in Vercel deployments.
+//   a client release freshness probe, and Vercel Analytics <script> tag
+//   exclusively in Vercel deployments.
 // emitted_logs: frontend.runtime_failed, frontend.promise_rejected
 // invariants:
 //   - Analytics renders only when shouldRenderVercelAnalyticsFromEnv() returns true.
 //   - No direct business API fetch owned by RootLayout.
+//   - ReleaseVersionCheck is mounted inside TelegramProvider and never blocks content.
 // failure_policy: fail closed — analytics never renders outside actual Vercel.
 // END_MODULE_CONTRACT: M-APP-LAYOUT
 import type { Metadata, Viewport } from "next"
@@ -37,6 +41,7 @@ import { TelegramProvider } from "@/components/telegram-provider"
 import { TelegramInit } from "@/components/telegram-init"
 import { CorrelationInit } from "@/components/correlation-init"
 import { FrontendErrorCapture } from "@/components/telemetry/frontend-error-capture"
+import { ReleaseVersionCheck } from "@/components/release-version-check"
 import { shouldRenderVercelAnalyticsFromEnv } from "@/lib/analytics/vercel"
 import "./globals.css"
 
@@ -96,6 +101,7 @@ export default function RootLayout({
           <TelegramInit />
           <CorrelationInit />
           <FrontendErrorCapture />
+          <ReleaseVersionCheck />
           {children}
         </TelegramProvider>
         {shouldRenderVercelAnalyticsFromEnv() && <Analytics />}

@@ -48,6 +48,18 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async redirects() {
+    // The root page lives under the client (grace) layout, so its server
+    // redirect() is streamed as a 200 RSC instruction in Next 16. Handle the
+    // compatibility entry at the framework layer to guarantee a real 307.
+    return [
+      {
+        source: "/",
+        destination: "/day/today",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     const apiBase = resolveApiRewriteBase();
     return [
