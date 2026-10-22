@@ -2,6 +2,16 @@ import { test, expect } from "@playwright/test"
 
 test.describe("Synastry mock visual contract", () => {
   test("maintains structural testid and state contract for synastry list screen", async ({ page }) => {
+    // Explicit dev-auth mock: the preview must not depend on Next's
+    // /api/auth/dev proxy, which reaches the real backend and can return 403.
+    await page.route("/api/auth/dev", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok", userId: "mock-preview-user" }),
+      })
+    })
+
     // Intercept API routes
     await page.route("/api/synastry", async (route) => {
       await route.fulfill({
