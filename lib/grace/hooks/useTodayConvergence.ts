@@ -67,9 +67,9 @@ export type UseTodayConvergenceResult = {
   refetch: () => Promise<void>;
 };
 
-type TodayPayload = Awaited<ReturnType<typeof fetchTodayConvergence>>;
+type DayLoadPayload = Awaited<ReturnType<typeof fetchTodayConvergence>>;
 type DayLoadResult =
-  | { kind: "ok"; payload: TodayPayload }
+  | { kind: "ok"; payload: DayLoadPayload }
   | { kind: "error"; error: unknown; afterTimeout: boolean }
   | { kind: "timeout"; attempts: number }
   | { kind: "cancelled" };
