@@ -47,6 +47,8 @@ LogEventName = Literal[
     "system.request",
     "system.error",
     "system.config_loaded",
+    "api.prewarm_ok",
+    "api.prewarm_failed",
     # auth / profile
     "auth.tg_login_started",
     "auth.tg_login_succeeded",

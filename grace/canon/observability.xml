@@ -222,6 +222,12 @@
       <payload-field name="env" type="string" required="true" />
       <payload-field name="features_enabled" type="string[]" required="false" />
     </event>
+    <event name="api.prewarm_ok" owner="W-WHITE-SCREEN-RESILIENCE" desc="Startup prewarm established the asyncpg pool and verified it with SELECT 1.">
+      <payload-field name="duration_ms" type="number" required="false" />
+    </event>
+    <event name="api.prewarm_failed" owner="W-WHITE-SCREEN-RESILIENCE" desc="Startup prewarm could not establish or verify the asyncpg pool; the service keeps starting and relies on lazy connect.">
+      <payload-field name="error_code" type="string" required="false" />
+    </event>
 
     <!-- ================ auth / profile ================================== -->
     <event name="auth.tg_login_started"   owner="W-1.2" desc="Telegram login flow started." />
