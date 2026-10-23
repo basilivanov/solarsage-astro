@@ -146,3 +146,63 @@ curl -s https://dev.astro.vasiliy-ivanov.ru/api/health
 - Коммитить и пушить РАЗРЕШЕНО и требуется: по одному коммиту на срез (A, B, C), Conventional Commits, push в `main`.
 - **Прод-деплой срезов A+B+C1 — разрешён владельцем сразу**: после зелёных проверок и дев-деплоя выполнить деплой ТОЛЬКО через skill `prod-deploy` (ручной uvicorn/npm запрещены, см. AGENTS.md). В прод уходит всё, КРОМЕ заголовка no-store из C2 (если реализовано в next.config — выкатить с выключенным флагом/исключить из прод-конфига; задокументировать механизм).
 - После прод-деплоя: health + `git_sha` на `https://astro.vasiliy-ivanov.ru/api/health`, один реальный smoke (auth → day) и проверка, что милстоуны `day.load_start`/`day.load_ok` видны в `_log`.
+
+---
+
+## Приложение (после приёмки, 2026-10-23)
+
+### Итоги выката
+- Коммиты: срез A `8bc5ef52`, canon B `83f75972`, срез B `3a4f2aa6`, canon C `3c69ad96`, срез C `92129e5e`, lint-fix `32acecc8`.
+- Прод: run 39956744006 (все гейты green), tag `prod-20261023T130806Z-32acecc86aa8`, release_sha `32acecc8...` подтверждён `/api/health`.
+- Smoke на проде: `POST /api/auth/telegram` → 200 (session cookie), `GET /api/day/today` → 200 (`quiet_day`).
+- C1: `api.prewarm_ok` на проде `duration_ms=17.659`; на деве первый auth после рестарта 97.7 ms напрямую (критерий < 300 ms), было 3.1 s в инциденте.
+- C2: `ENTRY_HTML_NO_STORE` в прод-контейнере unset; diff заголовков document-маршрутов пустой — в прод не выкачено, как и требовалось. Решение о проде — за владельцем после iOS-циклов на деве.
+- Милстоуны `day.load_start/day.load_ok` на проде появляются только от реальных браузеров (curl-smoke их не создаёт) — первые данные смотреть после органического трафика.
+
+### B5. SQL метрики «зависшие сессии» (ручной запуск)
+Доля сессий с `day.load_start` без `day.load_ok` в течение 10 минут, по дням.
+Сегодня милстоуны живут в stdout (`docker logs solarsage-api`); запрос рассчитан
+на sink-таблицу `frontend_logs(ts, event, correlation_id)` — либо адаптировать
+под grep по логам. Если sink хранит конверт в JSONB, заменить `event`/`correlation_id`
+на `envelope->>'event'` / `envelope->>'correlation_id'`, а `ts` — на
+`(envelope->>'ts')::timestamptz`.
+
+```sql
+WITH starts AS (
+  SELECT
+    correlation_id,
+    MIN(ts) AS started_at
+  FROM frontend_logs
+  WHERE event = 'day.load_start'
+  GROUP BY correlation_id
+),
+outcomes AS (
+  SELECT
+    s.correlation_id,
+    s.started_at,
+    EXISTS (
+      SELECT 1
+      FROM frontend_logs ok
+      WHERE ok.correlation_id = s.correlation_id
+        AND ok.event = 'day.load_ok'
+        AND ok.ts >= s.started_at
+        AND ok.ts < s.started_at + interval '10 minutes'
+    ) AS has_ok
+  FROM starts s
+)
+SELECT
+  (started_at AT TIME ZONE 'Europe/Moscow')::date AS day,
+  COUNT(*) AS started_sessions,
+  COUNT(*) FILTER (WHERE NOT has_ok) AS stuck_sessions,
+  ROUND(
+    100.0 * COUNT(*) FILTER (WHERE NOT has_ok) / NULLIF(COUNT(*), 0),
+    2
+  ) AS stuck_share_pct
+FROM outcomes
+GROUP BY 1
+ORDER BY 1;
+```
+
+### Оговорки среза B (из отчёта кодера, приняты архитектором)
+- B4: `tgWebAppPlatform`/`tgWebAppVersion` обычно приходят в URL hash, а не внутри подписанного initData — backend-лог `auth.tg_login_succeeded` обогащается только когда клиент реально положил ключи в initData; гарантированный источник platform/version — beacon `auth.ok`. Гарантированный backend-вариант (optional platform/version в теле `/api/auth/telegram`) — отдельная additive-задача при необходимости.
+- Семейства `day.load_timeout`/`resume.*` отправляются и батчером (`logEvent`), и beacon'ом — возможны пары событий с разными correlation_id; на метрику B5 не влияет (она использует только `day.load_start`/`day.load_ok`).
