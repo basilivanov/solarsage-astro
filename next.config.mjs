@@ -22,6 +22,41 @@ function resolveApiRewriteBase() {
   return override || canonical;
 }
 
+/**
+ * C2 (dev-only experiment): make app document HTML ineligible for the WebView
+ * page cache. The dev frontend is built with NODE_ENV=production, so the flag
+ * (not NODE_ENV) is the gate. Production Docker CI never sets
+ * ENTRY_HTML_NO_STORE, so this returns [] there.
+ *
+ * Keep this list to app document routes: API, _next assets, icons and other
+ * file-extension paths must never receive the no-store header.
+ */
+const ENTRY_HTML_NO_STORE_SOURCES = [
+  "/",
+  "/today",
+  "/day/:path*",
+  "/calendar",
+  "/chat",
+  "/checkin",
+  "/debug",
+  "/debug-auth",
+  "/onboarding",
+  "/profile",
+  "/readings/:path*",
+  "/reset",
+  "/sandbox/:path*",
+  "/synastry",
+  "/test-hook",
+];
+
+function entryHtmlNoStoreHeaders() {
+  if (process.env.ENTRY_HTML_NO_STORE !== "1") return [];
+  return ENTRY_HTML_NO_STORE_SOURCES.map((source) => ({
+    source,
+    headers: [{ key: "Cache-Control", value: "no-store" }],
+  }));
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: resolveNextDistDir(),
@@ -47,6 +82,9 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  async headers() {
+    return entryHtmlNoStoreHeaders();
   },
   async redirects() {
     // The root page lives under the client (grace) layout, so its server
