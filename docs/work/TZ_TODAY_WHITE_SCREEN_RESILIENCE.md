@@ -156,7 +156,7 @@ curl -s https://dev.astro.vasiliy-ivanov.ru/api/health
 - Прод: run 39956744006 (все гейты green), tag `prod-20261023T130806Z-32acecc86aa8`, release_sha `32acecc8...` подтверждён `/api/health`.
 - Smoke на проде: `POST /api/auth/telegram` → 200 (session cookie), `GET /api/day/today` → 200 (`quiet_day`).
 - C1: `api.prewarm_ok` на проде `duration_ms=17.659`; на деве первый auth после рестарта 97.7 ms напрямую (критерий < 300 ms), было 3.1 s в инциденте.
-- C2: `ENTRY_HTML_NO_STORE` в прод-контейнере unset; diff заголовков document-маршрутов пустой — в прод не выкачено, как и требовалось. Решение о проде — за владельцем после iOS-циклов на деве.
+- C2 на момент пакета: `ENTRY_HTML_NO_STORE` в прод-контейнере unset, заголовки без изменений. **Update 2026-10-23 (вечер):** iOS-циклы владельца на деве — 30/30 реальных навигаций, 0 зависаний, 0 срабатываний resume-guard, 15/15 `day.load_start`→`day.load_ok`; владелец одобрил прод. Выкачено коммитом `6c1b0b24` (ARG default 1 в `apps/web/Dockerfile`, workflow не менялся): на проде все document 200-ответы отдают `Cache-Control: no-store`, 307-вход с `?v=` сохранён, статика immutable.
 - Милстоуны `day.load_start/day.load_ok` на проде появляются только от реальных браузеров (curl-smoke их не создаёт) — первые данные смотреть после органического трафика.
 
 ### B5. SQL метрики «зависшие сессии» (ручной запуск)
