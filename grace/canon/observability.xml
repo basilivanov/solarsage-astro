@@ -235,6 +235,11 @@
     <event name="auth.logout"             owner="W-1.2" />
     <event name="auth.dev_login_blocked"  owner="W-1.2" desc="Dev login rejected (not in dev mode)." />
     <event name="auth.dev_login_succeeded" owner="W-1.2" desc="Dev login accepted." />
+    <event name="auth.ok"                 owner="W-WHITE-SCREEN-RESILIENCE" desc="Frontend beacon milestone: Telegram auth POST succeeded.">
+      <payload-field name="platform" type="string" required="false" />
+      <payload-field name="version" type="string" required="false" />
+      <payload-field name="auth_attempt_id" type="string" required="false" />
+    </event>
     <event name="profile.viewed"          owner="W-1.2" />
     <event name="profile.update_started"  owner="W-1.2" />
     <event name="profile.updated"         owner="W-1.2" desc="Birth data or display fields changed. Payload MUST NOT contain the new values; only field names that changed.">
@@ -362,6 +367,36 @@
       <payload-field name="facet" type="string" required="false" />
       <payload-field name="polarity" type="string" enum="supportive,tense,mixed" required="true" />
       <payload-field name="pattern_id" type="string" required="true" />
+    </event>
+    <event name="day.load_start" owner="W-WHITE-SCREEN-RESILIENCE" desc="Frontend beacon milestone: day envelope load started.">
+      <payload-field name="source" type="string" enum="initial_load,refetch" required="true" />
+      <payload-field name="timeout_ms" type="number" required="true" />
+    </event>
+    <event name="day.load_ok" owner="W-WHITE-SCREEN-RESILIENCE" desc="Frontend beacon milestone: day envelope load succeeded; duration_ms travels in the envelope.">
+      <payload-field name="source" type="string" enum="initial_load,refetch" required="true" />
+      <payload-field name="attempt" type="number" required="true" />
+    </event>
+    <event name="day.load_timeout" owner="W-WHITE-SCREEN-RESILIENCE" desc="Day envelope load exceeded the 15 s deadline after the silent retry; screen shows the error state.">
+      <payload-field name="source" type="string" enum="initial_load,refetch" required="true" />
+      <payload-field name="timeout_ms" type="number" required="true" />
+      <payload-field name="auto_retry" type="boolean" required="true" />
+    </event>
+    <event name="resume.snapshot_reload" owner="W-WHITE-SCREEN-RESILIENCE" desc="Webview restored from a persisted snapshot while not ready; guarded hard reload issued.">
+      <payload-field name="reason" type="string" enum="pageshow_persisted" required="true" />
+      <payload-field name="reload_count" type="number" required="true" />
+    </event>
+    <event name="resume.stale_reload" owner="W-WHITE-SCREEN-RESILIENCE" desc="Webview visible again after a stale heartbeat gap while not ready; guarded hard reload issued.">
+      <payload-field name="reason" type="string" enum="visibility_stale" required="true" />
+      <payload-field name="reload_count" type="number" required="true" />
+    </event>
+    <event name="resume.reload_loop_suppressed" owner="W-WHITE-SCREEN-RESILIENCE" desc="Automatic reload suppressed by the sessionStorage reload budget; error state shown instead.">
+      <payload-field name="reason" type="string" enum="pageshow_persisted,visibility_stale" required="true" />
+      <payload-field name="reload_count" type="number" required="true" />
+      <payload-field name="reload_limit" type="number" required="true" />
+    </event>
+    <event name="app.pagehide_state" owner="W-WHITE-SCREEN-RESILIENCE" desc="Pagehide beacon carrying the last known day screen state.">
+      <payload-field name="screen_state" type="string" required="true" />
+      <payload-field name="visibility_state" type="string" required="true" />
     </event>
     <event name="sphere.natal_generation_completed" owner="W-TODAY-CONVERGENCE-P4" desc="Bounded static sphere natal generation produced validated claim-bound content.">
       <payload-field name="sphere" type="string" required="true" />
