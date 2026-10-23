@@ -1,17 +1,18 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_LOG_INTAKE
-# ROLE: HTTP surface for POST /api/_log — accepts frontend log batches.
+# ROLE: HTTP surface for POST /api/_log — accepts frontend log batches or single beacon envelopes.
 # DEPENDENCIES: fastapi, sqlalchemy, app.services.log_intake
 # GRACE_ANCHORS: [LOG_INTAKE_ENDPOINT]
 # WAVE: W-1.7
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-API-LOG-INTAKE
-# purpose: Accept log batches from frontend, forward to backend logging spine.
+# purpose: Accept log batches or single beacon envelopes from frontend, forward to backend logging spine.
 # owns:
 #   - apps/api/app/api/_log.py
 # inputs:
-#   - POST /api/_log: LogBatch with canonical envelopes
+#   - POST /api/_log: LogBatch with canonical envelopes, or one canonical envelope
+#   - application/json Blob bodies from navigator.sendBeacon
 #   - optional session for user_id correlation
 # outputs:
 #   - {"accepted": int, "rejected": int}
@@ -84,34 +85,38 @@ class LogBatch(BaseModel):
     envelopes: list[CanonEnvelope]
 
 
+LogIntakePayload = LogBatch | CanonEnvelope
+
+
 # START_BLOCK: LOG_INTAKE_ENDPOINT
 @router.post("/api/_log")
 async def intake_logs(
-    batch: LogBatch,
+    payload: LogIntakePayload,
     db: AsyncSession = Depends(get_session),
     current_user = Depends(require_session_optional),
 ) -> dict[str, int]:
     # START_FUNCTION_CONTRACT: F-M-API-LOG-INTAKE.intake_logs
-    # purpose: Accept log batch from frontend, validate, redact, forward to stdout.
-    # inputs: batch (LogBatch), db session, optional current_user
+    # purpose: Accept a log batch or one beacon envelope, validate, redact, forward to stdout.
+    # inputs: payload (LogBatch | CanonEnvelope), db session, optional current_user
     # returns: {"accepted": int, "rejected": int}
     # side_effects: emits redacted log envelopes to stdout
     # emitted_logs: system.error on intake failure
     # error_behavior: HTTPException 500 on unexpected errors
     # END_FUNCTION_CONTRACT: F-M-API-LOG-INTAKE.intake_logs
     """
-    Accept log batch from frontend. Auth is optional.
+    Accept a log batch or a single beacon envelope. Auth is optional.
     Each valid canonical envelope is redacted and forwarded to stdout
     preserving all original fields (slice, module, block, duration, etc.).
     """
     service = LogIntakeService(db)
 
     user_id = current_user.id if current_user else uuid.uuid4()
+    envelopes = payload.envelopes if isinstance(payload, LogBatch) else [payload]
 
     try:
         result = await service.process_batch(
             user_id=user_id,
-            envelopes=[e.model_dump(exclude_none=True) for e in batch.envelopes],
+            envelopes=[e.model_dump(exclude_none=True) for e in envelopes],
         )
 
         return {

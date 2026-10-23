@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   retryTodayConvergence: vi.fn(),
   recordDayImpression: vi.fn(),
   logEvent: vi.fn(),
+  sendBeaconEvent: vi.fn(),
   replace: vi.fn(),
   retryAuth: vi.fn(),
   authState: { isLoading: false, isAuthenticated: true, error: null as string | null },
@@ -74,6 +75,10 @@ vi.mock("@/hooks/use-telegram-auth", () => ({
 
 vi.mock("@/lib/log", () => ({
   logEvent: mocks.logEvent,
+}));
+
+vi.mock("@/lib/log/beacon", () => ({
+  sendBeaconEvent: mocks.sendBeaconEvent,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -114,6 +119,16 @@ describe("useTodayConvergence initial state and impression", () => {
     expect(mocks.recordDayImpression).toHaveBeenCalledTimes(1);
     expect(result.current.payload).toBe(heroSupportive);
     expect(mocks.fetchTodayConvergence).toHaveBeenCalledWith("2026-08-01", expect.any(AbortSignal));
+    expect(mocks.sendBeaconEvent).toHaveBeenCalledWith(
+      "day.load_start",
+      expect.objectContaining({ source: "initial_load" }),
+      expect.any(Object),
+    );
+    expect(mocks.sendBeaconEvent).toHaveBeenCalledWith(
+      "day.load_ok",
+      expect.objectContaining({ source: "initial_load", attempt: 1 }),
+      expect.any(Object),
+    );
 
     rerender();
     await flushPromises();
@@ -196,6 +211,24 @@ describe("useTodayConvergence retry and lifecycle", () => {
     expect(result.current.screenState).toBe("ready");
   });
 
+  it("beacons day.load_ok when the retry response already contains a payload", async () => {
+    mocks.fetchTodayConvergence.mockResolvedValueOnce(stateUnavailable);
+    mocks.retryTodayConvergence.mockResolvedValue({ payload: heroSupportive });
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.payload).toBe(heroSupportive);
+    expect(mocks.sendBeaconEvent).toHaveBeenCalledWith(
+      "day.load_ok",
+      expect.objectContaining({ source: "refetch", attempt: 1 }),
+      expect.any(Object),
+    );
+  });
+
   it("uses the documented default cooldown when Retry-After is absent", async () => {
     vi.useFakeTimers();
     mocks.fetchTodayConvergence
@@ -270,6 +303,11 @@ describe("useTodayConvergence retry and lifecycle", () => {
 
     expect(result.current.screenState).toBe("error");
     expect(mocks.logEvent).toHaveBeenCalledWith(
+      "day.load_timeout",
+      expect.objectContaining({ source: "initial_load", timeout_ms: DAY_LOAD_TIMEOUT_MS }),
+      expect.any(Object),
+    );
+    expect(mocks.sendBeaconEvent).toHaveBeenCalledWith(
       "day.load_timeout",
       expect.objectContaining({ source: "initial_load", timeout_ms: DAY_LOAD_TIMEOUT_MS }),
       expect.any(Object),

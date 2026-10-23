@@ -29,12 +29,17 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogEvent } = vi.hoisted(() => ({
+const { mockLogEvent, mockSendBeaconEvent } = vi.hoisted(() => ({
   mockLogEvent: vi.fn(),
+  mockSendBeaconEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/log", () => ({
   logEvent: mockLogEvent,
+}));
+
+vi.mock("@/lib/log/beacon", () => ({
+  sendBeaconEvent: mockSendBeaconEvent,
 }));
 
 import {
@@ -109,6 +114,11 @@ describe("resume-guard pageshow and visibility", () => {
     expect(target).toContain("foo=bar");
     expect(target).toMatch(/[?&]r=\d+/);
     expect(mockLogEvent).toHaveBeenCalledWith(
+      "resume.snapshot_reload",
+      expect.objectContaining({ reason: "pageshow_persisted", reload_count: 1 }),
+      expect.objectContaining({ block: "PAGESHOW" }),
+    );
+    expect(mockSendBeaconEvent).toHaveBeenCalledWith(
       "resume.snapshot_reload",
       expect.objectContaining({ reason: "pageshow_persisted", reload_count: 1 }),
       expect.objectContaining({ block: "PAGESHOW" }),
@@ -201,6 +211,22 @@ describe("resume-guard hard reload helper and cleanup", () => {
   it("adds the cache-buster while preserving the current path, query, and hash", () => {
     expect(hardReloadWithCacheBuster(123456789)).toBe(true);
     expect(replaceMock).toHaveBeenCalledWith("/day/2026-08-01?foo=bar&r=123456789#section");
+  });
+
+  it("beacons the last known screen state on pagehide", () => {
+    install({
+      isReady: () => true,
+      refetch: vi.fn(),
+      getScreenState: () => "ready",
+    });
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    expect(mockSendBeaconEvent).toHaveBeenCalledWith(
+      "app.pagehide_state",
+      { screen_state: "ready", visibility_state: "visible" },
+      expect.objectContaining({ block: "PAGEHIDE" }),
+    );
   });
 
   it("removes listeners and the heartbeat on cleanup", () => {

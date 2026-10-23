@@ -15,7 +15,7 @@
 #   - settings.telegram_bot_token (HMAC secret seed)
 #   - settings.telegram_auth_max_age_seconds (replay window)
 # outputs:
-#   - verify_init_data(raw) -> TelegramUser
+#   - verify_init_data(raw) -> TelegramUser (incl. optional platform/version context)
 #   - parse_start_param(raw) -> str | None
 #   - TelegramAuthError exception with stable `code` field
 # dependencies:
@@ -69,7 +69,11 @@ from app.core.config import settings
 
 @dataclass(frozen=True)
 class TelegramUser:
-    """Subset of Telegram's `user` object we trust after HMAC verify."""
+    """Subset of Telegram's `user` object we trust after HMAC verify.
+
+    `platform` and `version` mirror optional tgWebAppPlatform/tgWebAppVersion
+    initData keys when the client includes them; they are context, not identity.
+    """
 
     id: int
     first_name: str | None = None
@@ -77,6 +81,8 @@ class TelegramUser:
     username: str | None = None
     language_code: str | None = None
     is_premium: bool | None = None
+    platform: str | None = None
+    version: str | None = None
 
 
 class TelegramAuthError(Exception):
@@ -232,5 +238,7 @@ def verify_init_data(raw: str) -> TelegramUser:
         username=user_obj.get("username"),
         language_code=user_obj.get("language_code"),
         is_premium=user_obj.get("is_premium"),
+        platform=parsed.get("tgWebAppPlatform") or None,
+        version=parsed.get("tgWebAppVersion") or None,
     )
 # END_BLOCK: HMAC_VERIFY

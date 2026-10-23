@@ -7,11 +7,11 @@
 // purpose: Detect pageshow-from-snapshot and stale visibility resumes, then soft-refetch or hard-reload safely.
 // owns:
 //   - lib/grace/resume-guard.ts
-// inputs: readiness getter, soft-refetch callback, and an optional suppression callback.
+// inputs: readiness getter, soft-refetch callback, optional suppression callback, and optional screen-state getter.
 // outputs: install/cleanup function, hard-reload helper, and bounded sessionStorage reload history.
-// dependencies: lib/log/index.ts (logEvent), browser window/document/sessionStorage/location.
-// side_effects: heartbeat interval, window/document listeners, sessionStorage writes, logs, and navigation.
-// emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed.
+// dependencies: lib/log/index.ts (logEvent), lib/log/beacon.ts (sendBeaconEvent), browser window/document/sessionStorage/location.
+// side_effects: heartbeat interval, window/document listeners, sessionStorage writes, logs/beacons, and navigation.
+// emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed, app.pagehide_state.
 // invariants:
 //   - no React imports; the module is safe to import in client components and inert without a browser.
 //   - auto reloads are capped at two per ten-minute sessionStorage window.
@@ -42,6 +42,7 @@
 "use client";
 
 import { logEvent } from "@/lib/log";
+import { sendBeaconEvent } from "@/lib/log/beacon";
 
 export const RESUME_HEARTBEAT_MS = 5_000;
 export const RESUME_STALE_AFTER_MS = 30_000;
@@ -59,6 +60,8 @@ export type ResumeGuardOptions = {
   refetch: () => void;
   /** Called instead of navigating when the reload budget is exhausted or storage is unavailable. */
   onReloadSuppressed?: () => void;
+  /** Last known screen state for the pagehide milestone; defaults to ready/not_ready. */
+  getScreenState?: () => string;
 };
 
 let lastAliveTs = 0;
@@ -130,16 +133,15 @@ export function hardReloadWithCacheBuster(now: number = Date.now()): boolean {
 
 // START_BLOCK: RELOAD_LOOP_GUARD
 function reportReloadSuppressed(options: ResumeGuardOptions, reason: ReloadReason, count: number): void {
-  logEvent(
-    "resume.reload_loop_suppressed",
-    { reason, reload_count: count, reload_limit: RESUME_RELOAD_LIMIT },
-    {
-      level: "error",
-      slice: "W-WHITE-SCREEN-RESILIENCE",
-      module: "M-RESUME-GUARD",
-      block: "RELOAD_LOOP_GUARD",
-    },
-  );
+  const payload = { reason, reload_count: count, reload_limit: RESUME_RELOAD_LIMIT };
+  const meta = {
+    level: "error" as const,
+    slice: "W-WHITE-SCREEN-RESILIENCE",
+    module: "M-RESUME-GUARD",
+    block: "RELOAD_LOOP_GUARD",
+  };
+  logEvent("resume.reload_loop_suppressed", payload, meta);
+  sendBeaconEvent("resume.reload_loop_suppressed", payload, meta);
   options.onReloadSuppressed?.();
 }
 
@@ -155,16 +157,15 @@ function attemptAutoReload(
     return;
   }
 
-  logEvent(
-    eventName,
-    { reason, reload_count: reservation.count },
-    {
-      level: "warn",
-      slice: "W-WHITE-SCREEN-RESILIENCE",
-      module: "M-RESUME-GUARD",
-      block: reason === "pageshow_persisted" ? "PAGESHOW" : "VISIBILITY",
-    },
-  );
+  const payload = { reason, reload_count: reservation.count };
+  const meta = {
+    level: "warn" as const,
+    slice: "W-WHITE-SCREEN-RESILIENCE",
+    module: "M-RESUME-GUARD",
+    block: reason === "pageshow_persisted" ? "PAGESHOW" : "VISIBILITY",
+  };
+  logEvent(eventName, payload, meta);
+  sendBeaconEvent(eventName, payload, meta);
 
   if (!hardReloadWithCacheBuster(now)) {
     reportReloadSuppressed(options, reason, reservation.count);
@@ -174,11 +175,11 @@ function attemptAutoReload(
 
 // START_BLOCK: RESUME_LISTENERS
 // START_FUNCTION_CONTRACT: F-M-RESUME-GUARD.installResumeGuard
-// purpose: Install heartbeat, pageshow, and visibility listeners for one mounted day screen.
-// inputs: options — readiness getter, soft refetch callback, and optional suppression callback.
+// purpose: Install heartbeat, pageshow, visibility, and pagehide listeners for one mounted day screen.
+// inputs: options — readiness getter, soft refetch callback, optional suppression callback, and optional screen-state getter.
 // returns: cleanup function that removes listeners and the heartbeat timer.
-// side_effects: timers, document/window listeners, logs, sessionStorage, and possible navigation.
-// emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed.
+// side_effects: timers, document/window listeners, logs/beacons, sessionStorage, and possible navigation.
+// emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed, app.pagehide_state.
 // error_behavior: no-op outside a browser; storage/navigation failures are reported as suppression.
 // END_FUNCTION_CONTRACT: F-M-RESUME-GUARD.installResumeGuard
 export function installResumeGuard(options: ResumeGuardOptions): () => void {
@@ -209,13 +210,36 @@ export function installResumeGuard(options: ResumeGuardOptions): () => void {
     attemptAutoReload("resume.stale_reload", "visibility_stale", options);
   };
 
+  const handlePageHide = () => {
+    const screenState = options.getScreenState
+      ? options.getScreenState()
+      : options.isReady()
+        ? "ready"
+        : "not_ready";
+    sendBeaconEvent(
+      "app.pagehide_state",
+      {
+        screen_state: screenState,
+        visibility_state: document.visibilityState,
+      },
+      {
+        level: "info",
+        slice: "W-WHITE-SCREEN-RESILIENCE",
+        module: "M-RESUME-GUARD",
+        block: "PAGEHIDE",
+      },
+    );
+  };
+
   window.addEventListener("pageshow", handlePageShow);
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("pagehide", handlePageHide);
 
   const cleanup = () => {
     window.clearInterval(heartbeat);
     window.removeEventListener("pageshow", handlePageShow);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("pagehide", handlePageHide);
     if (activeCleanup === cleanup) activeCleanup = null;
   };
   activeCleanup = cleanup;

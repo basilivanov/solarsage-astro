@@ -51,6 +51,7 @@ LogEventName = Literal[
     "auth.tg_login_started",
     "auth.tg_login_succeeded",
     "auth.tg_login_failed",
+    "auth.ok",
     "auth.session_expired",
     "auth.logout",
     "auth.dev_login_blocked",
@@ -92,11 +93,14 @@ LogEventName = Literal[
     "day.narrative_generation_completed",
     "day.narrative_generation_failed",
     "day.narrative_claim_nulled",
+    "day.load_start",
+    "day.load_ok",
     "day.load_timeout",
     # resume / white-screen resilience
     "resume.snapshot_reload",
     "resume.stale_reload",
     "resume.reload_loop_suppressed",
+    "app.pagehide_state",
     # static sphere page
     "sphere.natal_generation_completed",
     "sphere.natal_generation_failed",

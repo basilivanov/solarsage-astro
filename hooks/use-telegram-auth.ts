@@ -27,7 +27,8 @@
 //   - writes promo intent to localStorage
 //   - cleans tgWebAppStartParam from browser location URL
 //   - module-level deadline timer
-// emitted_logs: frontend.flow_failed
+//   - immediate auth.ok beacon after a successful POST /api/auth/telegram
+// emitted_logs: frontend.flow_failed, auth.ok
 // invariants:
 //   - single shared auth state across every useTelegramAuth() consumer (one POST, one timer)
 //   - the deadline (AUTH_TIMEOUT_MS) starts on the first ensure call, before any SDK check
@@ -63,6 +64,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { logger, logEvent } from '@/lib/log';
+import { sendBeaconEvent } from '@/lib/log/beacon';
 import { useTelegram } from '@/components/telegram-provider';
 import {
   resolveTelegramInitData,
@@ -93,10 +95,17 @@ interface TelegramAuthResult extends TelegramAuthState {
 
 /** Structural view of the WebApp fields this module reads. */
 type TelegramWebAppLike = TelegramInitDataSource & {
+  platform?: string;
+  version?: string;
   initDataUnsafe?: {
     start_param?: string;
     user?: { id?: number };
   } | null;
+};
+
+type TelegramClientMeta = {
+  platform?: string;
+  version?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -250,6 +259,49 @@ function readStartParam(initData: string): string | undefined {
   return undefined;
 }
 
+// START_FUNCTION_CONTRACT: F-M-HOOK-TELEGRAM-AUTH.readTelegramClientMeta
+// purpose: Collect Telegram WebApp platform/version from initData, SDK fields, or the URL hash.
+// inputs: webApp — Telegram WebApp-like object; initData — resolved initData query string.
+// returns: optional platform/version strings safe for the auth.ok beacon.
+// side_effects: reads window.location.hash when available.
+// emitted_logs: none.
+// error_behavior: malformed or unavailable sources are ignored, never throws.
+// END_FUNCTION_CONTRACT: F-M-HOOK-TELEGRAM-AUTH.readTelegramClientMeta
+function readTelegramClientMeta(
+  webApp: TelegramWebAppLike | null,
+  initData: string,
+): TelegramClientMeta {
+  const meta: TelegramClientMeta = {};
+
+  const remember = (key: keyof TelegramClientMeta, value: unknown) => {
+    if (!meta[key] && typeof value === 'string' && value.length > 0) {
+      meta[key] = value;
+    }
+  };
+
+  try {
+    if (initData) {
+      const params = new URLSearchParams(initData);
+      remember('platform', params.get('tgWebAppPlatform'));
+      remember('version', params.get('tgWebAppVersion'));
+    }
+
+    remember('platform', webApp?.platform);
+    remember('version', webApp?.version);
+
+    if (typeof window !== 'undefined' && typeof window.location?.hash === 'string') {
+      const hash = window.location.hash.replace(/^#/, '');
+      const params = new URLSearchParams(hash);
+      remember('platform', params.get('tgWebAppPlatform'));
+      remember('version', params.get('tgWebAppVersion'));
+    }
+  } catch {
+    // Client metadata is diagnostic only; it must never affect auth.
+  }
+
+  return meta;
+}
+
 /** Promo intent must be persisted before isAuthenticated=true; consumed tokens are terminal. */
 function storePromoIntentIfNeeded(intent: StartParamIntent): void {
   if (intent.kind !== 'promo' || isPromoTokenConsumed(intent.token)) return;
@@ -345,8 +397,8 @@ function completeAuthRun(
 // purpose: Perform the Telegram backend auth for a non-empty initData and commit exactly one terminal state.
 // inputs: initData — resolved Telegram initData string
 // returns: Promise<void>
-// side_effects: POST /api/auth/telegram with a fresh auth_attempt_id, optional POST /api/referral/claim, localStorage writes, URL cleanup
-// emitted_logs: frontend.flow_failed (promo intent storage failure)
+// side_effects: POST /api/auth/telegram with a fresh auth_attempt_id, auth.ok beacon, optional POST /api/referral/claim, localStorage writes, URL cleanup
+// emitted_logs: auth.ok on success; frontend.flow_failed (promo intent storage failure)
 // error_behavior: network/backend failures commit isLoading=false with an error message
 // END_FUNCTION_CONTRACT: F-M-HOOK-TELEGRAM-AUTH.authenticate
 async function authenticate(initData: string): Promise<void> {
@@ -363,6 +415,7 @@ async function authenticate(initData: string): Promise<void> {
   logger.info('[TGAuth] authenticate() started', { extra: { auth_attempt_id: authAttemptId } });
 
   const webApp = lastWebApp ?? getWindowWebApp();
+  const clientMeta = readTelegramClientMeta(webApp, initData);
   const rawStartParam = readStartParam(initData);
 
   // Clean query parameter from location bar immediately
@@ -421,6 +474,18 @@ async function authenticate(initData: string): Promise<void> {
   }
 
   logger.info('[TGAuth] Auth SUCCESS', { extra: { auth_attempt_id: authAttemptId } });
+
+  const authOkPayload: Record<string, unknown> = {};
+  if (clientMeta.platform) authOkPayload.platform = clientMeta.platform;
+  if (clientMeta.version) authOkPayload.version = clientMeta.version;
+  if (authAttemptId) authOkPayload.auth_attempt_id = authAttemptId;
+  sendBeaconEvent('auth.ok', authOkPayload, {
+    level: 'info',
+    slice: 'W-WHITE-SCREEN-RESILIENCE',
+    module: 'M-HOOK-TELEGRAM-AUTH',
+    block: 'AUTHENTICATE_FLOW',
+  });
+
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   if (!isCurrent()) {

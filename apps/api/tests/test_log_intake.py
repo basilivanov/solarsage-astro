@@ -32,6 +32,7 @@
 # public_entrypoints:
 #   - test_log_intake_requires_auth
 #   - test_log_intake_accepts_valid_batch
+#   - test_log_intake_accepts_single_beacon_envelope
 #   - test_log_intake_rejects_invalid_envelope
 #   - test_log_intake_bypass_prevention
 #   - test_log_intake_http_normalization
@@ -42,6 +43,8 @@
 # owned_tests:
 #   - apps/api/tests/test_log_intake.py
 # END_MODULE_MAP: M-TEST-LOG-INTAKE
+
+import json
 
 import pytest
 from httpx import AsyncClient
@@ -127,6 +130,53 @@ async def test_log_intake_accepts_valid_batch(async_client: AsyncClient, make_in
 
 
 # END_BLOCK: TEST_VALID_BATCH
+
+
+# START_BLOCK: TEST_BEACON_ENVELOPE
+@pytest.mark.asyncio
+async def test_log_intake_accepts_single_beacon_envelope(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A single canonical envelope sent as an application/json Blob is accepted."""
+    from app.services.log_intake import LogIntakeService
+
+    emitted: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        LogIntakeService,
+        "_emit_line",
+        lambda _self, data: emitted.append(data),
+    )
+
+    envelope = {
+        "ts": "2026-10-23T12:00:00.000Z",
+        "level": "info",
+        "env": "prod",
+        "service": "web",
+        "service_version": "abcdef1",
+        "slice": "W-WHITE-SCREEN-RESILIENCE",
+        "module": "M-HOOK-TODAY-CONVERGENCE",
+        "block": "INITIAL_LOAD",
+        "event": "day.load_start",
+        "correlation_id": "11111111-1111-4111-8111-111111111111",
+        "payload": {"source": "initial_load"},
+    }
+
+    response = await async_client.post(
+        "/api/_log",
+        content=json.dumps(envelope).encode("utf-8"),
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"accepted": 1, "rejected": 0}
+    assert len(emitted) == 1
+    assert emitted[0]["event"] == "day.load_start"
+    assert str(emitted[0]["correlation_id"]).startswith("h1_")
+    assert emitted[0]["payload"] == {"source": "initial_load"}
+
+
+# END_BLOCK: TEST_BEACON_ENVELOPE
 
 
 # START_BLOCK: TEST_INVALID_ENVELOPE

@@ -11,8 +11,8 @@
 // outputs: today-screen root, single-column content stack, and composed public
 //   Today block selectors.
 // dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall, resume-guard.
-// side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, timezone-aware child formatting, and resume detection.
-// emitted_logs: resume-guard events (snapshot/stale reload and loop suppression).
+// side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, timezone-aware child formatting, resume detection, and pagehide telemetry.
+// emitted_logs: resume-guard events (snapshot/stale reload, loop suppression) and app.pagehide_state beacon.
 // invariants: nullable root attributes are omitted; target-date copy comes only from payload.targetDate; preview/locked never render hidden evidence; state=unavailable has no facts.
 // failure_policy: transport error and calculation unavailable are separate accessible states; suppressed resume reloads surface as the error state.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SCREEN
@@ -317,17 +317,19 @@ export function TodayScreen({
   // purpose: Project transport and generated Today state into the public screen DOM contract.
   // inputs: payload — generated wire envelope; screenState — transport state; callbacks — parent-owned actions.
   // returns: Today screen root with state-specific child composition.
-  // side_effects: delegates retry/dismiss and link navigation; installs resume detection.
-  // emitted_logs: delegated resume-guard events.
+  // side_effects: delegates retry/dismiss and link navigation; installs resume detection and pagehide telemetry.
+  // emitted_logs: delegated resume-guard events and app.pagehide_state.
   // error_behavior: loading/error render transport-only content; ready renders payload projection.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SCREEN.TodayScreen
   const [resumeSuppressed, setResumeSuppressed] = useState(false);
   const screenStateRef = useRef(screenState);
+  const effectiveScreenStateRef = useRef<TodayScreenState>(screenState);
   const onRetryRef = useRef(onRetry);
 
   useEffect(() => {
     screenStateRef.current = screenState;
-  }, [screenState]);
+    effectiveScreenStateRef.current = resumeSuppressed ? "error" : screenState;
+  }, [screenState, resumeSuppressed]);
 
   useEffect(() => {
     onRetryRef.current = onRetry;
@@ -339,6 +341,7 @@ export function TodayScreen({
         isReady: () => screenStateRef.current === "ready",
         refetch: () => onRetryRef.current?.(),
         onReloadSuppressed: () => setResumeSuppressed(true),
+        getScreenState: () => effectiveScreenStateRef.current,
       }),
     [],
   );

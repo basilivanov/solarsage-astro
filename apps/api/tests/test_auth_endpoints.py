@@ -32,6 +32,7 @@
 #   - test_login_400_on_invalid_hmac_no_db_write
 #   - test_login_401_on_expired_initdata
 #   - test_login_logs_auth_attempt_id_in_succeeded_payload
+#   - test_login_logs_platform_and_version_from_initdata
 #   - test_login_without_auth_attempt_id_omits_payload_key
 #   - test_login_logs_auth_attempt_id_on_failed_hmac
 #   - test_bind_log_context_accepts_auth_attempt_id
@@ -239,6 +240,28 @@ async def test_login_logs_auth_attempt_id_in_succeeded_payload(
     payload = succeeded[0]["payload"]
     assert isinstance(payload, dict)
     assert payload["auth_attempt_id"] == "attempt-abc-123"
+
+
+@pytest.mark.asyncio
+async def test_login_logs_platform_and_version_from_initdata(
+    async_client: AsyncClient,
+    make_initdata,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = _capture_auth_log_events(monkeypatch)
+    raw = make_initdata(
+        user_id=704,
+        extra={"tgWebAppPlatform": "ios", "tgWebAppVersion": "9.5"},
+    )
+    r = await async_client.post("/api/auth/telegram", json={"initData": raw})
+    assert r.status_code == 200, r.text
+
+    succeeded = [event for event in events if event["event"] == "auth.tg_login_succeeded"]
+    assert len(succeeded) == 1
+    payload = succeeded[0]["payload"]
+    assert isinstance(payload, dict)
+    assert payload["platform"] == "ios"
+    assert payload["version"] == "9.5"
 
 
 @pytest.mark.asyncio

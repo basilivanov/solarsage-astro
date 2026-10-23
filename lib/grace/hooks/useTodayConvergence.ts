@@ -11,7 +11,7 @@
 // outputs: screenState, optional TodayConvergencePayload, retry cooldown state, and refetch callback.
 // dependencies: lib/api/today-convergence.ts, M-HOOK-TELEGRAM-AUTH (shared auth state), next/navigation.
 // side_effects: GET/POST day requests, one best-effort day impression, timers, and onboarding redirect.
-// emitted_logs: delegated API events plus day.impression_recorded/day.impression_rejected and day.load_timeout.
+// emitted_logs: delegated API events plus day.impression_recorded/day.impression_rejected and beacon milestones day.load_start/day.load_ok/day.load_timeout.
 // invariants:
 //   - pending polling is bounded; impression is once per snapshot and never for preview/locked/unavailable.
 //   - the day API is never called while shared auth is loading or ended with an error.
@@ -49,6 +49,7 @@ import {
   TodayConvergenceApiError,
 } from "@/lib/api/today-convergence";
 import { logEvent } from "@/lib/log";
+import { sendBeaconEvent } from "@/lib/log/beacon";
 
 export const PENDING_POLL_INTERVAL_MS = 4_000;
 export const PENDING_POLL_MAX_MS = 120_000;
@@ -75,14 +76,40 @@ type DayLoadResult =
 type DayLoadSource = "initial_load" | "refetch";
 
 function logDayLoadTimeout(source: DayLoadSource): void {
-  logEvent(
-    "day.load_timeout",
-    { source, timeout_ms: DAY_LOAD_TIMEOUT_MS, auto_retry: true },
+  const payload = { source, timeout_ms: DAY_LOAD_TIMEOUT_MS, auto_retry: true };
+  const meta = {
+    level: "error" as const,
+    slice: "W-WHITE-SCREEN-RESILIENCE",
+    module: "M-HOOK-TODAY-CONVERGENCE",
+    block: source === "initial_load" ? "INITIAL_LOAD" : "RETRY",
+  };
+  logEvent("day.load_timeout", payload, meta);
+  sendBeaconEvent("day.load_timeout", payload, meta);
+}
+
+function beaconDayLoadStart(source: DayLoadSource): void {
+  sendBeaconEvent(
+    "day.load_start",
+    { source, timeout_ms: DAY_LOAD_TIMEOUT_MS },
     {
-      level: "error",
+      level: "info",
       slice: "W-WHITE-SCREEN-RESILIENCE",
       module: "M-HOOK-TODAY-CONVERGENCE",
       block: source === "initial_load" ? "INITIAL_LOAD" : "RETRY",
+    },
+  );
+}
+
+function beaconDayLoadOk(source: DayLoadSource, attempt: number, startedAt: number): void {
+  sendBeaconEvent(
+    "day.load_ok",
+    { source, attempt },
+    {
+      level: "info",
+      slice: "W-WHITE-SCREEN-RESILIENCE",
+      module: "M-HOOK-TODAY-CONVERGENCE",
+      block: source === "initial_load" ? "INITIAL_LOAD" : "RETRY",
+      duration_ms: Date.now() - startedAt,
     },
   );
 }
@@ -115,7 +142,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
   // inputs: dateParam — today or ISO date route value.
   // returns: screen state, optional payload, retry metadata, and refetch callback.
   // side_effects: auth-gated API calls, deadline/retry timers, impression POST, and onboarding redirect.
-  // emitted_logs: delegated API lifecycle, impression, and day.load_timeout events.
+  // emitted_logs: delegated API lifecycle, impression, and beacon day.load_start/day.load_ok/day.load_timeout events.
   // error_behavior: active non-onboarding fetch errors expose screenState=error; aborts are ignored.
   // END_FUNCTION_CONTRACT: F-M-HOOK-TODAY-CONVERGENCE.useTodayConvergence
   const router = useRouter();
@@ -164,7 +191,9 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
 
   // START_BLOCK: DAY_DEADLINE
   const fetchDayWithDayDeadline = useCallback(
-    async (generation: number): Promise<DayLoadResult> => {
+    async (generation: number, source: DayLoadSource): Promise<DayLoadResult> => {
+      const startedAt = Date.now();
+      beaconDayLoadStart(source);
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         const controller = new AbortController();
         loadControllerRef.current = controller;
@@ -196,6 +225,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
 
         if (!timedOut && outcome.kind === "ok") {
           if (controller.signal.aborted) return { kind: "cancelled" };
+          beaconDayLoadOk(source, attempt, startedAt);
           return { kind: "ok", payload: outcome.payload };
         }
         if (!timedOut && outcome.kind === "error") {
@@ -252,7 +282,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     if (!isAuthenticated && authError !== null) return undefined;
 
     const load = async () => {
-      const result = await fetchDayWithDayDeadline(generation);
+      const result = await fetchDayWithDayDeadline(generation, "initial_load");
       if (result.kind === "cancelled") return;
       if (result.kind === "ok") {
         setPayload(result.payload);
@@ -375,7 +405,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     // inputs: none; dateParam and route context come from the hook instance.
     // returns: Promise<void> after the retry request and any Retry-After follow-up.
     // side_effects: POST retry, optional countdown/deadline timers, follow-up GET, and state updates.
-    // emitted_logs: delegated API lifecycle plus day.load_timeout on a retry-after-timeout failure.
+    // emitted_logs: delegated API lifecycle plus beacon day.load_start/day.load_ok/day.load_timeout milestones.
     // error_behavior: ignores duplicate/cooldown calls; active failures become screenState=error.
     // END_FUNCTION_CONTRACT: F-M-HOOK-TODAY-CONVERGENCE.refetch
     if (
@@ -385,6 +415,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     ) return;
 
     const generation = generationRef.current;
+    const retryStartedAt = Date.now();
     const controller = new AbortController();
     retryControllerRef.current = controller;
     retryingRef.current = true;
@@ -397,6 +428,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       if (!active()) return;
 
       if (result.payload) {
+        beaconDayLoadOk("refetch", 1, retryStartedAt);
         setPayload(result.payload);
         setScreenState("ready");
         return;
@@ -414,7 +446,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       retryAfterRef.current = 0;
       setRetryAfterSeconds(0);
 
-      const loadResult = await fetchDayWithDayDeadline(generation);
+      const loadResult = await fetchDayWithDayDeadline(generation, "refetch");
       if (loadResult.kind === "cancelled" || !active()) return;
       if (loadResult.kind === "ok") {
         setPayload(loadResult.payload);

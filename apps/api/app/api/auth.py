@@ -236,6 +236,10 @@ async def auth_telegram(
     }
     if auth_attempt_id:
         success_payload["auth_attempt_id"] = auth_attempt_id
+    if tg.platform:
+        success_payload["platform"] = tg.platform
+    if tg.version:
+        success_payload["version"] = tg.version
 
     log_event(
         "auth.tg_login_succeeded",

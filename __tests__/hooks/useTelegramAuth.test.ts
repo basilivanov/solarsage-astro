@@ -39,7 +39,7 @@ import {
   __resetTelegramAuthForTests,
 } from "@/hooks/use-telegram-auth"
 
-const { mockLogger, mockLogEvent } = vi.hoisted(() => ({
+const { mockLogger, mockLogEvent, mockSendBeaconEvent } = vi.hoisted(() => ({
   mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -47,11 +47,16 @@ const { mockLogger, mockLogEvent } = vi.hoisted(() => ({
     error: vi.fn(),
   },
   mockLogEvent: vi.fn(),
+  mockSendBeaconEvent: vi.fn(),
 }))
 
 vi.mock("@/lib/log", () => ({
   logger: mockLogger,
   logEvent: mockLogEvent,
+}))
+
+vi.mock("@/lib/log/beacon", () => ({
+  sendBeaconEvent: mockSendBeaconEvent,
 }))
 
 const mockUseTelegram = vi.fn(() => ({
@@ -83,6 +88,7 @@ beforeEach(() => {
   mockLogger.warn.mockClear()
   mockLogger.error.mockClear()
   mockLogEvent.mockClear()
+  mockSendBeaconEvent.mockClear()
   mockUseTelegram.mockReturnValue({ webApp: null, loaded: true, inTelegram: false })
 })
 
@@ -246,6 +252,34 @@ describe("useTelegramAuth", () => {
     )
   })
 
+  it("sends auth.ok with platform and version after successful Telegram auth", async () => {
+    ;(process.env as any).NODE_ENV = "production"
+    setupTelegram()
+    window.history.replaceState(
+      {},
+      "",
+      "/#tgWebAppPlatform=ios&tgWebAppVersion=9.5"
+    )
+    mockTelegramAuthResponse(true)
+
+    const { result } = renderHook(() => useTelegramAuth())
+
+    await waitFor(
+      () => {
+        expect(result.current.isAuthenticated).toBe(true)
+      },
+      { timeout: LONG_TIMEOUT }
+    )
+
+    expect(mockSendBeaconEvent).toHaveBeenCalledWith(
+      "auth.ok",
+      expect.objectContaining({ platform: "ios", version: "9.5" }),
+      expect.any(Object)
+    )
+  })
+})
+
+describe("useTelegramAuth error and routing behavior", () => {
   it("returns error when Telegram auth fails (preserves backend detail error)", async () => {
     ;(process.env as any).NODE_ENV = "production"
     setupTelegram()
