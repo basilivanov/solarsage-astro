@@ -2,7 +2,8 @@
 # AI_HEADER: MODULE_DEPLOY_FRONTEND_DOCKERFILE — frontend Docker image recipe
 # ROLE: Builds the root Next.js production image from the repository context;
 #       replaces the obsolete apps/web Vite dist + nginx recipe.
-# DEPENDENCIES: node:20-slim (multi-arch digest-pinned), pnpm (corepack), Next.js production build
+# DEPENDENCIES: node:20-slim (multi-arch digest-pinned), pnpm (corepack),
+#       Next.js production build, next.config.mjs ENTRY_HTML_NO_STORE headers gate
 # GRACE_ANCHORS: [FRONTEND_IMAGE]
 # ############################################################################
 
@@ -17,8 +18,12 @@
 #     non-secret)
 #   - build ARG PROD_API_REWRITE_BASE_URL (default http://api:8000, non-secret;
 #     baked into routes-manifest at build time)
-# outputs: Next.js production server image listening on container port 3002.
-# dependencies: node:20-slim base (multi-arch digest-pinned), frozen pnpm lockfile.
+#   - build ARG ENTRY_HTML_NO_STORE (default 1, non-secret; enables
+#     Cache-Control: no-store for app document routes at build time)
+# outputs: Next.js production server image listening on container port 3002,
+#   with app document routes served Cache-Control: no-store by default.
+# dependencies: node:20-slim base (multi-arch digest-pinned), frozen pnpm lockfile,
+#   next.config.mjs ENTRY_HTML_NO_STORE headers gate.
 # side_effects: pnpm install and next build inside the image build only.
 # emitted_logs: none.
 # invariants:
@@ -27,6 +32,8 @@
 #     any layer; build uses only non-secret NEXT_PUBLIC/defaults.
 #   - Build runs next build once; runtime runs next start, never pnpm dev.
 #   - Runtime distDir resolves to .next-prod under NODE_ENV=production.
+#   - ENTRY_HTML_NO_STORE defaults to 1 in the production image and applies
+#     only to app document routes, never API, _next assets or extension files.
 # failure_policy: Docker build fails on install/build errors.
 # END_MODULE_CONTRACT: M-DEPLOY-FRONTEND
 
@@ -62,11 +69,13 @@ COPY . .
 # time. Canonical Compose networking uses http://api:8000; the runtime fallback
 # outside Compose (unset variable) remains http://127.0.0.1:8000.
 ARG RELEASE_SHA=unknown
+ARG ENTRY_HTML_NO_STORE=1
 ARG PROD_API_REWRITE_BASE_URL=http://api:8000
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_GRACE_LOG_SHIPPING=true \
     NEXT_PUBLIC_RELEASE_SHA=${RELEASE_SHA} \
+    ENTRY_HTML_NO_STORE=${ENTRY_HTML_NO_STORE} \
     PROD_API_REWRITE_BASE_URL=${PROD_API_REWRITE_BASE_URL}
 
 LABEL org.opencontainers.image.revision="${RELEASE_SHA}"
