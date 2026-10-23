@@ -11,21 +11,24 @@
 // outputs: screenState, optional TodayConvergencePayload, retry cooldown state, and refetch callback.
 // dependencies: lib/api/today-convergence.ts, M-HOOK-TELEGRAM-AUTH (shared auth state), next/navigation.
 // side_effects: GET/POST day requests, one best-effort day impression, timers, and onboarding redirect.
-// emitted_logs: delegated API events plus day.impression_recorded/day.impression_rejected.
+// emitted_logs: delegated API events plus day.impression_recorded/day.impression_rejected and day.load_timeout.
 // invariants:
 //   - pending polling is bounded; impression is once per snapshot and never for preview/locked/unavailable.
 //   - the day API is never called while shared auth is loading or ended with an error.
 //   - a 401 triggers at most one shared re-auth per mount; a 401 after that becomes screenState=error.
+//   - initial and retry follow-up day GETs have a 15 s deadline, one silent retry, then error.
 // failure_policy: request failures become error state; retry/poll aborts are ignored after cancellation or unmount.
 // END_MODULE_CONTRACT: M-HOOK-TODAY-CONVERGENCE
 
 // START_MODULE_MAP: M-HOOK-TODAY-CONVERGENCE
 // public_entrypoints:
+//   - DAY_LOAD_TIMEOUT_MS
 //   - TodayConvergenceScreenState
 //   - UseTodayConvergenceResult
 //   - useTodayConvergence
 // semantic_blocks:
 //   - INITIAL_LOAD: shared-auth-gated date fetch (waits while auth loads, stops on terminal auth error) and onboarding routing.
+//   - DAY_DEADLINE: 15 s abort deadline with one silent retry for initial and retry follow-up GETs.
 //   - IMPRESSION: post-paint, full-access snapshot guard.
 //   - PENDING_POLLING: four-second bounded GET polling.
 //   - RETRY: POST retry, Retry-After countdown, bounded 401 -> shared re-auth, and follow-up GET.
@@ -45,10 +48,13 @@ import {
   retryTodayConvergence,
   TodayConvergenceApiError,
 } from "@/lib/api/today-convergence";
+import { logEvent } from "@/lib/log";
 
 export const PENDING_POLL_INTERVAL_MS = 4_000;
 export const PENDING_POLL_MAX_MS = 120_000;
 export const DEFAULT_RETRY_AFTER_SECONDS = 4;
+export const DAY_LOAD_TIMEOUT_MS = 15_000;
+const DAY_LOAD_RETRY_DELAY_MS = 2_000;
 
 export type TodayConvergenceScreenState = "loading" | "ready" | "error";
 
@@ -59,6 +65,27 @@ export type UseTodayConvergenceResult = {
   retrying: boolean;
   refetch: () => Promise<void>;
 };
+
+type TodayPayload = Awaited<ReturnType<typeof fetchTodayConvergence>>;
+type DayLoadResult =
+  | { kind: "ok"; payload: TodayPayload }
+  | { kind: "error"; error: unknown; afterTimeout: boolean }
+  | { kind: "timeout"; attempts: number }
+  | { kind: "cancelled" };
+type DayLoadSource = "initial_load" | "refetch";
+
+function logDayLoadTimeout(source: DayLoadSource): void {
+  logEvent(
+    "day.load_timeout",
+    { source, timeout_ms: DAY_LOAD_TIMEOUT_MS, auto_retry: true },
+    {
+      level: "error",
+      slice: "W-WHITE-SCREEN-RESILIENCE",
+      module: "M-HOOK-TODAY-CONVERGENCE",
+      block: source === "initial_load" ? "INITIAL_LOAD" : "RETRY",
+    },
+  );
+}
 
 function isOnboardingFailure(error: unknown): boolean {
   if (!(error instanceof TodayConvergenceApiError)) return false;
@@ -87,8 +114,8 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
   // purpose: Load one date's generated Today envelope and coordinate its lifecycle.
   // inputs: dateParam — today or ISO date route value.
   // returns: screen state, optional payload, retry metadata, and refetch callback.
-  // side_effects: auth-gated API calls, bounded timers, impression POST, and onboarding redirect.
-  // emitted_logs: delegated API lifecycle and impression events.
+  // side_effects: auth-gated API calls, deadline/retry timers, impression POST, and onboarding redirect.
+  // emitted_logs: delegated API lifecycle, impression, and day.load_timeout events.
   // error_behavior: active non-onboarding fetch errors expose screenState=error; aborts are ignored.
   // END_FUNCTION_CONTRACT: F-M-HOOK-TODAY-CONVERGENCE.useTodayConvergence
   const router = useRouter();
@@ -110,6 +137,8 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
   const retryControllerRef = useRef<AbortController | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadTimeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingStartedAtRef = useRef<number | null>(null);
   const impressionSnapshotsRef = useRef(new Set<string>());
   const retryingRef = useRef(false);
@@ -126,8 +155,73 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       retryControllerRef.current?.abort();
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      if (loadTimeoutTimerRef.current) clearTimeout(loadTimeoutTimerRef.current);
+      if (loadRetryTimerRef.current) clearTimeout(loadRetryTimerRef.current);
+      loadTimeoutTimerRef.current = null;
+      loadRetryTimerRef.current = null;
     };
   }, []);
+
+  // START_BLOCK: DAY_DEADLINE
+  const fetchDayWithDayDeadline = useCallback(
+    async (generation: number): Promise<DayLoadResult> => {
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const controller = new AbortController();
+        loadControllerRef.current = controller;
+        let timedOut = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+        const timeoutPromise = new Promise<"timeout">((resolve) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+            resolve("timeout");
+          }, DAY_LOAD_TIMEOUT_MS);
+          loadTimeoutTimerRef.current = timeoutId;
+        });
+
+        const outcome = await Promise.race([
+          fetchTodayConvergence(dateParam, controller.signal).then(
+            (nextPayload) => ({ kind: "ok" as const, payload: nextPayload }),
+            (error: unknown) => ({ kind: "error" as const, error }),
+          ),
+          timeoutPromise.then(() => ({ kind: "timeout" as const })),
+        ]);
+
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        if (loadTimeoutTimerRef.current === timeoutId) loadTimeoutTimerRef.current = null;
+        if (!mountedRef.current || generation !== generationRef.current) {
+          return { kind: "cancelled" };
+        }
+
+        if (!timedOut && outcome.kind === "ok") {
+          if (controller.signal.aborted) return { kind: "cancelled" };
+          return { kind: "ok", payload: outcome.payload };
+        }
+        if (!timedOut && outcome.kind === "error") {
+          if (controller.signal.aborted) return { kind: "cancelled" };
+          return { kind: "error", error: outcome.error, afterTimeout: attempt > 1 };
+        }
+
+        // The deadline fired (or a result raced the abort). One silent retry,
+        // then a terminal timeout result for the caller to project as error UI.
+        if (attempt === 1) {
+          await new Promise<void>((resolve) => {
+            loadRetryTimerRef.current = setTimeout(resolve, DAY_LOAD_RETRY_DELAY_MS);
+          });
+          loadRetryTimerRef.current = null;
+          if (!mountedRef.current || generation !== generationRef.current) {
+            return { kind: "cancelled" };
+          }
+          continue;
+        }
+        return { kind: "timeout", attempts: attempt };
+      }
+      return { kind: "timeout", attempts: 2 };
+    },
+    [dateParam],
+  );
+  // END_BLOCK: DAY_DEADLINE
 
   // START_BLOCK: INITIAL_LOAD
   useEffect(() => {
@@ -138,6 +232,10 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     retryControllerRef.current?.abort();
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    if (loadTimeoutTimerRef.current) clearTimeout(loadTimeoutTimerRef.current);
+    if (loadRetryTimerRef.current) clearTimeout(loadRetryTimerRef.current);
+    loadTimeoutTimerRef.current = null;
+    loadRetryTimerRef.current = null;
     pendingStartedAtRef.current = null;
     retryAfterRef.current = 0;
     retryingRef.current = false;
@@ -153,38 +251,44 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     // Dev-skip (error === null, isAuthenticated === false) still loads the day.
     if (!isAuthenticated && authError !== null) return undefined;
 
-    const controller = new AbortController();
-    loadControllerRef.current = controller;
-
     const load = async () => {
-      try {
-        const nextPayload = await fetchTodayConvergence(dateParam, controller.signal);
-        if (!isCurrent(mountedRef.current, generation, generationRef.current, controller.signal)) return;
-        setPayload(nextPayload);
+      const result = await fetchDayWithDayDeadline(generation);
+      if (result.kind === "cancelled") return;
+      if (result.kind === "ok") {
+        setPayload(result.payload);
         setScreenState("ready");
-      } catch (error) {
-        if (!isCurrent(mountedRef.current, generation, generationRef.current, controller.signal)) return;
-        // A stale session: re-auth once per mount and keep loading. The effect
-        // restarts when shared auth becomes authenticated again.
-        if (isUnauthorizedFailure(error) && !reauthenticatedRef.current) {
-          reauthenticatedRef.current = true;
-          retryAuth();
-          return;
-        }
-        if (isOnboardingFailure(error)) {
-          router.replace("/onboarding");
-          return;
-        }
-        setScreenState("error");
+        return;
       }
+      if (result.kind === "timeout") {
+        logDayLoadTimeout("initial_load");
+        setScreenState("error");
+        return;
+      }
+
+      // A stale session: re-auth once per mount and keep loading. The effect
+      // restarts when shared auth becomes authenticated again.
+      if (isUnauthorizedFailure(result.error) && !reauthenticatedRef.current) {
+        reauthenticatedRef.current = true;
+        retryAuth();
+        return;
+      }
+      if (isOnboardingFailure(result.error)) {
+        router.replace("/onboarding");
+        return;
+      }
+      if (result.afterTimeout) logDayLoadTimeout("initial_load");
+      setScreenState("error");
     };
 
     void load();
     return () => {
-      controller.abort();
-      if (loadControllerRef.current === controller) loadControllerRef.current = null;
+      loadControllerRef.current?.abort();
+      if (loadTimeoutTimerRef.current) clearTimeout(loadTimeoutTimerRef.current);
+      if (loadRetryTimerRef.current) clearTimeout(loadRetryTimerRef.current);
+      loadTimeoutTimerRef.current = null;
+      loadRetryTimerRef.current = null;
     };
-  }, [authLoading, isAuthenticated, authError, dateParam, router, retryAuth]);
+  }, [authLoading, isAuthenticated, authError, dateParam, router, retryAuth, fetchDayWithDayDeadline]);
   // END_BLOCK: INITIAL_LOAD
 
   // START_BLOCK: IMPRESSION
@@ -270,8 +374,8 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
     // purpose: Request a server retry, enforce a single-flight cooldown, and refresh the envelope.
     // inputs: none; dateParam and route context come from the hook instance.
     // returns: Promise<void> after the retry request and any Retry-After follow-up.
-    // side_effects: POST retry, optional countdown timers, follow-up GET, and state updates.
-    // emitted_logs: delegated API lifecycle events.
+    // side_effects: POST retry, optional countdown/deadline timers, follow-up GET, and state updates.
+    // emitted_logs: delegated API lifecycle plus day.load_timeout on a retry-after-timeout failure.
     // error_behavior: ignores duplicate/cooldown calls; active failures become screenState=error.
     // END_FUNCTION_CONTRACT: F-M-HOOK-TODAY-CONVERGENCE.refetch
     if (
@@ -310,10 +414,33 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       retryAfterRef.current = 0;
       setRetryAfterSeconds(0);
 
-      const nextPayload = await fetchTodayConvergence(dateParam, controller.signal);
-      if (!active()) return;
-      setPayload(nextPayload);
-      setScreenState("ready");
+      const loadResult = await fetchDayWithDayDeadline(generation);
+      if (loadResult.kind === "cancelled" || !active()) return;
+      if (loadResult.kind === "ok") {
+        setPayload(loadResult.payload);
+        setScreenState("ready");
+        return;
+      }
+      if (loadResult.kind === "timeout") {
+        logDayLoadTimeout("refetch");
+        setScreenState("error");
+        return;
+      }
+
+      // Stale session on the follow-up GET: re-auth once per mount and stay
+      // loading so the auth-error screen does not flash.
+      if (isUnauthorizedFailure(loadResult.error) && !reauthenticatedRef.current) {
+        reauthenticatedRef.current = true;
+        setScreenState("loading");
+        retryAuth();
+        return;
+      }
+      if (isOnboardingFailure(loadResult.error)) {
+        router.replace("/onboarding");
+        return;
+      }
+      if (loadResult.afterTimeout) logDayLoadTimeout("refetch");
+      setScreenState("error");
     } catch (error) {
       if (!active()) return;
       // Stale session on retry: re-auth once per mount and stay in loading so the
@@ -338,7 +465,7 @@ export function useTodayConvergence(dateParam: string): UseTodayConvergenceResul
       }
       if (retryControllerRef.current === controller) retryControllerRef.current = null;
     }
-  }, [dateParam, router, retryAuth]);
+  }, [dateParam, router, retryAuth, fetchDayWithDayDeadline]);
   // END_BLOCK: RETRY
 
   return { screenState, payload, retryAfterSeconds, retrying, refetch };

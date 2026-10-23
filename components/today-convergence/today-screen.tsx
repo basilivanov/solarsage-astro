@@ -10,11 +10,11 @@
 // inputs: generated TodayConvergencePayload and parent-owned transport/profile callbacks.
 // outputs: today-screen root, single-column content stack, and composed public
 //   Today block selectors.
-// dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall.
-// side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, and timezone-aware child formatting.
-// emitted_logs: none.
+// dependencies: packages/contracts/today-convergence.ts, today-convergence child components, existing Paywall, resume-guard.
+// side_effects: delegates retry/dismiss callbacks, ordinary sphere navigation, lazy impulse context loading, timezone-aware child formatting, and resume detection.
+// emitted_logs: resume-guard events (snapshot/stale reload and loop suppression).
 // invariants: nullable root attributes are omitted; target-date copy comes only from payload.targetDate; preview/locked never render hidden evidence; state=unavailable has no facts.
-// failure_policy: transport error and calculation unavailable are separate accessible states.
+// failure_policy: transport error and calculation unavailable are separate accessible states; suppressed resume reloads surface as the error state.
 // END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-SCREEN
 
 // START_MODULE_MAP: M-TODAY-CONVERGENCE-SCREEN
@@ -22,6 +22,7 @@
 //   - TodayScreen
 // semantic_blocks:
 //   - TRANSPORT: loading, ready, and error root projections.
+//   - RESUME_GUARD: installs the client resume detector and maps loop suppression to error UI.
 //   - ACCESS_AND_STATE: full, preview, locked, and unavailable projections.
 //   - READY_COMPOSITION: one vertical main/context composition with enough width to preserve full event meta rows.
 // owned_tests:
@@ -30,9 +31,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Paywall } from "@/components/paywall";
 import { readSignalFacet } from "@/lib/display/facet-labels";
+import { hardReloadWithCacheBuster, installResumeGuard } from "@/lib/grace/resume-guard";
 import type {
   TodayConvergenceNarrativeClaim,
   TodayConvergencePayload,
@@ -144,9 +146,19 @@ function PreviewTeaser({ payload }: { payload: TodayConvergencePayload }) {
 }
 
 // START_BLOCK: TRANSPORT
-function TransportLoading() {
+function TransportLoading({ pending = false }: { pending?: boolean }) {
   return (
-    <div data-testid="today-loading-skeleton" role="status" aria-live="polite" aria-label="Загружаем разбор дня" className="space-y-3">
+    <div
+      data-testid="today-loading-skeleton"
+      role="status"
+      aria-live="polite"
+      aria-label={pending ? "Считаем день, собираем разбор" : "Считаем день"}
+      className="space-y-3"
+    >
+      <p className="text-[13px] font-medium text-muted-foreground">Считаем день…</p>
+      {pending ? (
+        <p className="text-[13px] text-muted-foreground">Собираем разбор, ещё немного…</p>
+      ) : null}
       <span aria-hidden className="block h-6 w-2/5 animate-pulse rounded bg-muted motion-reduce:animate-none" />
       <span aria-hidden className="block h-32 w-full animate-pulse rounded-[24px] bg-muted motion-reduce:animate-none" />
       <span aria-hidden className="block h-20 w-full animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />
@@ -158,13 +170,26 @@ function TransportError({ onRetry }: { onRetry?: () => void }) {
   return (
     <div data-testid="today-transport-error" className="rounded-[24px] border border-border/60 bg-card p-5">
       <p>Не удалось загрузить день.</p>
-      <button
-        type="button"
-        onClick={() => onRetry?.()}
-        className="mt-4 min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        Повторить
-      </button>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          data-testid="today-error-retry"
+          aria-label="Повторить"
+          onClick={() => onRetry?.()}
+          className="min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Повторить
+        </button>
+        <button
+          type="button"
+          data-testid="today-error-reload"
+          aria-label="Обновить полностью"
+          onClick={() => hardReloadWithCacheBuster()}
+          className="min-h-11 rounded-full border border-border/70 bg-background px-5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Обновить полностью
+        </button>
+      </div>
     </div>
   );
 }
@@ -292,32 +317,65 @@ export function TodayScreen({
   // purpose: Project transport and generated Today state into the public screen DOM contract.
   // inputs: payload — generated wire envelope; screenState — transport state; callbacks — parent-owned actions.
   // returns: Today screen root with state-specific child composition.
-  // side_effects: delegates retry/dismiss and link navigation.
-  // emitted_logs: none.
+  // side_effects: delegates retry/dismiss and link navigation; installs resume detection.
+  // emitted_logs: delegated resume-guard events.
   // error_behavior: loading/error render transport-only content; ready renders payload projection.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SCREEN.TodayScreen
-  const isReady = screenState === "ready";
+  const [resumeSuppressed, setResumeSuppressed] = useState(false);
+  const screenStateRef = useRef(screenState);
+  const onRetryRef = useRef(onRetry);
+
+  useEffect(() => {
+    screenStateRef.current = screenState;
+  }, [screenState]);
+
+  useEffect(() => {
+    onRetryRef.current = onRetry;
+  }, [onRetry]);
+
+  useEffect(
+    () =>
+      installResumeGuard({
+        isReady: () => screenStateRef.current === "ready",
+        refetch: () => onRetryRef.current?.(),
+        onReloadSuppressed: () => setResumeSuppressed(true),
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (screenState === "ready") setResumeSuppressed(false);
+  }, [screenState]);
+
+  const effectiveScreenState = resumeSuppressed ? "error" : screenState;
+  const isReady = effectiveScreenState === "ready";
+  const handleRetry = useCallback(() => {
+    setResumeSuppressed(false);
+    onRetry?.();
+  }, [onRetry]);
 
   return (
     <section
       data-testid="today-screen"
-      data-screen-state={screenState}
+      data-screen-state={effectiveScreenState}
       data-state={isReady ? payload.state ?? undefined : undefined}
       data-day-tone={isReady ? payload.dayTone ?? undefined : undefined}
       data-content-state={isReady ? payload.contentState : undefined}
       data-access-state={isReady ? payload.access.state : undefined}
       data-birth-time-mode={isReady ? payload.birthTime.mode : undefined}
-      role={screenState === "error" ? "alert" : undefined}
-      aria-busy={screenState === "loading" ? true : undefined}
+      role={effectiveScreenState === "error" ? "alert" : undefined}
+      aria-busy={effectiveScreenState === "loading" ? true : undefined}
       aria-label="Разбор дня"
       className="min-h-full bg-background text-foreground"
     >
-      {screenState === "loading" ? <TransportLoading /> : null}
-      {screenState === "error" ? <TransportError onRetry={onRetry} /> : null}
+      {effectiveScreenState === "loading" ? (
+        <TransportLoading pending={payload.contentState === "pending"} />
+      ) : null}
+      {effectiveScreenState === "error" ? <TransportError onRetry={handleRetry} /> : null}
       {isReady ? (
         <ReadyContent
           payload={payload}
-          onRetry={onRetry}
+          onRetry={handleRetry}
           birthTimeDismissed={birthTimeDismissed}
           onBirthTimeDismiss={onBirthTimeDismiss}
           sphereContexts={sphereContexts}

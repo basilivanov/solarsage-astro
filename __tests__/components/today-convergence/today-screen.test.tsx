@@ -64,12 +64,19 @@ import {
 } from "@/components/today-convergence/today-formatters";
 import { getPeriodTechniqueCopy } from "@/components/today-convergence/period-technique-copy";
 
-const { mockFetchSpherePage } = vi.hoisted(() => ({
+const { mockFetchSpherePage, mockHardReload, mockInstallResumeGuard } = vi.hoisted(() => ({
   mockFetchSpherePage: vi.fn(),
+  mockHardReload: vi.fn(),
+  mockInstallResumeGuard: vi.fn(() => () => {}),
 }));
 
 vi.mock("@/lib/api/spheres", () => ({
   fetchSpherePage: mockFetchSpherePage,
+}));
+
+vi.mock("@/lib/grace/resume-guard", () => ({
+  hardReloadWithCacheBuster: mockHardReload,
+  installResumeGuard: mockInstallResumeGuard,
 }));
 
 vi.mock("@/components/paywall", () => ({
@@ -103,6 +110,8 @@ const NAMED_FIXTURES: readonly [string, TodayConvergencePayload][] = FIXTURE_NAM
 afterEach(() => {
   cleanup();
   mockFetchSpherePage.mockReset();
+  mockHardReload.mockClear();
+  mockInstallResumeGuard.mockClear();
 });
 
 function renderToday(payload: TodayConvergencePayload, overrides?: Partial<React.ComponentProps<typeof TodayScreen>>) {
@@ -260,26 +269,42 @@ describe("Today Convergence screen fixture matrix", () => {
 
 // START_BLOCK: ACCESSIBILITY
 describe("Today Convergence transport, access, and accessibility contract", () => {
-  it("renders loading as a transport skeleton with nullable axes absent", () => {
+  it("renders loading as a live transport skeleton with nullable axes absent", () => {
     renderToday(heroSupportive, { screenState: "loading" });
     const root = screen.getByTestId("today-screen");
     expect(root.getAttribute("data-screen-state")).toBe("loading");
     expect(root.hasAttribute("data-state")).toBe(false);
     expect(root.hasAttribute("data-content-state")).toBe(false);
     expect(root.getAttribute("aria-busy")).toBe("true");
-    expect(screen.getByRole("status")).toBeTruthy();
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("Считаем день…");
+    expect(status.getAttribute("aria-label")).toBe("Считаем день");
   });
 
-  it("renders one accessible transport retry on error", () => {
+  it("shows the pending explanation when a pending payload is available during loading", () => {
+    renderToday(contentPending, { screenState: "loading" });
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("Считаем день…");
+    expect(status.textContent).toContain("Собираем разбор, ещё немного…");
+    expect(status.getAttribute("aria-label")).toBe("Считаем день, собираем разбор");
+  });
+
+  it("renders retry and hard reload controls on error", () => {
     const onRetry = vi.fn();
     renderToday(heroSupportive, { screenState: "error", onRetry });
     const root = screen.getByTestId("today-screen");
     expect(root.getAttribute("role")).toBe("alert");
     expect(root.getAttribute("data-screen-state")).toBe("error");
     expect(root.hasAttribute("data-access-state")).toBe(false);
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByTestId("today-error-retry").getAttribute("aria-label")).toBe("Повторить");
+    expect(screen.getByTestId("today-error-reload").getAttribute("aria-label")).toBe("Обновить полностью");
+
+    fireEvent.click(screen.getByTestId("today-error-retry"));
     expect(onRetry).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("today-error-reload"));
+    expect(mockHardReload).toHaveBeenCalledTimes(1);
   });
 
   it("uses disclosure aria state while keeping content in the DOM", () => {

@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => ({
   fetchTodayConvergence: vi.fn(),
   retryTodayConvergence: vi.fn(),
   recordDayImpression: vi.fn(),
+  logEvent: vi.fn(),
   replace: vi.fn(),
   retryAuth: vi.fn(),
   authState: { isLoading: false, isAuthenticated: true, error: null as string | null },
@@ -71,11 +72,16 @@ vi.mock("@/hooks/use-telegram-auth", () => ({
   useTelegramAuth: () => ({ ...mocks.authState, retry: mocks.retryAuth }),
 }));
 
+vi.mock("@/lib/log", () => ({
+  logEvent: mocks.logEvent,
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks,
 }));
 
 import {
+  DAY_LOAD_TIMEOUT_MS,
   DEFAULT_RETRY_AFTER_SECONDS,
   PENDING_POLL_INTERVAL_MS,
   useTodayConvergence,
@@ -210,6 +216,128 @@ describe("useTodayConvergence retry and lifecycle", () => {
     });
     await retryPromise;
     expect(result.current.payload).toBe(heroSupportive);
+  });
+
+  it("silently retries once after the day load deadline and then becomes ready", async () => {
+    vi.useFakeTimers();
+    mocks.fetchTodayConvergence
+      .mockImplementationOnce(() => new Promise(() => undefined))
+      .mockResolvedValueOnce(heroSupportive);
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    expect(result.current.screenState).toBe("loading");
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DAY_LOAD_TIMEOUT_MS);
+    });
+    await flushPromises();
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(1);
+    expect(mocks.logEvent).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await flushPromises();
+
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(2);
+    expect(result.current.screenState).toBe("ready");
+    expect(result.current.payload).toBe(heroSupportive);
+    expect(mocks.logEvent).not.toHaveBeenCalledWith("day.load_timeout", expect.anything(), expect.anything());
+  });
+
+  it("emits day.load_timeout after the silent retry also times out", async () => {
+    vi.useFakeTimers();
+    mocks.fetchTodayConvergence.mockImplementation(() => new Promise(() => undefined));
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DAY_LOAD_TIMEOUT_MS);
+    });
+    await flushPromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await flushPromises();
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DAY_LOAD_TIMEOUT_MS);
+    });
+    await flushPromises();
+
+    expect(result.current.screenState).toBe("error");
+    expect(mocks.logEvent).toHaveBeenCalledWith(
+      "day.load_timeout",
+      expect.objectContaining({ source: "initial_load", timeout_ms: DAY_LOAD_TIMEOUT_MS }),
+      expect.any(Object),
+    );
+  });
+
+  it("emits day.load_timeout when the retry after a timeout fails normally", async () => {
+    vi.useFakeTimers();
+    mocks.fetchTodayConvergence
+      .mockImplementationOnce(() => new Promise(() => undefined))
+      .mockRejectedValueOnce(new Error("offline after deadline"));
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DAY_LOAD_TIMEOUT_MS);
+    });
+    await flushPromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await flushPromises();
+
+    expect(result.current.screenState).toBe("error");
+    expect(mocks.logEvent).toHaveBeenCalledWith(
+      "day.load_timeout",
+      expect.objectContaining({ source: "initial_load" }),
+      expect.any(Object),
+    );
+  });
+
+  it("applies the day deadline to the retry follow-up GET and recovers with one silent retry", async () => {
+    vi.useFakeTimers();
+    mocks.fetchTodayConvergence
+      .mockResolvedValueOnce(stateUnavailable)
+      .mockImplementationOnce(() => new Promise(() => undefined))
+      .mockResolvedValueOnce(heroSupportive);
+    mocks.retryTodayConvergence.mockResolvedValue({ retryAfterSeconds: 0 });
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    expect(result.current.screenState).toBe("ready");
+
+    let retryPromise!: Promise<void>;
+    await act(async () => {
+      retryPromise = result.current.refetch();
+      await Promise.resolve();
+    });
+    await flushPromises();
+    expect(mocks.retryTodayConvergence).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DAY_LOAD_TIMEOUT_MS);
+    });
+    await flushPromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await flushPromises();
+    await act(async () => {
+      await retryPromise;
+    });
+
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(3);
+    expect(result.current.payload).toBe(heroSupportive);
+    expect(result.current.screenState).toBe("ready");
+    expect(result.current.retrying).toBe(false);
   });
 
   it("aborts an in-flight load on unmount without applying its result", async () => {

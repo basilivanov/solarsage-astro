@@ -41,11 +41,25 @@ import {
   stateUnavailable,
 } from "../fixtures/today_convergence_v2";
 
+const { mockHardReload, mockInstallResumeGuard } = vi.hoisted(() => ({
+  mockHardReload: vi.fn(),
+  mockInstallResumeGuard: vi.fn(() => () => {}),
+}));
+
 vi.mock("@/components/paywall", () => ({
   Paywall: ({ title }: { title?: string }) => <section data-testid="paywall">{title}</section>,
 }));
 
-afterEach(() => cleanup());
+vi.mock("@/lib/grace/resume-guard", () => ({
+  hardReloadWithCacheBuster: mockHardReload,
+  installResumeGuard: mockInstallResumeGuard,
+}));
+
+afterEach(() => {
+  cleanup();
+  mockHardReload.mockClear();
+  mockInstallResumeGuard.mockClear();
+});
 
 function renderToday(payload: typeof heroSupportive, overrides?: Partial<ComponentProps<typeof TodayScreen>>) {
   return render(<TodayScreen payload={payload} {...overrides} />);
@@ -123,24 +137,32 @@ describe("TodayScreen access projections", () => {
 
 // START_BLOCK: TRANSPORT_STATES
 describe("TodayScreen transport states", () => {
-  it("renders loading as an accessible component skeleton", () => {
+  it("renders loading as an accessible live component skeleton", () => {
     renderToday(heroSupportive, { screenState: "loading" });
     const root = screen.getByTestId("today-screen");
     expect(root.getAttribute("data-screen-state")).toBe("loading");
     expect(root.hasAttribute("data-state")).toBe(false);
     expect(root.getAttribute("aria-busy")).toBe("true");
-    expect(screen.getByRole("status")).toBeTruthy();
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("Считаем день…");
+    expect(status.getAttribute("aria-label")).toBe("Считаем день");
   });
 
-  it("renders one accessible retry button for transport errors", () => {
+  it("renders retry and hard reload controls for transport errors", () => {
     const onRetry = vi.fn();
     renderToday(heroSupportive, { screenState: "error", onRetry });
     const root = screen.getByTestId("today-screen");
     expect(root.getAttribute("data-screen-state")).toBe("error");
     expect(root.getAttribute("role")).toBe("alert");
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByTestId("today-error-retry")).toBeTruthy();
+    expect(screen.getByTestId("today-error-reload")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("today-error-retry"));
     expect(onRetry).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("today-error-reload"));
+    expect(mockHardReload).toHaveBeenCalledTimes(1);
   });
 });
 // END_BLOCK: TRANSPORT_STATES

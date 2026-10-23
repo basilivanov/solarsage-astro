@@ -92,6 +92,11 @@ LogEventName = Literal[
     "day.narrative_generation_completed",
     "day.narrative_generation_failed",
     "day.narrative_claim_nulled",
+    "day.load_timeout",
+    # resume / white-screen resilience
+    "resume.snapshot_reload",
+    "resume.stale_reload",
+    "resume.reload_loop_suppressed",
     # static sphere page
     "sphere.natal_generation_completed",
     "sphere.natal_generation_failed",
