@@ -7,17 +7,19 @@
 // SLICE: W-TODAY-MOBILE-READABILITY/01
 // ############################################################################
 // START_MODULE_CONTRACT
-// purpose: Initialize Telegram viewport/theme behavior and expose contentSafeAreaInset.top to scoped top controls.
+// purpose: Initialize Telegram viewport/theme behavior and expose a combined safe-area top inset to scoped top controls.
 // owns:
 //   - components/telegram-init.tsx
 // inputs: Component props / hook params
 // outputs: null render plus --app-height and --tg-content-safe-area-inset-top document variables.
-// dependencies: local modules
+// dependencies: local modules, lib/telegram/safe-area
 // side_effects: document root CSS variables, Telegram event subscriptions, and viewport listeners/timers.
 // emitted_logs: n/a (tests)
 // invariants:
 //   - existing expand/fullscreen and --app-height behavior remains active.
-//   - content safe area falls back to CSS env(safe-area-inset-top) at consumers when Telegram has no inset.
+//   - top inset = max(contentSafeAreaInset.top, safeAreaInset.top + fullscreen reserve); consumers add env(safe-area-inset-top) and 1rem.
+//   - fullscreen with contentSafeAreaInset.top=0 reserves 48 px above safeAreaInset.top.
+//   - safeAreaChanged, contentSafeAreaChanged, viewportChanged, and fullscreenChanged all recompute the inset.
 // failure_policy: browser/API capability failures are swallowed to preserve rendering.
 // END_MODULE_CONTRACT
 
@@ -27,6 +29,8 @@
 // semantic_blocks:
 //   - TELEGRAM_INIT: Telegram WebApp viewport & theme initialization component
 // owned_tests:
+//   - __tests__/lib/telegram-safe-area.test.ts
+//   - __tests__/lib/telegram-init.test.tsx
 //   - __tests__/app/day-page.test.tsx
 //   - __tests__/components/CalendarScreen.test.tsx
 // END_MODULE_MAP
@@ -35,15 +39,15 @@
 
 import { useEffect } from "react"
 import { useTelegram } from "@/components/telegram-provider"
+import {
+  computeTelegramTopSafeAreaInset,
+  type TelegramSafeAreaSource,
+} from "@/lib/telegram/safe-area"
 
 /** Local alias resolved from the window global (recognised by ESLint). */
 type TelegramWebAppType = NonNullable<typeof window.Telegram>['WebApp'];
 
-type TelegramContentSafeAreaWebApp = TelegramWebAppType & {
-  contentSafeAreaInset?: { top?: number | null };
-};
-
-const CONTENT_SAFE_AREA_TOP_VAR = '--tg-content-safe-area-inset-top';
+const TOP_SAFE_AREA_VAR = '--tg-content-safe-area-inset-top';
 
 function setAppHeight() {
   try {
@@ -52,17 +56,16 @@ function setAppHeight() {
   } catch { /* noop */ }
 }
 
-function setContentSafeAreaTop(webApp: TelegramWebAppType | null) {
+function setTopSafeArea(webApp: TelegramSafeAreaSource | null) {
   try {
-    const top = (webApp as TelegramContentSafeAreaWebApp | null)?.contentSafeAreaInset?.top;
-    const safeTop = typeof top === 'number' && Number.isFinite(top) && top >= 0 ? top : 0;
-    document.documentElement.style.setProperty(CONTENT_SAFE_AREA_TOP_VAR, `${safeTop}px`);
+    const top = computeTelegramTopSafeAreaInset(webApp);
+    document.documentElement.style.setProperty(TOP_SAFE_AREA_VAR, `${top}px`);
   } catch { /* noop */ }
 }
 
-function clearContentSafeAreaTop() {
+function clearTopSafeArea() {
   try {
-    document.documentElement.style.removeProperty(CONTENT_SAFE_AREA_TOP_VAR);
+    document.documentElement.style.removeProperty(TOP_SAFE_AREA_VAR);
   } catch { /* noop */ }
 }
 
@@ -94,7 +97,7 @@ export function TelegramInit() {
   useEffect(() => {
     if (!webApp) {
       // Outside Telegram: use visualViewport as --app-height
-      setContentSafeAreaTop(null)
+      setTopSafeArea(null)
       setAppHeight()
       window.addEventListener('resize', setAppHeight)
       window.visualViewport?.addEventListener('resize', setAppHeight)
@@ -103,7 +106,7 @@ export function TelegramInit() {
         window.removeEventListener('resize', setAppHeight)
         window.visualViewport?.removeEventListener('resize', setAppHeight)
         window.visualViewport?.removeEventListener('scroll', setAppHeight)
-        clearContentSafeAreaTop()
+        clearTopSafeArea()
       }
     }
 
@@ -115,11 +118,15 @@ export function TelegramInit() {
       document.documentElement.classList.add("dark")
     }
 
-    const onContentSafeArea = () => setContentSafeAreaTop(webApp)
-    onContentSafeArea()
-    try { webApp.onEvent?.('contentSafeAreaChanged', onContentSafeArea) } catch { /* noop */ }
+    const onSafeAreaChange = () => setTopSafeArea(webApp as TelegramSafeAreaSource)
+    onSafeAreaChange()
+    try { webApp.onEvent?.('safeAreaChanged', onSafeAreaChange) } catch { /* noop */ }
+    try { webApp.onEvent?.('contentSafeAreaChanged', onSafeAreaChange) } catch { /* noop */ }
+    try { webApp.onEvent?.('fullscreenChanged', onSafeAreaChange) } catch { /* noop */ }
 
-    // Expand — retry several times (Telegram may ignore first call during open animation)
+    // Expand — retry several times (Telegram may ignore first call during open animation).
+    // Recompute the inset after every expand/fullscreen attempt: Telegram updates
+    // safeAreaInset/contentSafeAreaInset asynchronously around those transitions.
     const expand = () => {
       try { webApp.expand() } catch { /* noop */ }
       if (isMethodSupported(webApp, 'requestFullscreen')) {
@@ -128,15 +135,15 @@ export function TelegramInit() {
       if (isMethodSupported(webApp, 'disableVerticalSwipes')) {
         try { (webApp as any).disableVerticalSwipes() } catch { /* noop */ }
       }
+      onSafeAreaChange()
     }
     expand()
-    const delays = [60, 200, 500, 1000]
-    for (const ms of delays) {
-      setTimeout(expand, ms)
-    }
+    const expandTimers = [60, 200, 500, 1000].map((ms) => setTimeout(expand, ms))
 
-    // Re-expand on viewport change
+    // Re-expand and recompute on viewport change
     const onViewport = () => {
+      onSafeAreaChange()
+      setAppHeight()
       if (!webApp.isExpanded) {
         try { webApp.expand() } catch { /* noop */ }
       }
@@ -150,12 +157,15 @@ export function TelegramInit() {
     window.visualViewport?.addEventListener('scroll', setAppHeight)
 
     return () => {
+      expandTimers.forEach((timer) => clearTimeout(timer))
       window.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('scroll', setAppHeight)
       try { webApp.offEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
-      try { webApp.offEvent?.('contentSafeAreaChanged', onContentSafeArea) } catch { /* noop */ }
-      clearContentSafeAreaTop()
+      try { webApp.offEvent?.('safeAreaChanged', onSafeAreaChange) } catch { /* noop */ }
+      try { webApp.offEvent?.('contentSafeAreaChanged', onSafeAreaChange) } catch { /* noop */ }
+      try { webApp.offEvent?.('fullscreenChanged', onSafeAreaChange) } catch { /* noop */ }
+      clearTopSafeArea()
     }
   }, [webApp])
 
