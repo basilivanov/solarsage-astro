@@ -85,7 +85,9 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Playwright 1.60 does not support ubuntu26.04-x64; keep the real-E2E gate
+    # on the runner image its browser install supports.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
 
     services:
