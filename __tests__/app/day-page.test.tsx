@@ -219,7 +219,9 @@ describe("DayPage route date handling", () => {
   it("updates the Today header after a local-date rollover", () => {
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date("2026-08-01T23:59:00+03:00"));
+      // Local-component constructors keep the rollover across local midnight
+      // in every runner timezone (CI runs UTC, dev runs Europe/Moscow).
+      vi.setSystemTime(new Date(2026, 7, 1, 23, 59));
       const refetch = vi.fn();
       mocks.route.date = "today";
       mocks.useTodayConvergence.mockReturnValue({
@@ -235,7 +237,7 @@ describe("DayPage route date handling", () => {
         "Сегодня, 1 августа",
       );
 
-      vi.setSystemTime(new Date("2026-08-02T00:01:00+03:00"));
+      vi.setSystemTime(new Date(2026, 7, 2, 0, 1));
       fireEvent.click(screen.getByRole("button", { name: "Rollover" }));
 
       expect(refetch).toHaveBeenCalledTimes(1);
