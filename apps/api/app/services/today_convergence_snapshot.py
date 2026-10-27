@@ -279,10 +279,14 @@ def _validate_selection(
     if any(unit_id not in unit_by_id for unit_id in selected_ids):
         _fail("foreign_event_reference")
     selected_spheres = selection.selected_spheres
+    # Canonical quiet_day is one main event plus up to three impulses, so four
+    # distinct spheres are valid there. convergence_today remains capped at
+    # three selected convergences and therefore at three spheres.
+    max_selected_spheres = 4 if selection.state == "quiet_day" else 3
     if (
         not isinstance(selected_spheres, tuple)
         or len(selected_spheres) != len(set(selected_spheres))
-        or len(selected_spheres) > 3
+        or len(selected_spheres) > max_selected_spheres
         or any(sphere not in canon.canonical_spheres for sphere in selected_spheres)
     ):
         _fail("selected_spheres")

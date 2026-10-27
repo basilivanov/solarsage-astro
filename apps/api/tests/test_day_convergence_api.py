@@ -51,6 +51,7 @@ from app.services.today_convergence_runtime import (
     TodayConvergenceCalculationBuilt,
     TodayConvergenceCalculationUnavailable,
 )
+from app.services.today_convergence_snapshot import TodayConvergenceSnapshotError
 from app.services.today_narrative_lease_service import (
     NarrativeLeaseClaim,
     NarrativeLeaseCompletion,
@@ -468,6 +469,64 @@ async def test_unavailable_calculation_is_http_200_without_snapshot(
     assert payload["snapshotId"] is None
     assert payload["contentState"] == "unavailable"
     publish.assert_not_awaited()
+# END_BLOCK: FULL_PATH
+
+
+# START_BLOCK: FULL_PATH
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["get", "post"])
+async def test_snapshot_document_contract_error_degrades_to_http_200_unavailable(
+    async_client, db_session, make_initdata, monkeypatch, method: str
+) -> None:
+    # Regression: a quiet_day document with four selected spheres used to
+    # escape TodayConvergenceSnapshotError as a raw 500.
+    await _login_onboarded_user(async_client, db_session, make_initdata, user_id=60114)
+    _install_access(monkeypatch, "full")
+    _install_profile_hash(monkeypatch)
+    _install_local_today(monkeypatch)
+    _install_current_snapshot(monkeypatch, None)
+    built = object.__new__(TodayConvergenceCalculationBuilt)
+    monkeypatch.setattr("app.api.day.calculate_today_convergence", AsyncMock(return_value=built))
+
+    def fail_snapshot_document(profile, result):
+        raise TodayConvergenceSnapshotError("today_convergence_snapshot:selected_spheres")
+
+    monkeypatch.setattr(
+        "app.api.day.build_today_convergence_snapshot_document",
+        fail_snapshot_document,
+    )
+    publish = AsyncMock(side_effect=AssertionError("invalid document published snapshot"))
+    monkeypatch.setattr("app.api.day.TodaySnapshotService.publish_or_load", publish)
+    events: list[tuple[str, dict[str, object] | None]] = []
+    monkeypatch.setattr(
+        day_api,
+        "_log_day_event",
+        lambda event, **kwargs: events.append((event, kwargs.get("error"))),
+    )
+
+    request = (
+        async_client.get(f"/api/day/{TARGET_DATE.isoformat()}")
+        if method == "get"
+        else async_client.post(f"/api/day/{TARGET_DATE.isoformat()}/retry")
+    )
+    response = await request
+    payload = response.json()
+
+    assert response.status_code == 200, response.text
+    assert payload["state"] == "unavailable"
+    assert payload["snapshotId"] is None
+    assert payload["contentState"] == "unavailable"
+    publish.assert_not_awaited()
+    assert events == [
+        (
+            "system.error",
+            {
+                "type": "TodayConvergenceSnapshotError",
+                "reason": "today_convergence_snapshot:selected_spheres",
+            },
+        ),
+        ("day.viewed", None),
+    ]
 # END_BLOCK: FULL_PATH
 
 

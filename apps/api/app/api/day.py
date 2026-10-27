@@ -41,10 +41,13 @@
 #   - A matching current profile hash never calls the deterministic runtime.
 #   - Preview requests never acquire or launch a narrative lease.
 #   - A past local date without a matching snapshot never calculates or publishes.
+#   - A typed snapshot-document contract failure degrades to state=unavailable
+#     and never publishes a partial document.
 #   - Background narrative work always completes ready or unavailable.
 # failure_policy:
-#   - HTTPException with stable code + message in detail; calculation failures
-#     and past-date snapshot misses return HTTP 200 with state=unavailable.
+#   - HTTPException with stable code + message in detail; calculation failures,
+#     snapshot-document contract failures, and past-date snapshot misses return
+#     HTTP 200 with state=unavailable.
 # non_goals:
 #   - changing TodayService, Today payloads, or convergence/lease internals
 # END_MODULE_CONTRACT: M-API-DAY
@@ -108,6 +111,7 @@ from app.services.today_convergence_runtime import (
     calculate_today_convergence,
 )
 from app.services.today_convergence_snapshot import (
+    TodayConvergenceSnapshotError,
     build_today_convergence_snapshot_document,
     compute_today_profile_hash,
 )
@@ -485,7 +489,27 @@ async def _serve_day(
             _viewed_payload(payload, request)
             return payload, None
 
-        document = build_today_convergence_snapshot_document(user.profile, calculation)
+        try:
+            document = build_today_convergence_snapshot_document(user.profile, calculation)
+        except TodayConvergenceSnapshotError as exc:
+            # A deterministic document that fails its own contract must degrade
+            # to the existing 200 unavailable envelope instead of escaping as a
+            # raw 500. The stable reason stays in structured logs, not the wire.
+            _log_day_event(
+                "system.error",
+                block="DAY_ORCHESTRATION",
+                correlation_id=_request_correlation_id(request),
+                error={"type": type(exc).__name__, "reason": str(exc)},
+            )
+            payload = project_empty_payload(
+                target_date=target_date,
+                timezone_name=timezone_name,
+                birth_time=birth_time,
+                access_state=access_state,
+                unavailable=True,
+            )
+            _viewed_payload(payload, request)
+            return payload, None
         if snapshot is None:
             publication = await snapshot_service.publish_or_load(user.id, document)
         else:

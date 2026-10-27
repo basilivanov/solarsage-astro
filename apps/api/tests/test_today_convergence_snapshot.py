@@ -338,6 +338,50 @@ def test_quiet_document_has_normalized_result_and_single_factor_pack() -> None:
     }
 
 
+def test_quiet_document_accepts_main_and_three_impulses_across_four_spheres() -> None:
+    # Regression: quiet_day is canonically one main event plus up to three
+    # impulses. With four distinct product spheres the old global three-sphere
+    # cap rejected the document and turned the day request into a raw 500.
+    pipeline = pipeline_for(
+        fact(
+            source_key="Transit_JUPITER",
+            target_key="Natal_SATURN",
+            strength=0.95,
+            technical_spheres=("work_status_achievement",),
+        ),
+        fact(
+            source_key="Transit_MOON",
+            target_key="Natal_MOON",
+            strength=0.9,
+            technical_spheres=("money_security_resources",),
+        ),
+        fact(
+            source_key="Transit_MERCURY",
+            target_key="Natal_MERCURY",
+            strength=0.8,
+            technical_spheres=("relationships_partnership",),
+        ),
+        fact(
+            source_key="Transit_VENUS",
+            target_key="Natal_VENUS",
+            strength=0.7,
+            technical_spheres=("thinking_speech_learning",),
+        ),
+    )
+
+    assert pipeline.selection.state == "quiet_day"
+    assert pipeline.selection.main_event is not None
+    assert len(pipeline.selection.impulses) == 3
+    assert len(pipeline.selection.selected_spheres) == 4
+
+    document = document_for(pipeline=pipeline)
+
+    selected = document.deterministic_result_json["selected"]
+    assert selected["main_event"] is not None
+    assert len(selected["impulses"]) == 3
+    assert len(selected["selected_spheres"]) == 4
+
+
 def test_hero_document_preserves_exact_selected_references_without_unit_duplication() -> None:
     document = document_for(pipeline=hero_pipeline())
     convergence = document.deterministic_result_json["selected"]["convergences"][0]
