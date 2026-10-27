@@ -65,6 +65,8 @@ export type TodayScreenProps = {
   payload: TodayConvergencePayload;
   screenState?: TodayScreenState;
   onRetry?: () => void;
+  /** Called on resume when the local calendar date changed since mount. */
+  onDateRollover?: () => void;
   birthTimeDismissed?: boolean;
   onBirthTimeDismiss?: () => void;
   /** Prototype seam (sandbox only): fixture-provided sphere context payloads replacing the /api/spheres fetch. */
@@ -308,6 +310,7 @@ export function TodayScreen({
   payload,
   screenState = "ready",
   onRetry,
+  onDateRollover,
   birthTimeDismissed = false,
   onBirthTimeDismiss,
   sphereContexts,
@@ -325,6 +328,7 @@ export function TodayScreen({
   const screenStateRef = useRef(screenState);
   const effectiveScreenStateRef = useRef<TodayScreenState>(screenState);
   const onRetryRef = useRef(onRetry);
+  const onDateRolloverRef = useRef(onDateRollover);
 
   useEffect(() => {
     screenStateRef.current = screenState;
@@ -335,6 +339,10 @@ export function TodayScreen({
     onRetryRef.current = onRetry;
   }, [onRetry]);
 
+  useEffect(() => {
+    onDateRolloverRef.current = onDateRollover;
+  }, [onDateRollover]);
+
   useEffect(
     () =>
       installResumeGuard({
@@ -342,8 +350,11 @@ export function TodayScreen({
         refetch: () => onRetryRef.current?.(),
         onReloadSuppressed: () => setResumeSuppressed(true),
         getScreenState: () => effectiveScreenStateRef.current,
+        ...(onDateRollover
+          ? { onDateRollover: () => onDateRolloverRef.current?.() }
+          : {}),
       }),
-    [],
+    [onDateRollover],
   );
 
   useEffect(() => {

@@ -67,7 +67,7 @@ import { getPeriodTechniqueCopy } from "@/components/today-convergence/period-te
 const { mockFetchSpherePage, mockHardReload, mockInstallResumeGuard } = vi.hoisted(() => ({
   mockFetchSpherePage: vi.fn(),
   mockHardReload: vi.fn(),
-  mockInstallResumeGuard: vi.fn(() => () => {}),
+  mockInstallResumeGuard: vi.fn((_options?: { onDateRollover?: () => void }) => () => {}),
 }));
 
 vi.mock("@/lib/api/spheres", () => ({
@@ -305,6 +305,18 @@ describe("Today Convergence transport, access, and accessibility contract", () =
 
     fireEvent.click(screen.getByTestId("today-error-reload"));
     expect(mockHardReload).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the local-date rollover handler into the resume guard", () => {
+    const onDateRollover = vi.fn();
+    renderToday(heroSupportive, { onDateRollover });
+
+    const options = mockInstallResumeGuard.mock.calls[0][0] as {
+      onDateRollover?: () => void;
+    };
+    expect(options.onDateRollover).toBeTypeOf("function");
+    options.onDateRollover?.();
+    expect(onDateRollover).toHaveBeenCalledTimes(1);
   });
 
   it("uses disclosure aria state while keeping content in the DOM", () => {

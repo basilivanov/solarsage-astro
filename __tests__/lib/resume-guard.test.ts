@@ -171,6 +171,85 @@ describe("resume-guard pageshow and visibility", () => {
   });
 });
 
+describe("resume-guard local-date rollover", () => {
+  it("navigates once instead of soft-refetching an old ISO route", () => {
+    let localDate = "2026-08-01";
+    const refetch = vi.fn();
+    const onDateRollover = vi.fn();
+    install({
+      isReady: () => true,
+      refetch,
+      getLocalDateKey: () => localDate,
+      onDateRollover,
+    });
+
+    localDate = "2026-08-02";
+    dispatchVisibility();
+
+    expect(onDateRollover).toHaveBeenCalledTimes(1);
+    expect(refetch).not.toHaveBeenCalled();
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    dispatchVisibility();
+    expect(onDateRollover).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles a date change on pageshow before persisted-snapshot recovery", () => {
+    let localDate = "2026-08-01";
+    const onDateRollover = vi.fn();
+    install({
+      isReady: () => false,
+      refetch: vi.fn(),
+      getLocalDateKey: () => localDate,
+      onDateRollover,
+    });
+
+    localDate = "2026-08-02";
+    dispatchPageShow(true);
+
+    expect(onDateRollover).toHaveBeenCalledTimes(1);
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(mockLogEvent).not.toHaveBeenCalledWith(
+      "resume.snapshot_reload",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("handles a date change on a non-persisted pageshow", () => {
+    let localDate = "2026-08-01";
+    const onDateRollover = vi.fn();
+    install({
+      isReady: () => true,
+      refetch: vi.fn(),
+      getLocalDateKey: () => localDate,
+      onDateRollover,
+    });
+
+    localDate = "2026-08-02";
+    dispatchPageShow(false);
+
+    expect(onDateRollover).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps normal resume behavior when the local date is unchanged", () => {
+    const refetch = vi.fn();
+    const onDateRollover = vi.fn();
+    install({
+      isReady: () => true,
+      refetch,
+      getLocalDateKey: () => "2026-08-01",
+      onDateRollover,
+    });
+    vi.setSystemTime(new Date("2026-08-01T12:00:31Z"));
+
+    dispatchVisibility();
+
+    expect(onDateRollover).not.toHaveBeenCalled();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("resume-guard reload-loop budget", () => {
   it("allows two auto reloads and suppresses the third", () => {
     const onReloadSuppressed = vi.fn();

@@ -46,10 +46,12 @@ const mocks = vi.hoisted(() => ({
       payload,
       screenState,
       onRetry,
+      onDateRollover,
     }: {
       payload: TodayConvergencePayload;
       screenState: "loading" | "ready" | "error";
       onRetry?: () => void;
+      onDateRollover?: () => void;
     }) => (
       <section
         data-testid="today-screen"
@@ -64,6 +66,9 @@ const mocks = vi.hoisted(() => ({
           </button>
         ) : null}
         {screenState === "ready" ? <span>{payload.targetDate}</span> : null}
+        <button type="button" onClick={onDateRollover}>
+          Rollover
+        </button>
       </section>
     ),
   ),
@@ -146,6 +151,33 @@ describe("DayPage Today Convergence wiring", () => {
 
 // START_BLOCK: ROUTE_DATE
 describe("DayPage route date handling", () => {
+  it("navigates an old ISO route to /day/today on local-date rollover", () => {
+    render(<DayPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rollover" }));
+
+    expect(mocks.replace).toHaveBeenCalledWith("/day/today");
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the today sentinel in place on local-date rollover", () => {
+    const refetch = vi.fn();
+    mocks.route.date = "today";
+    mocks.useTodayConvergence.mockReturnValue({
+      screenState: "ready",
+      payload: quietSteady,
+      retryAfterSeconds: 0,
+      retrying: false,
+      refetch,
+    });
+    render(<DayPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rollover" }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
   it("passes the today sentinel through to the API hook", () => {
     mocks.route.date = "today";
     render(<DayPage />);
@@ -179,6 +211,37 @@ describe("DayPage route date handling", () => {
 
       expect(header.textContent).toContain("Сегодня, 1 августа");
       expect(header.textContent).not.toContain("2026-08-01");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("updates the Today header after a local-date rollover", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-01T23:59:00+03:00"));
+      const refetch = vi.fn();
+      mocks.route.date = "today";
+      mocks.useTodayConvergence.mockReturnValue({
+        screenState: "ready",
+        payload: quietSteady,
+        retryAfterSeconds: 0,
+        retrying: false,
+        refetch,
+      });
+      render(<DayPage />);
+
+      expect(screen.getByTestId("day-date-navigation").textContent).toContain(
+        "Сегодня, 1 августа",
+      );
+
+      vi.setSystemTime(new Date("2026-08-02T00:01:00+03:00"));
+      fireEvent.click(screen.getByRole("button", { name: "Rollover" }));
+
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("day-date-navigation").textContent).toContain(
+        "Сегодня, 2 августа",
+      );
     } finally {
       vi.useRealTimers();
     }

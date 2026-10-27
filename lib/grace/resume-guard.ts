@@ -4,18 +4,19 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-RESUME-GUARD
-// purpose: Detect pageshow-from-snapshot and stale visibility resumes, then soft-refetch or hard-reload safely.
+// purpose: Detect local-date rollover, pageshow-from-snapshot, and stale visibility resumes, then navigate, soft-refetch, or hard-reload safely.
 // owns:
 //   - lib/grace/resume-guard.ts
-// inputs: readiness getter, soft-refetch callback, optional suppression callback, and optional screen-state getter.
+// inputs: readiness getter, soft-refetch callback, optional date getter/rollover callback, optional suppression callback, and optional screen-state getter.
 // outputs: install/cleanup function, hard-reload helper, and bounded sessionStorage reload history.
-// dependencies: lib/log/index.ts (logEvent), lib/log/beacon.ts (sendBeaconEvent), browser window/document/sessionStorage/location.
+// dependencies: lib/date.ts (toDateParam), lib/log/index.ts (logEvent), lib/log/beacon.ts (sendBeaconEvent), browser window/document/sessionStorage/location.
 // side_effects: heartbeat interval, window/document listeners, sessionStorage writes, logs/beacons, and navigation.
 // emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed, app.pagehide_state.
 // invariants:
 //   - no React imports; the module is safe to import in client components and inert without a browser.
 //   - auto reloads are capped at two per ten-minute sessionStorage window.
 //   - a suppressed reload surfaces through onReloadSuppressed instead of navigating.
+//   - a local-date change on resume is routed through onDateRollover before any old-route refetch or reload.
 // failure_policy: unavailable storage or navigation suppresses reload and reports the loop guard.
 // END_MODULE_CONTRACT: M-RESUME-GUARD
 
@@ -31,6 +32,7 @@
 //   - installResumeGuard
 // semantic_blocks:
 //   - HEARTBEAT: module-level lastAliveTs updated every five seconds.
+//   - DATE_ROLLOVER: local-calendar date change detection before old-route recovery.
 //   - PAGESHOW: restored snapshot detection.
 //   - VISIBILITY: stale visible resume detection with ready/not-ready routing.
 //   - RELOAD_LOOP_GUARD: sessionStorage-backed auto-reload budget.
@@ -41,6 +43,7 @@
 
 "use client";
 
+import { toDateParam } from "@/lib/date";
 import { logEvent } from "@/lib/log";
 import { sendBeaconEvent } from "@/lib/log/beacon";
 
@@ -62,6 +65,10 @@ export type ResumeGuardOptions = {
   onReloadSuppressed?: () => void;
   /** Last known screen state for the pagehide milestone; defaults to ready/not_ready. */
   getScreenState?: () => string;
+  /** Returns the current local calendar date key; defaults to toDateParam(new Date()). */
+  getLocalDateKey?: () => string;
+  /** Called once on resume when the local calendar date differs from the mount date. */
+  onDateRollover?: () => void;
 };
 
 let lastAliveTs = 0;
@@ -176,16 +183,30 @@ function attemptAutoReload(
 // START_BLOCK: RESUME_LISTENERS
 // START_FUNCTION_CONTRACT: F-M-RESUME-GUARD.installResumeGuard
 // purpose: Install heartbeat, pageshow, visibility, and pagehide listeners for one mounted day screen.
-// inputs: options — readiness getter, soft refetch callback, optional suppression callback, and optional screen-state getter.
+// inputs: options — readiness getter, soft refetch callback, optional date getter/rollover callback, optional suppression callback, and optional screen-state getter.
 // returns: cleanup function that removes listeners and the heartbeat timer.
 // side_effects: timers, document/window listeners, logs/beacons, sessionStorage, and possible navigation.
 // emitted_logs: resume.snapshot_reload, resume.stale_reload, resume.reload_loop_suppressed, app.pagehide_state.
-// error_behavior: no-op outside a browser; storage/navigation failures are reported as suppression.
+// error_behavior: no-op outside a browser; a local-date change calls onDateRollover instead of old-route recovery; storage/navigation failures are reported as suppression.
 // END_FUNCTION_CONTRACT: F-M-RESUME-GUARD.installResumeGuard
 export function installResumeGuard(options: ResumeGuardOptions): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
   activeCleanup?.();
   lastAliveTs = Date.now();
+
+  // START_BLOCK: DATE_ROLLOVER
+  const mountedLocalDate = options.getLocalDateKey?.() ?? toDateParam(new Date());
+  let dateRolloverHandled = false;
+  const handleDateRollover = (): boolean => {
+    if (!options.onDateRollover) return false;
+    if (dateRolloverHandled) return true;
+    const currentLocalDate = options.getLocalDateKey?.() ?? toDateParam(new Date());
+    if (currentLocalDate === mountedLocalDate) return false;
+    dateRolloverHandled = true;
+    options.onDateRollover();
+    return true;
+  };
+  // END_BLOCK: DATE_ROLLOVER
 
   const heartbeat = window.setInterval(() => {
     // A hidden/frozen page must age so the first visible frame can detect it.
@@ -193,6 +214,7 @@ export function installResumeGuard(options: ResumeGuardOptions): () => void {
   }, RESUME_HEARTBEAT_MS);
 
   const handlePageShow = (event: Event) => {
+    if (handleDateRollover()) return;
     if ((event as PageTransitionEvent).persisted !== true) return;
     if (options.isReady()) return;
     attemptAutoReload("resume.snapshot_reload", "pageshow_persisted", options);
@@ -200,6 +222,7 @@ export function installResumeGuard(options: ResumeGuardOptions): () => void {
 
   const handleVisibilityChange = () => {
     if (document.visibilityState !== "visible") return;
+    if (handleDateRollover()) return;
     const now = Date.now();
     if (now - lastAliveTs <= RESUME_STALE_AFTER_MS) return;
     lastAliveTs = now;

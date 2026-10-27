@@ -13,6 +13,7 @@
 // side_effects: API lifecycle delegated to the hook; route replace/push and onboarding sync.
 // emitted_logs: delegated to useTodayConvergence and authentication/profile hooks.
 // invariants: today and valid ISO parameters reach the API unchanged; invalid parameters redirect to today's ISO route;
+//             a local-date rollover updates today state and leaves an old ISO route for /day/today;
 //             transport fallback payload is never rendered as ready content.
 // failure_policy: TodayScreen owns loading/error presentation; invalid routes are replaced with today's route.
 // END_MODULE_CONTRACT: M-APP-DAY-PAGE
@@ -30,14 +31,14 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { TodayScreen } from "@/components/today-convergence/today-screen";
 import { useOnboarded } from "@/hooks/use-onboarded";
 import { useTodayConvergence } from "@/lib/grace/hooks/useTodayConvergence";
 import { formatDayMonth, fromDateParam, toDateParam } from "@/lib/date";
-import { TODAY, sameDay } from "@/lib/today";
+import { sameDay } from "@/lib/today";
 
 const TRANSPORT_PAYLOAD = {
   schemaVersion: 2,
@@ -82,18 +83,18 @@ function shiftDate(date: Date, days: number): Date {
 
 // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.formatDateHeader
 // purpose: Render the selected day as a human Russian date relative to today.
-// inputs: date — selected local calendar date.
+// inputs: date — selected local calendar date; today — current local calendar date.
 // returns: Today/yesterday/tomorrow label or day-month label with a year only outside the current year.
 // side_effects: none.
 // emitted_logs: none.
-// error_behavior: valid Date input always produces a deterministic label.
+// error_behavior: valid Date inputs always produce a deterministic label.
 // END_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.formatDateHeader
-function formatDateHeader(date: Date): string {
+function formatDateHeader(date: Date, today: Date): string {
   const dayMonth = formatDayMonth(date);
-  if (sameDay(date, TODAY)) return `Сегодня, ${dayMonth}`;
-  if (sameDay(date, shiftDate(TODAY, -1))) return `Вчера, ${dayMonth}`;
-  if (sameDay(date, shiftDate(TODAY, 1))) return `Завтра, ${dayMonth}`;
-  return date.getFullYear() === TODAY.getFullYear()
+  if (sameDay(date, today)) return `Сегодня, ${dayMonth}`;
+  if (sameDay(date, shiftDate(today, -1))) return `Вчера, ${dayMonth}`;
+  if (sameDay(date, shiftDate(today, 1))) return `Завтра, ${dayMonth}`;
+  return date.getFullYear() === today.getFullYear()
     ? dayMonth
     : `${dayMonth} ${date.getFullYear()}`;
 }
@@ -119,17 +120,20 @@ export default function DayPage() {
   const { setOnboarded } = useOnboarded();
   const rawDateParam = typeof params.date === "string" ? params.date : "today";
   const isTodayParam = rawDateParam === "today";
+  // Keep today as state rather than a module-level constant: a webview can stay
+  // mounted across midnight, and the header/navigation must follow the rollover.
+  const [todayDate, setTodayDate] = useState(() => new Date());
   const selectedDate = useMemo(
-    () => (isTodayParam ? TODAY : fromDateParam(rawDateParam) ?? TODAY),
-    [isTodayParam, rawDateParam],
+    () => (isTodayParam ? todayDate : fromDateParam(rawDateParam) ?? todayDate),
+    [isTodayParam, rawDateParam, todayDate],
   );
   const isValidDateParam = isTodayParam || fromDateParam(rawDateParam) !== null;
   const requestDateParam = isValidDateParam ? rawDateParam : "today";
   const { screenState, payload, refetch } = useTodayConvergence(requestDateParam);
 
   useEffect(() => {
-    if (!isValidDateParam) router.replace(`/day/${toDateParam(TODAY)}`);
-  }, [isValidDateParam, router]);
+    if (!isValidDateParam) router.replace(`/day/${toDateParam(todayDate)}`);
+  }, [isValidDateParam, router, todayDate]);
 
   useEffect(() => {
     if (screenState === "ready" && payload) setOnboarded(true);
@@ -139,6 +143,18 @@ export default function DayPage() {
     (date: Date) => router.push(`/day/${toDateParam(date)}`),
     [router],
   );
+
+  const handleDateRollover = useCallback(() => {
+    setTodayDate(new Date());
+    // An explicit old ISO route must leave for the today sentinel. The today
+    // sentinel already resolves server-side to the new local date, so refresh
+    // it in place instead of navigating to the same URL.
+    if (isTodayParam) {
+      void refetch();
+      return;
+    }
+    router.replace("/day/today");
+  }, [isTodayParam, refetch, router]);
 
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const handleTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
@@ -176,12 +192,14 @@ export default function DayPage() {
     >
       <DayDateNavigation
         selectedDate={selectedDate}
+        today={todayDate}
         onDateChange={navigateToDate}
       />
       <TodayScreen
         payload={payload ?? TRANSPORT_PAYLOAD}
         screenState={screenState}
         onRetry={() => void refetch()}
+        onDateRollover={handleDateRollover}
       />
     </div>
   );
@@ -191,14 +209,16 @@ export default function DayPage() {
 // START_BLOCK: DATE_NAVIGATION
 function DayDateNavigation({
   selectedDate,
+  today,
   onDateChange,
 }: {
   selectedDate: Date;
+  today: Date;
   onDateChange: (date: Date) => void;
 }) {
   // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayDateNavigation
   // purpose: Preserve the previous/today/next day navigation around the new screen below Telegram/iOS top safe areas.
-  // inputs: selectedDate and route callback.
+  // inputs: selectedDate, current local today, and route callback.
   // returns: accessible day navigation.
   // side_effects: invokes onDateChange on button activation.
   // emitted_logs: none.
@@ -219,7 +239,7 @@ function DayDateNavigation({
       >
         <ChevronLeft aria-hidden className="h-4 w-4" />
       </button>
-      <span className="font-serif text-[17px] leading-[22px]">{formatDateHeader(selectedDate)}</span>
+      <span className="font-serif text-[17px] leading-[22px]">{formatDateHeader(selectedDate, today)}</span>
       <button
         type="button"
         aria-label="Следующий день"
